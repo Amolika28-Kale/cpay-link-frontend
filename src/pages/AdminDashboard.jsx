@@ -1393,7 +1393,7 @@ const DepositsView = ({ deposits, pendingDeposits, handleAction }) => {
                 {item.paymentScreenshot && (
                   <div className="col-span-12 mt-2 pt-2 border-t border-white/5">
                     <button
-                      onClick={() => window.open(`http://localhost:5000${item.paymentScreenshot}`)}
+                      onClick={() => window.open(`https://cpay-link-backend.onrender.com${item.paymentScreenshot}`)}
                       className="text-[#00F5A0] text-[8px] lg:text-[10px] font-bold flex items-center gap-1 hover:underline"
                     >
                       <Eye size={10} /> View Screenshot
@@ -1547,7 +1547,7 @@ const MobileDepositCard = ({ item, handleAction, formatDate }) => {
           {/* Screenshot */}
           {item.paymentScreenshot && (
             <button
-              onClick={() => window.open(`http://localhost:5000${item.paymentScreenshot}`)}
+              onClick={() => window.open(`https://cpay-link-backend.onrender.com${item.paymentScreenshot}`)}
               className="w-full bg-black/30 p-2 rounded mb-3 text-[#00F5A0] text-[8px] font-bold flex items-center justify-center gap-1"
             >
               <Eye size={10} /> View Payment Screenshot
@@ -1946,7 +1946,7 @@ const ScannerCard = ({ scanner: s, expanded, onToggle, formatDate, formatShortDa
         <div className="flex justify-center mb-3">
           <div className="bg-white p-2 rounded-lg">
             <img 
-              src={`http://localhost:5000${s.image}`} 
+              src={`https://cpay-link-backend.onrender.com${s.image}`} 
               className="w-16 h-16 object-contain" 
               alt="QR" 
             />
@@ -2065,11 +2065,11 @@ const ScannerCard = ({ scanner: s, expanded, onToggle, formatDate, formatShortDa
                 {s.paymentScreenshots.filter(ss => ss.isActive).map((ss, idx) => (
                   <button
                     key={idx}
-                    onClick={() => window.open(`http://localhost:5000${ss.url}`)}
+                    onClick={() => window.open(`https://cpay-link-backend.onrender.com${ss.url}`)}
                     className="relative aspect-square rounded overflow-hidden border border-white/10 hover:border-[#00F5A0] transition-all"
                   >
                     <img 
-                      src={`http://localhost:5000${ss.url}`}
+                      src={`https://cpay-link-backend.onrender.com${ss.url}`}
                       alt={`screenshot-${idx}`}
                       className="w-full h-full object-cover"
                     />

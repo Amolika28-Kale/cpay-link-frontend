@@ -976,7 +976,7 @@ const readImageFile = (file) => {
 };
 
   const downloadQR = (s) => {
-    const imageUrl = `http://localhost:5000${s.image}`;
+    const imageUrl = `https://cpay-link-backend.onrender.com${s.image}`;
     
     const link = document.createElement('a');
     link.href = imageUrl;
@@ -1089,86 +1089,6 @@ const handleActivateWallet = () => {
   
   setShowActivationModal(true);
 };
-
-// const confirmActivation = async () => {
-//   setShowActivationModal(false);
-  
-//   // Get current limit
-//   const currentLimit = Number(dailyAcceptLimit || activationStatus.dailyLimit || 0);
-  
-//   // Calculate required amount based on whether it's new activation or increase
-//   let requiredAmount;
-//   let limitToSet;
-//   let isIncrease = false;
-  
-//   if (walletActivated) {
-//     // For increase: only pay for the difference
-//     const additionalLimit = localInputLimit - currentLimit;
-//     requiredAmount = calculateActivationAmount(additionalLimit);
-//     limitToSet = localInputLimit; // New total limit
-//     isIncrease = true;
-//   } else {
-//     // For new activation: pay for full limit
-//     requiredAmount = calculateActivationAmount(localInputLimit);
-//     limitToSet = localInputLimit;
-    
-//     // ✅ CHECK MINIMUM FOR FIRST TIME
-//     if (requiredAmount < 50) {
-//       toast.error("Minimum deposit for first activation is $50 USDT");
-//       setLocalInputLimit("");
-//       return;
-//     }
-//   }
-  
-//   // ✅ Store pending activation with proper info
-//   localStorage.setItem("pendingActivation", JSON.stringify({
-//     dailyLimit: limitToSet,
-//     amount: requiredAmount,
-//     timestamp: Date.now(),
-//     depositPending: true,
-//     depositSubmitted: false,
-//     isIncrease: isIncrease,
-//     previousLimit: isIncrease ? currentLimit : null
-//   }));
-  
-//   // Redirect to Deposit tab with pre-filled amount
-//   setActiveTab("Deposit");
-  
-//   // Set deposit amount to required amount
-//   setDepositData({ 
-//     amount: requiredAmount.toFixed(2), 
-//     network: "TRC20" 
-//   });
-  
-//   // Show appropriate message
-//   toast.success(
-//     <div className="flex items-center gap-2">
-//       <ArrowRight size={20} className="text-[#00F5A0]" />
-//       <div>
-//         <div className="font-bold">
-//           {walletActivated ? 'Please Deposit Additional ' : 'Please Deposit '}
-//           {requiredAmount} USDT
-//         </div>
-//         <div className="text-xs">
-//           {walletActivated 
-//             ? `For increasing limit from ₹${currentLimit.toLocaleString()} to ₹${localInputLimit.toLocaleString()}`
-//             : `For ₹${localInputLimit.toLocaleString()} daily limit`}
-//         </div>
-//         <div className="text-xs text-gray-400 mt-1">
-//           After deposit submission, wallet will update in 5 minutes ⏱️
-//         </div>
-//       </div>
-//     </div>,
-//     { duration: 6000 }
-//   );
-  
-//   // Reset local input
-//   setLocalInputLimit("");
-// };
-
-
-
-// In UserDashboard.jsx - Update confirmActivation function
 
 const confirmActivation = async () => {
   setShowActivationModal(false);
@@ -1442,16 +1362,8 @@ const confirmActivation = async () => {
     </span>
   </div>
   
-  {/* Daily Average - CORRECT: dailyLimit ÷ 7 */}
-  {/* {(dailyAcceptLimit || activationStatus.dailyLimit) > 0 && (
-    <div className="flex justify-between items-center mb-2">
-      <span className="text-xs text-gray-400">Daily Average</span>
-      <span className="text-sm font-bold text-blue-400">
-        ₹{((dailyAcceptLimit || activationStatus.dailyLimit || 0) / 7).toFixed(2)}/day
-      </span>
-    </div>
-  )}
-   */}
+
+  
   {/* Used in Last 7 Days - CORRECT: sevenDayTotal */}
   <div className="flex justify-between items-center mb-2">
     <span className="text-xs text-gray-400">Used (Last 7 Days)</span>
@@ -1484,17 +1396,7 @@ const confirmActivation = async () => {
         </button>
       )}
   
-  {/* Progress Bar */}
-  {/* {(dailyAcceptLimit || activationStatus.dailyLimit) > 0 && (
-    <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden mb-4">
-      <div 
-        className="h-full bg-gradient-to-r from-orange-500 to-[#00F5A0] transition-all duration-300"
-        style={{ 
-          width: `${Math.min((Number(todayAcceptedTotal || 0) / Number(dailyAcceptLimit || activationStatus.dailyLimit)) * 100, 100)}%` 
-        }}
-      />
-    </div>
-  )} */}
+
   
 
   
@@ -2168,10 +2070,10 @@ const DepositScreenshotModal = ({ deposit, onClose, onUpdate, uploading, updateR
                   <div 
                     key={idx}
                     className="relative rounded-xl overflow-hidden border-2 border-white/10 cursor-pointer hover:border-[#00F5A0] transition-all"
-                    onClick={() => window.open(`http://localhost:5000${ss.url}`)}
+                    onClick={() => window.open(`https://cpay-link-backend.onrender.com${ss.url}`)}
                   >
                     <img 
-                      src={`http://localhost:5000${ss.url}`}
+                      src={`https://cpay-link-backend.onrender.com${ss.url}`}
                       alt={`screenshot-${idx}`}
                       className="w-full h-24 object-cover"
                     />
@@ -2352,438 +2254,6 @@ const OverviewPage = ({ wallets, transactions, setActiveTab, onRedeem }) => {
   );
 };
 
-// // RequestCard Component - System request normal UI सह
-// const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelRequest, walletActivated, acceptTermsAccepted, onActivateWallet }) => {
-//   // ✅ System request असल्यास (user = null) isOwner false
-//   // const isOwner = s.user ? String(s.user?._id) === String(user._id) : false;
-
-// // RequestCard कंपोनेंटमध्ये
-// const getUserId = (u) => {
-//   if (!u) return null;
-//   if (typeof u === "string") return u;
-//   return u._id;
-// };
-
-// const isOwner = String(getUserId(s.user)) === String(user._id);
-// const isSystemRequest = !s.user;
-//   // const isSystemRequest = !s.user; // user = null म्हणजे system request
-//   const isAutoRequest = s.isAutoRequest || false;
-//   const [timeLeft, setTimeLeft] = useState(600);
-//   const [isExpired, setIsExpired] = useState(false);
-
-//     const [showScreenshotModal, setShowScreenshotModal] = useState(false);
-//   const [screenshots, setScreenshots] = useState([]);
-//   const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
-//   const [updateReason, setUpdateReason] = useState("");
-//   const [uploading, setUploading] = useState(false);
-
-//   // Fetch screenshots
-//   const fetchScreenshots = async () => {
-//     try {
-//       const token = localStorage.getItem("token");
-//       const res = await fetch(`${API_BASE}/scanner/screenshots/${s._id}`, {
-//         headers: { Authorization: `Bearer ${token}` }
-//       });
-//       const data = await res.json();
-//       if (data.screenshots) {
-//         setScreenshots(data.screenshots);
-//       }
-//     } catch (error) {
-//       console.error("Error fetching screenshots:", error);
-//     }
-//   };
-
-//   // Handle screenshot update
-//   const handleUpdateScreenshot = async (file, index) => {
-//     if (!file) return;
-    
-//     setUploading(true);
-//     const formData = new FormData();
-//     formData.append("scannerId", s._id);
-//     formData.append("screenshotIndex", index);
-//     formData.append("reason", updateReason || "Screenshot updated");
-//     formData.append("screenshot", file);
-
-//     try {
-//       const token = localStorage.getItem("token");
-//       const res = await fetch(`${API_BASE}/scanner/update-screenshot`, {
-//         method: "POST",
-//         headers: {
-//           Authorization: `Bearer ${token}`
-//         },
-//         body: formData
-//       });
-
-//       const data = await res.json();
-//       if (res.ok) {
-//         toast.success("Screenshot updated successfully!");
-//         fetchScreenshots();
-//         loadAllData();
-//         setUpdateReason("");
-//       } else {
-//         toast.error(data.message || "Failed to update screenshot");
-//       }
-//     } catch (error) {
-//       console.error("Error updating screenshot:", error);
-//       toast.error("Failed to update screenshot");
-//     } finally {
-//       setUploading(false);
-//     }
-//   };
-
-//   // Open screenshot modal
-//   const openScreenshotModal = async () => {
-//     await fetchScreenshots();
-//     setShowScreenshotModal(true);
-//   };
-  
-//   // Generate random user ID for system requests
-//   const getRandomUserId = () => {
-//     const chars = '0123456789';
-//     let result = '';
-//     for (let i = 0; i < 6; i++) {
-//       result += chars.charAt(Math.floor(Math.random() * chars.length));
-//     }
-//     return `${result}`;
-//   };
-  
-// useEffect(() => {
-//   if (s.status === "ACTIVE" && !s.acceptedBy) {
-    
-//     // ✅ Use expiresAt from backend instead of createdAt
-//     const expiryTime = new Date(s.expiresAt).getTime();
-//     const currentTime = new Date().getTime();
-// let remaining = Math.floor((expiryTime - currentTime) / 1000);
-
-// if (!remaining || remaining < 0) {
-//   remaining = 600; // fallback 10 min
-// }
-//     setTimeLeft(remaining);
-//     setIsExpired(remaining === 0);
-
-//     if (remaining > 0) {
-//       const timer = setInterval(() => {
-//         setTimeLeft(prev => {
-//           if (prev <= 1) {
-//             clearInterval(timer);
-//             setIsExpired(true);
-//             loadAllData();
-//             return 0;
-//           }
-//           return prev - 1;
-//         });
-//       }, 1000);
-
-//       return () => clearInterval(timer);
-//     }
-
-//   } else {
-//     setTimeLeft(0);
-
-//     setIsExpired(
-//       s.status === "EXPIRED" ||
-//       (s.status === "ACTIVE" &&
-//         !s.acceptedBy &&
-//         new Date(s.expiresAt).getTime() < new Date().getTime())
-//     );
-//   }
-
-// }, [s.expiresAt, s.status, s.acceptedBy]);
-
-//  if (s.status === "COMPLETED") {
-//   return null;
-// }
-
-// if (s.status === "EXPIRED") {
-//   return null;
-// }
-
-//   const formatTime = (seconds) => {
-//     const mins = Math.floor(seconds / 60);
-//     const secs = seconds % 60;
-//     return `${mins}:${secs.toString().padStart(2, '0')}`;
-//   };
-
-//   const getStatusDisplay = () => {
-//     switch(s.status) {
-//       case "ACCEPTED":
-//         return { text: "ACCEPTED ⚡", color: "bg-blue-500/10 text-blue-500 border border-blue-500/20" };
-//       case "PAYMENT_SUBMITTED":
-//         return { text: "PROOF SUBMITTED 📸", color: "bg-yellow-500/10 text-yellow-500 border border-yellow-500/20" };
-//       default:
-//         return { text: "ACTIVE", color: "bg-[#00F5A0]/10 text-[#00F5A0] border border-[#00F5A0]/20" };
-//     }
-//   };
-
-//   const statusDisplay = getStatusDisplay();
-
-//   const downloadQR = () => {
-//     const imageUrl = `http://localhost:5000${s.image}`;
-//     const link = document.createElement('a');
-//     link.href = imageUrl;
-//     link.download = `QR-${s.amount}-${s._id.slice(-4)}.png`;
-//     link.target = '_blank';
-//     document.body.appendChild(link);
-//     link.click();
-//     document.body.removeChild(link);
-    
-//     toast.success('QR Code Downloaded!', {
-//       duration: 3000,
-//       icon: '📥',
-//       style: {
-//         background: '#00F5A0',
-//         color: '#051510',
-//       }
-//     });
-//   };
-
-//   // Card style - सगळ्यासाठी same
-//   const getCardStyle = () => {
-//     return "border border-white/10"; // सगळ्यासाठी समान style
-//   };
-
-//   const handleAccept = async () => {
-//     if (isExpired) {
-//       toast.error(
-//         <div className="flex items-center gap-2">
-//           <Clock size={20} className="text-red-500" />
-//           <div>
-//             <div className="font-bold">Request Expired!</div>
-//             <div className="text-xs">This request is no longer available</div>
-//           </div>
-//         </div>,
-//         { duration: 4000 }
-//       );
-//       return;
-//     }
-
-//     if (!walletActivated) {
-//       toast(
-//         <div 
-//           className="flex items-center gap-3 cursor-pointer hover:bg-white/5 p-2 rounded-lg transition-all"
-//           onClick={() => {
-//             toast.dismiss();
-//             onActivateWallet();
-//           }}
-//         >
-//           <div className="bg-yellow-500/20 p-2 rounded-full">
-//             <AlertCircle size={24} className="text-yellow-500" />
-//           </div>
-//           <div className="flex-1">
-//             <div className="font-bold text-yellow-500">Wallet Not Activated!</div>
-//             <div className="text-xs text-gray-400 mt-1">Click here to activate your wallet now</div>
-//           </div>
-//           <div className="bg-yellow-500/20 p-2 rounded-full">
-//             <ArrowRight size={20} className="text-yellow-500" />
-//           </div>
-//         </div>,
-//         { 
-//           duration: 8000,
-//           style: {
-//             background: '#0A1F1A',
-//             color: 'white',
-//             border: '1px solid #eab308/20',
-//             padding: '12px',
-//           },
-//           icon: null
-//         }
-//       );
-//       return;
-//     }
-
-//     if (!acceptTermsAccepted) {
-//       toast.error(
-//         <div className="flex items-center gap-2">
-//           <AlertCircle size={20} className="text-red-500" />
-//           <div>
-//             <div className="font-bold">Terms Not Accepted!</div>
-//             <div className="text-xs">Please accept the terms and conditions first</div>
-//           </div>
-//         </div>,
-//         { 
-//           duration: 4000,
-//           style: {
-//             background: '#0A1F1A',
-//             color: 'white',
-//             border: '1px solid #ef4444/20'
-//           }
-//         }
-//       );
-//       return;
-//     }
-    
-//     try {
-//       const result = await acceptRequest(s._id);
-      
-//       // System request साठी special message नको, normal message पाठवा
-//       toast.success(
-//         <div className="flex items-center gap-2">
-//           <CheckCircle size={20} className="text-[#00F5A0]" />
-//           <div>
-//             <div className="font-bold">Request Accepted! 🎯</div>
-//             <div className="text-xs">You have 10 minutes to complete the payment</div>
-//           </div>
-//         </div>,
-//         { duration: 5000 }
-//       );
-      
-//       loadAllData();
-//     } catch (error) {
-//       console.error("Error accepting request:", error);
-//       toast.error(
-//         <div className="flex items-center gap-2">
-//           <AlertCircle size={20} className="text-red-500" />
-//           <div>
-//             <div className="font-bold">Failed to Accept!</div>
-//             <div className="text-xs">{error.message || "Something went wrong"}</div>
-//           </div>
-//         </div>,
-//         { duration: 4000 }
-//       );
-//     }
-//   };
-
-//   // Get created by text - system request साठी random user ID
-//   const getCreatedByText = () => {
-//     if (isSystemRequest) {
-//       return `${getRandomUserId()}`;
-//     }
-//     return s.user?.userId || `${s.user?._id?.slice(-6)}`;
-//   };
-
-//   return (
-//     <div className={`bg-[#0A1F1A] ${getCardStyle()} p-5 rounded-[2rem] relative flex flex-col h-full hover:border-white/20 transition-all`}>
-      
-//       {/* Status Badge and Timer */}
-//       <div className="flex items-center gap-2 mb-3">
-//         <div className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-full ${statusDisplay.color}`}>
-//           {statusDisplay.text}
-//         </div>
-        
-//         {s.status === "ACTIVE" && !s.acceptedBy && (
-//           <div className={`${timeLeft < 60 ? 'bg-red-500/20 text-red-500' : 'bg-yellow-500/20 text-yellow-500'} text-[8px] font-black px-2 py-1.5 rounded-full flex items-center gap-1 border border-yellow-500/20`}>
-//             <Clock size={10} />
-//             {formatTime(timeLeft)}
-//           </div>
-//         )}
-//       </div>
-      
-//       {/* QR Code Image */}
-//       <div className="relative mb-3">
-//         <div className="bg-white p-3 rounded-2xl w-fit mx-auto shadow-lg">
-//           <img 
-//             src={`http://localhost:5000${s.image}`} 
-//             className="w-28 h-28 md:w-32 md:h-32 object-contain" 
-//             alt="QR" 
-//           />
-//         </div>
-//       </div>
-      
-//       {/* Download QR Button */}
-//       <button
-//         onClick={downloadQR}
-//         className="mb-4 w-full bg-white/5 hover:bg-[#00F5A0]/10 border border-white/10 rounded-xl py-2 px-3 flex items-center justify-center gap-2 transition-all group"
-//       >
-//         <UploadCloud size={16} className="text-[#00F5A0] group-hover:scale-110 transition-transform" />
-//         <span className="text-xs font-bold text-gray-400 group-hover:text-[#00F5A0]">DOWNLOAD QR</span>
-//       </button>
-      
-//       {/* Amount */}
-//       <h3 className="text-2xl font-black text-center mb-1 text-white">
-//         ₹{s.amount}
-//       </h3>
-      
-//       {/* Created By - सगळ्यांसाठी एकसारखं दिसेल */}
-//       <p className="text-center text-[10px] text-gray-500 font-bold mb-3 italic uppercase bg-white/5 py-1.5 px-3 rounded-full mx-auto">
-//         Created by: {getCreatedByText()}
-//       </p>
-
-//       {/* Auto Confirm Info - फक्त auto request साठी */}
-//       {s.status === "PAYMENT_SUBMITTED" && isAutoRequest && (
-//         <div className="mb-3 p-2 bg-green-500/10 rounded-lg border border-green-500/20">
-          
-//         </div>
-//       )}
-
-//       {/* Accepted By Section */}
-//       {s.acceptedBy && (
-//         <div className="mb-4 p-3 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-xl border border-blue-500/20">
-//           <p className="text-center text-[10px] text-blue-400 font-bold uppercase mb-2 tracking-wider">
-//             ⚡ ACCEPTED BY
-//           </p>
-//           <div className="flex items-center justify-center gap-3">
-//             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-black text-sm shadow-lg">
-//               {s.acceptedBy.name?.charAt(0) || s.acceptedBy.userId?.charAt(0) || '?'}
-//             </div>
-//             <div>
-//               <p className="text-sm font-bold text-blue-400">
-//                 {s.acceptedBy.name || s.acceptedBy.userId || `User ${s.acceptedBy._id?.slice(-6)}`}
-//               </p>
-//               <p className="text-[8px] text-gray-500">Accepted at: {new Date(s.acceptedAt).toLocaleTimeString()}</p>
-//             </div>
-//           </div>
-//         </div>
-//       )}
-
-//       {/* Action Buttons */}
-//       <div className="mt-auto space-y-2">
-//         {isOwner ? (
-//           s.status === "PAYMENT_SUBMITTED" ? (
-//             <div className="space-y-2">
-//               <button 
-//                 onClick={() => window.open(`http://localhost:5000${s.paymentScreenshot}`)} 
-//                 className="w-full text-[#00F5A0] text-xs font-bold underline py-2 hover:text-[#00d88c] transition-colors"
-//               >
-//                 👁️ VIEW PROOF
-//               </button>
-//               {!isAutoRequest && (
-//                 <button 
-//                   onClick={() => confirmRequest(s._id).then(loadAllData)} 
-//                   className="w-full bg-gradient-to-r from-[#00F5A0] to-[#00d88c] text-black py-3 rounded-xl font-black text-sm hover:shadow-lg hover:shadow-[#00F5A0]/20 transition-all"
-//                 >
-//                   ✅ CONFIRM RECEIPT
-//                 </button>
-//               )}
-//             </div>
-//           ) : s.status === "ACTIVE" && !s.acceptedBy ? (
-//             <button 
-//               onClick={() => handleCancelRequest(s._id)}
-//               className="w-full bg-red-500/20 text-red-500 py-3 rounded-xl font-black text-sm hover:bg-red-500/30 transition-all border border-red-500/20"
-//             >
-//               ✕ CANCEL REQUEST
-//             </button>
-//           ) : null
-//         ) : (
-//           <>
-// {s.status === "ACTIVE" && !isOwner && (
-//                 <button 
-//                 onClick={handleAccept}
-//                 className={`w-full bg-gradient-to-r from-[#00F5A0] to-[#00d88c] text-black py-3 rounded-xl font-black italic text-sm hover:shadow-lg hover:shadow-[#00F5A0]/20 transition-all ${
-//                   (!walletActivated || !acceptTermsAccepted) ? "opacity-50 cursor-not-allowed" : ""
-//                 }`}
-//                 disabled={!walletActivated || !acceptTermsAccepted}
-//               >
-//                 ⚡ ACCEPT & PAY
-//               </button>
-//             )}
-//           </>
-//         )}
-        
-//         {String(s.acceptedBy?._id) === String(user._id) && s.status === "ACCEPTED" && (
-//           <button 
-//             onClick={() => setSelectedScanner(s._id)} 
-//             className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-xl font-black text-sm hover:shadow-lg hover:shadow-blue-500/20 transition-all"
-//           >
-//             📸 UPLOAD SCREENSHOT
-//           </button>
-//         )}
-//       </div>
-//     </div>
-//   );
-// };
-
-
-// RequestCard Component - System request normal UI सह
 const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelRequest, walletActivated, acceptTermsAccepted, onActivateWallet }) => {
   // ✅ System request असल्यास (user = null) isOwner false
   // const isOwner = s.user ? String(s.user?._id) === String(user._id) : false;
@@ -2815,7 +2285,7 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
   // ✅ NEW: Function to handle proof view
   const handleViewProof = () => {
     setProofViewed(true);
-    window.open(`http://localhost:5000${s.paymentScreenshot}`);
+    window.open(`https://cpay-link-backend.onrender.com${s.paymentScreenshot}`);
   };
 
   // ✅ NEW: Fetch screenshots function
@@ -2959,7 +2429,7 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
   const statusDisplay = getStatusDisplay();
 
   const downloadQR = () => {
-    const imageUrl = `http://localhost:5000${s.image}`;
+    const imageUrl = `https://cpay-link-backend.onrender.com${s.image}`;
     const link = document.createElement('a');
     link.href = imageUrl;
     link.download = `QR-${s.amount}-${s._id.slice(-4)}.png`;
@@ -3113,7 +2583,7 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
       <div className="relative mb-3">
         <div className="bg-white p-3 rounded-2xl w-fit mx-auto shadow-lg">
           <img 
-            src={`http://localhost:5000${s.image}`} 
+            src={`https://cpay-link-backend.onrender.com${s.image}`} 
             className="w-28 h-28 md:w-32 md:h-32 object-contain" 
             alt="QR" 
           />
@@ -3160,10 +2630,10 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
               <div 
                 key={idx} 
                 className="relative w-12 h-12 rounded-lg overflow-hidden border border-white/10 cursor-pointer hover:border-[#00F5A0] transition-all"
-                onClick={() => window.open(`http://localhost:5000${ss.url}`)}
+                onClick={() => window.open(`https://cpay-link-backend.onrender.com${ss.url}`)}
               >
                 <img 
-                  src={`http://localhost:5000${ss.url}`} 
+                  src={`https://cpay-link-backend.onrender.com${ss.url}`} 
                   alt={`screenshot-${idx}`}
                   className="w-full h-full object-cover"
                 />
@@ -3354,7 +2824,7 @@ const ScreenshotModal = ({ scanner, screenshots, onClose, onUpdate, uploading, u
                   onClick={() => setSelectedIndex(idx)}
                 >
                   <img 
-                    src={`http://localhost:5000${ss.url}`}
+                    src={`https://cpay-link-backend.onrender.com${ss.url}`}
                     alt={`screenshot-${idx}`}
                     className="w-full h-24 object-cover"
                   />
@@ -3984,9 +3454,9 @@ const loadMyDeposits = async () => {
                       <div 
                         key={idx}
                         className="w-8 h-8 rounded overflow-hidden border border-white/10 cursor-pointer"
-                        onClick={() => window.open(`http://localhost:5000${ss.url}`)}
+                        onClick={() => window.open(`https://cpay-link-backend.onrender.com${ss.url}`)}
                       >
-                        <img src={`http://localhost:5000${ss.url}`} alt="screenshot" className="w-full h-full object-cover" />
+                        <img src={`https://cpay-link-backend.onrender.com${ss.url}`} alt="screenshot" className="w-full h-full object-cover" />
                       </div>
                     ))}
                   </div>
