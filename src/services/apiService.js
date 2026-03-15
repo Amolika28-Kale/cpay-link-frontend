@@ -1,4 +1,3 @@
-
 import API_BASE, { getAuthHeaders } from "./api";
 
 /* ================= WALLET ================= */
@@ -56,14 +55,14 @@ export const getMyDeposits = async () => {
     
     if (!res.ok) {
       const error = await res.text();
-      console.error("Error response:", error);
+      // console.error("Error response:", error);
       return [];
     }
     
     const data = await res.json();
     return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error("Error in getMyDeposits:", error);
+    // console.error("Error in getMyDeposits:", error);
     return [];
   }
 };
@@ -178,7 +177,7 @@ export const requestToPay = async (amount, imageFile, upiLink = "") => {
     
     return data;
   } catch (error) {
-    console.error("Request to pay error:", error);
+    // console.error("Request to pay error:", error);
     throw error;
   }
 };
@@ -195,7 +194,7 @@ export const getActiveRequests = async () => {
     }
     return data;
   } catch (error) {
-    console.error("Error fetching active requests:", error);
+    // console.error("Error fetching active requests:", error);
     return [];
   }
 };
@@ -221,7 +220,7 @@ export const acceptRequest = async (scannerId) => {
 
     return data;
   } catch (error) {
-    console.error("Accept request error:", error);
+    // console.error("Accept request error:", error);
     throw error;
   }
 };
@@ -248,6 +247,30 @@ export const confirmRequest = async (scannerId) => {
     body: JSON.stringify({ scannerId }),
   });
   return res.json();
+};
+
+// Cancel Scanner Request
+export const cancelRequest = async (scannerId) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${API_BASE}/scanner/cancel/${scannerId}`, {
+      method: "DELETE", // or POST depending on your backend
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to cancel request");
+    }
+    
+    return await response.json();
+  } catch (error) {
+    // console.error("Cancel request error:", error);
+    throw error;
+  }
 };
 
 export const selfPay = async (amount) => {
@@ -279,7 +302,7 @@ export const getScannerScreenshots = async (scannerId) => {
     });
     return await res.json();
   } catch (error) {
-    console.error("Error fetching screenshots:", error);
+    // console.error("Error fetching screenshots:", error);
     throw error;
   }
 };

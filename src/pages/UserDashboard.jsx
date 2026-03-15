@@ -4,13 +4,13 @@ import {
   LayoutGrid, ArrowRightLeft, Wallet, ScanLine, CheckCircle,
   LogOut, X, Clock, Menu, Loader, Zap, PlusCircle, Camera, UploadCloud, Bell,
   Users, TrendingUp, Award, Gift, Copy, ChevronDown, ChevronUp, User, Key, AlertCircle,
-  ArrowRight,
+  ArrowRight,Info,
   HelpCircle
 } from "lucide-react";
 
 import {
   getWallets, getTransactions, createDeposit, transferCashback,
-  getActivePaymentMethods, selfPay, requestToPay, getActiveRequests,
+  getActivePaymentMethods, requestToPay, getActiveRequests,
   acceptRequest, submitPayment, confirmRequest,
 } from "../services/apiService";
 import { 
@@ -267,11 +267,7 @@ const [depositUpdateReason, setDepositUpdateReason] = useState("");
 const slots = [
   { id: "1-99", label: "₹1 - ₹99", min: 1, max: 99 }, // ⭐ NEW SLOT
   { id: "100-999", label: "₹100 - ₹999", min: 100, max: 999 },
-  { id: "1000-9999", label: "₹1000 - ₹9999", min: 1000, max: 9999 },
-  { id: "10000-24999", label: "₹10000 - ₹24999", min: 10000, max: 24999 },
-  { id: "25000-49999", label: "₹25000 - ₹49999", min: 25000, max: 49999 },
-  { id: "50000-99999", label: "₹50000 - ₹99999", min: 50000, max: 99999 },
-  { id: "100000+", label: "₹100000+", min: 100000, max: Infinity }
+  { id: "1000-9999", label: "₹1000 - ₹9999", min: 1000, max: 10000},
 ];
 
   const filteredRequests = scanners
@@ -415,7 +411,7 @@ useEffect(() => {
       const token = localStorage.getItem("token");
       const status = await getActivationStatus(token);
       
-      console.log("📊 Activation status loaded:", status);
+      // console.log("📊 Activation status loaded:", status);
       
       setActivationStatus(status);
       setWalletActivated(status.activated);
@@ -456,7 +452,7 @@ useEffect(() => {
       }
       
     } catch (error) {
-      console.error("Error loading activation status:", error);
+      // console.error("Error loading activation status:", error);
     }
   };
 
@@ -464,7 +460,7 @@ const loadAllData = async () => {
   try {
     const token = localStorage.getItem("token");
     if (!token) {
-      console.warn("Sync aborted: No token found");
+      // console.warn("Sync aborted: No token found");
       return;
     }
 
@@ -512,7 +508,7 @@ const loadAllData = async () => {
     setTeamStats(team);
 
   } catch (err) {
-    console.error("Sync Error:", err);
+    // console.error("Sync Error:", err);
   } finally {
     setLoading(false);
   }
@@ -575,7 +571,7 @@ const loadMyDeposits = async () => {
       );
     });
   } catch (error) {
-    console.error("Error loading my deposits:", error);
+    // console.error("Error loading my deposits:", error);
     setMyDeposits([]); // ✅ FIX: Set empty array on error
   }
 };
@@ -705,7 +701,7 @@ useEffect(() => {
           await loadAllData();
           localStorage.removeItem("pendingActivation");
         } else {
-          console.error("Activation failed:", data);
+          // console.error("Activation failed:", data);
           if (data.message?.includes("already activated") || data.message?.includes("already at")) {
             setWalletActivated(true);
             setDailyAcceptLimit(data.dailyLimit || dailyLimit);
@@ -719,11 +715,11 @@ useEffect(() => {
           }
         }
       } catch (error) {
-        console.error("Activation failed:", error);
+        // console.error("Activation failed:", error);
         toast.error("Failed to activate wallet");
       }
     } else {
-      console.log("USDT wallet balance not updated yet, waiting...");
+      // console.log("USDT wallet balance not updated yet, waiting...");
     }
   };
   
@@ -812,7 +808,7 @@ const handleDepositSubmit = async () => {
       return false;
     }
   } catch (error) {
-    console.error("Deposit error:", error);
+    // console.error("Deposit error:", error);
     toast.dismiss(toastId);
     toast.error(error?.response?.data?.message || "Deposit submission failed");
     return false;
@@ -831,8 +827,25 @@ const handleCreateScanner = async () => {
   }
 
   // ========== 2. AMOUNT VALIDATION ==========
-  if (Number(uploadAmount) <= 0) {
+  const amountNum = Number(uploadAmount);  // ✅ या line add करा
+  
+  if (amountNum <= 0) {
     toast.error("Please enter a valid amount");
+    return;
+  }
+
+  // ✅ ADD THIS - MAX LIMIT CHECK
+  if (amountNum > 10000) {
+    toast.error(
+      <div className="flex items-center gap-2">
+        <AlertCircle size={20} className="text-red-500" />
+        <div>
+          <div className="font-bold">Maximum Amount Exceeded! ❌</div>
+          <div className="text-xs">You can only create requests up to ₹10,000</div>
+        </div>
+      </div>,
+      { duration: 4000 }
+    );
     return;
   }
 
@@ -924,6 +937,19 @@ const handleCreateScanner = async () => {
         { duration: 10000 }
       );
     } 
+    // ✅ Handle max limit error from backend
+    else if (error.response?.data?.maxLimit === 10000) {
+      toast.error(
+        <div className="flex items-center gap-2">
+          <AlertCircle size={20} className="text-red-500" />
+          <div>
+            <div className="font-bold">Maximum ₹10,000 Only! ❌</div>
+            <div className="text-xs">{error.response?.data?.message || "Please enter amount between ₹1 - ₹10,000"}</div>
+          </div>
+        </div>,
+        { duration: 4000 }
+      );
+    }
     // ✅ Handle other errors
     else {
       toast.error(error.response?.data?.message || error.message || "Failed to create request");
@@ -996,26 +1022,54 @@ const readImageFile = (file) => {
     });
   };
 
-  const handleCancelRequest = async (requestId) => {
-    try {
-      const toastId = toast.loading('Cancelling request...');
-      // Call your API to cancel the request
-      // const res = await cancelRequest(requestId);
-      
-      toast.dismiss(toastId);
-      toast.success('Request cancelled successfully!');
-      
-      if (requestTimer) {
-        clearTimeout(requestTimer);
-        setRequestTimer(null);
-      }
-      
-      setTimerExpired(false);
-      loadAllData();
-    } catch (error) {
-      toast.error('Failed to cancel request');
+ const handleCancelRequest = async (requestId) => {
+  try {
+    const toastId = toast.loading('Cancelling request...');
+    
+    // ✅ Import cancelRequest from apiService
+    const { cancelRequest } = await import("../services/apiService");
+    const res = await cancelRequest(requestId);
+    
+    toast.dismiss(toastId);
+    
+    if (res.message) {
+      toast.success(
+        <div className="flex items-center gap-2">
+          <CheckCircle size={20} className="text-[#00F5A0]" />
+          <div>
+            <div className="font-bold">Request Cancelled! ✅</div>
+            <div className="text-xs">Your request has been cancelled</div>
+          </div>
+        </div>,
+        { duration: 3000 }
+      );
     }
-  };
+    
+    // Clear any timers
+    if (requestTimer) {
+      clearTimeout(requestTimer);
+      setRequestTimer(null);
+    }
+    
+    setTimerExpired(false);
+    
+    // Refresh the data
+    loadAllData();
+    
+  } catch (error) {
+    toast.dismiss();
+    toast.error(
+      <div className="flex items-center gap-2">
+        <AlertCircle size={20} className="text-red-500" />
+        <div>
+          <div className="font-bold">Failed to Cancel! ❌</div>
+          <div className="text-xs">{error.message || "Something went wrong"}</div>
+        </div>
+      </div>,
+      { duration: 4000 }
+    );
+  }
+};
 
   const handleRedeemCashback = async () => {
     const cashbackWallet = wallets.find(w => w.type === "CASHBACK");
@@ -1089,6 +1143,86 @@ const handleActivateWallet = () => {
   
   setShowActivationModal(true);
 };
+
+// const confirmActivation = async () => {
+//   setShowActivationModal(false);
+  
+//   // Get current limit
+//   const currentLimit = Number(dailyAcceptLimit || activationStatus.dailyLimit || 0);
+  
+//   // Calculate required amount based on whether it's new activation or increase
+//   let requiredAmount;
+//   let limitToSet;
+//   let isIncrease = false;
+  
+//   if (walletActivated) {
+//     // For increase: only pay for the difference
+//     const additionalLimit = localInputLimit - currentLimit;
+//     requiredAmount = calculateActivationAmount(additionalLimit);
+//     limitToSet = localInputLimit; // New total limit
+//     isIncrease = true;
+//   } else {
+//     // For new activation: pay for full limit
+//     requiredAmount = calculateActivationAmount(localInputLimit);
+//     limitToSet = localInputLimit;
+    
+//     // ✅ CHECK MINIMUM FOR FIRST TIME
+//     if (requiredAmount < 50) {
+//       toast.error("Minimum deposit for first activation is $50 USDT");
+//       setLocalInputLimit("");
+//       return;
+//     }
+//   }
+  
+//   // ✅ Store pending activation with proper info
+//   localStorage.setItem("pendingActivation", JSON.stringify({
+//     dailyLimit: limitToSet,
+//     amount: requiredAmount,
+//     timestamp: Date.now(),
+//     depositPending: true,
+//     depositSubmitted: false,
+//     isIncrease: isIncrease,
+//     previousLimit: isIncrease ? currentLimit : null
+//   }));
+  
+//   // Redirect to Deposit tab with pre-filled amount
+//   setActiveTab("Deposit");
+  
+//   // Set deposit amount to required amount
+//   setDepositData({ 
+//     amount: requiredAmount.toFixed(2), 
+//     network: "TRC20" 
+//   });
+  
+//   // Show appropriate message
+//   toast.success(
+//     <div className="flex items-center gap-2">
+//       <ArrowRight size={20} className="text-[#00F5A0]" />
+//       <div>
+//         <div className="font-bold">
+//           {walletActivated ? 'Please Deposit Additional ' : 'Please Deposit '}
+//           {requiredAmount} USDT
+//         </div>
+//         <div className="text-xs">
+//           {walletActivated 
+//             ? `For increasing limit from ₹${currentLimit.toLocaleString()} to ₹${localInputLimit.toLocaleString()}`
+//             : `For ₹${localInputLimit.toLocaleString()} daily limit`}
+//         </div>
+//         <div className="text-xs text-gray-400 mt-1">
+//           After deposit submission, wallet will update in 5 minutes ⏱️
+//         </div>
+//       </div>
+//     </div>,
+//     { duration: 6000 }
+//   );
+  
+//   // Reset local input
+//   setLocalInputLimit("");
+// };
+
+
+
+// In UserDashboard.jsx - Update confirmActivation function
 
 const confirmActivation = async () => {
   setShowActivationModal(false);
@@ -1362,7 +1496,6 @@ const confirmActivation = async () => {
     </span>
   </div>
   
-
   
   {/* Used in Last 7 Days - CORRECT: sevenDayTotal */}
   <div className="flex justify-between items-center mb-2">
@@ -1442,15 +1575,41 @@ const confirmActivation = async () => {
       </div>
     )}
 
-    {/* Amount Input */}
-    <input
-      type="number"
-      placeholder="Enter Amount (₹)"
-      value={uploadAmount}
-      onChange={(e) => setUploadAmount(e.target.value)}
-      disabled={isRedeemMode}
-      className="w-full bg-black/40 border border-white/10 rounded-xl py-4 px-6 mb-6 font-bold outline-none text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-    />
+    {/* Amount Input - यामध्ये बदल करा */}
+<div className="mb-2">
+  <input
+    type="number"
+    placeholder="Enter Amount (₹1 - ₹10,000)"
+    value={uploadAmount}
+    onChange={(e) => {
+      const value = e.target.value;
+      if (value === "") {
+        setUploadAmount("");
+        return;
+      }
+      const num = Number(value);
+      if (num > 10000) {
+        toast.error("Maximum amount is ₹10,000 per request");
+        return;
+      }
+      if (num < 1) {
+        toast.error("Minimum amount is ₹1");
+        return;
+      }
+      setUploadAmount(value);
+    }}
+    disabled={isRedeemMode}
+    min="1"
+    max="10000"
+    className="w-full bg-black/40 border border-white/10 rounded-xl py-4 px-6 font-bold outline-none text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+  />
+  
+  {/* Min/Max Indicator - हा भाग add करा */}
+  <div className="flex justify-between items-center mt-2 px-2">
+    <span className="text-[10px] text-gray-500">Min: ₹1</span>
+    <span className="text-[10px] text-orange-400 font-bold">Max: ₹10,000</span>
+  </div>
+</div>
     
   {/* QR Code Upload Options - आता कोणतंही फोटो चालेल */}
 <div className="space-y-3">
@@ -1502,15 +1661,17 @@ const confirmActivation = async () => {
       </div>
     )}
 
-  {/* Disclaimer and Terms */}
+{/* Disclaimer and Terms - यामध्ये बदल करा */}
 <div className="mb-4">
   <div className="bg-white/5 p-4 rounded-xl border border-white/10">
     <p className="text-xs text-gray-400 mb-3 font-bold">DISCLAIMER:</p>
     <ul className="text-[10px] text-gray-500 list-disc list-inside mb-3 space-y-1.5">
       <li>You are creating a pay request for <span className="text-[#00F5A0]">₹{uploadAmount || '0'}</span></li>
+      {/* ✅ ही line add करा */}
+      <li>Maximum amount per request: <span className="text-orange-400 font-bold">₹10,000</span></li>
       <li>This request will expire in <span className="text-yellow-500">10 minutes</span> if not accepted</li>
       <li>You must have sufficient <span className="text-[#00F5A0]">INR balance</span> to create request</li>
-      <li className="text-yellow-500">⚠️ Upload clear photo of payment QR code</li>
+      <li className="text-yellow-500">⚠️ Upload clear photo of payment Merchant QR code</li>
     </ul>
     <label className="flex items-center gap-2 cursor-pointer">
       <input
@@ -1652,33 +1813,35 @@ const confirmActivation = async () => {
   })}
 </div>
 
-  {/* Accept Terms */}
-  {activeRequestsCount > 0 && (
-    <div className="mb-4">
-      <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-        <p className="text-xs text-gray-400 mb-3 font-bold">BEFORE ACCEPTING:</p>
+{/* Accept Terms */}
+{activeRequestsCount > 0 && (
+  <div className="mb-4">
+    <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+      <p className="text-xs text-gray-400 mb-3 font-bold">BEFORE ACCEPTING:</p>
 
-        <ul className="text-[10px] text-gray-500 list-disc list-inside mb-3 space-y-1">
-          <li>You have 10 minutes to complete the payment after accepting</li>
-          <li>Upload clear screenshot of payment proof</li>
-          <li>Wallet must be activated to accept requests</li>
-          <li>Each request expires in 10 minutes if not accepted</li>
-        </ul>
+      <ul className="text-[10px] text-gray-500 list-disc list-inside mb-3 space-y-1">
+        <li>You have 10 minutes to complete the payment after accepting</li>
+        <li>Upload clear screenshot of payment proof</li>
+        <li>Wallet must be activated to accept requests</li>
+        <li>Each request expires in 10 minutes if not accepted</li>
+        {/* ✅ Add this line */}
+        <li className="text-orange-400 font-bold">Maximum acceptance amount: ₹10,000 per request</li>
+      </ul>
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={acceptTermsAccepted}
-            onChange={(e) => setAcceptTermsAccepted(e.target.checked)}
-            className="w-4 h-4 accent-[#00F5A0]"
-          />
-          <span className="text-xs text-gray-300">
-            I agree to the terms and conditions
-          </span>
-        </label>
-      </div>
+      <label className="flex items-center gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={acceptTermsAccepted}
+          onChange={(e) => setAcceptTermsAccepted(e.target.checked)}
+          className="w-4 h-4 accent-[#00F5A0]"
+        />
+        <span className="text-xs text-gray-300">
+          I agree to the terms and conditions
+        </span>
+      </label>
     </div>
-  )}
+  </div>
+)}
 
   {/* REQUEST GRID */}
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in slide-in-from-bottom">
@@ -2300,7 +2463,7 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
         setScreenshots(data.screenshots);
       }
     } catch (error) {
-      console.error("Error fetching screenshots:", error);
+      // console.error("Error fetching screenshots:", error);
     }
   };
 
@@ -2335,7 +2498,7 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
         toast.error(data.message || "Failed to update screenshot");
       }
     } catch (error) {
-      console.error("Error updating screenshot:", error);
+      // console.error("Error updating screenshot:", error);
       toast.error("Failed to update screenshot");
     } finally {
       setUploading(false);
@@ -2357,6 +2520,22 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
     }
     return `${result}`;
   };
+
+  useEffect(() => {
+  if (s.utrRequested && String(s.acceptedBy?._id) === String(user._id)) {
+    toast(
+      <div>
+        <div className="font-bold text-yellow-400">
+          UTR Screenshot Requested
+        </div>
+        <div className="text-xs text-gray-400">
+          Please upload your UTR payment screenshot
+        </div>
+      </div>,
+      { duration: 6000 }
+    );
+  }
+}, [s.utrRequested]);
   
   useEffect(() => {
     if (s.status === "ACTIVE" && !s.acceptedBy) {
@@ -2453,6 +2632,32 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
     return "border border-white/10"; // सगळ्यासाठी समान style
   };
 
+  const notifyUploader = async () => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const res = await fetch(`${API_BASE}/scanner/request-utr`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        scannerId: s._id
+      })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      toast.success("Notification sent to uploader");
+    } else {
+      toast.error(data.message || "Failed to send request");
+    }
+  } catch (err) {
+    toast.error("Something went wrong");
+  }
+};
   const handleAccept = async () => {
     if (isExpired) {
       toast.error(
@@ -2467,6 +2672,21 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
       );
       return;
     }
+
+      // ✅ Add this - Check if amount exceeds ₹10,000
+  if (s.amount > 10000) {
+    toast.error(
+      <div className="flex items-center gap-2">
+        <AlertCircle size={20} className="text-red-500" />
+        <div>
+          <div className="font-bold">Cannot Accept! ❌</div>
+          <div className="text-xs">Maximum acceptance amount is ₹10,000</div>
+        </div>
+      </div>,
+      { duration: 4000 }
+    );
+    return;
+  }
 
     if (!walletActivated) {
       toast(
@@ -2540,7 +2760,7 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
       
       loadAllData();
     } catch (error) {
-      console.error("Error accepting request:", error);
+      // console.error("Error accepting request:", error);
       toast.error(
         <div className="flex items-center gap-2">
           <AlertCircle size={20} className="text-red-500" />
@@ -2666,9 +2886,20 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
       {/* Action Buttons */}
       <div className="mt-auto space-y-2">
         {isOwner ? (
+
+          
           s.status === "PAYMENT_SUBMITTED" ? (
+            
             <div className="space-y-2">
               {/* ✅ VIEW PROOF button - click केल्याशिवाय confirm button disable */}
+              {s.status === "PAYMENT_SUBMITTED" && isOwner && (
+  <button
+    onClick={() => notifyUploader()}
+    className="w-full bg-yellow-500/20 text-yellow-400 py-2 rounded-xl font-bold text-xs hover:bg-yellow-500/30 transition-all border border-yellow-500/20"
+  >
+    📩 PLZ UPLOAD UTR NUMBER SCREENSHOT
+  </button>
+)}
               <button 
                 onClick={handleViewProof}
                 className="w-full text-[#00F5A0] text-xs font-bold underline py-2 hover:text-[#00d88c] transition-colors flex items-center justify-center gap-2"
@@ -2974,7 +3205,7 @@ const loadMyDeposits = async () => {
     const deposits = await getMyDeposits();
     setMyDeposits(Array.isArray(deposits) ? deposits : []);
   } catch (error) {
-    console.error("Error loading deposits:", error);
+    // console.error("Error loading deposits:", error);
     setMyDeposits([]);
   }
 };
@@ -3183,6 +3414,13 @@ const loadMyDeposits = async () => {
         {selectedMethod && selectedMethod.method.includes("USDT") && (
           <div className="p-4 bg-white/5 rounded-xl mb-6 border border-white/5">
             <p className="text-[#00F5A0] font-black mb-3 uppercase text-xs">Payment Details:</p>
+             {/* ✅ Add Minimum Deposit Info at top */}
+    <div className="mb-4 p-2 bg-orange-500/10 rounded-lg border border-orange-500/20">
+      <p className="text-[10px] text-orange-400 font-bold flex items-center gap-1">
+        <AlertCircle size={12} />
+        Minimum Deposit: $50 USDT
+      </p>
+    </div>
             
             {/* QR Code */}
             <div className="flex justify-center mb-4">
@@ -3305,21 +3543,60 @@ const loadMyDeposits = async () => {
           </div>
         )}
 
-        {/* Amount Input */}
-        <div className="mb-3">
-          <label className="text-xs text-gray-500 mb-1 block">Amount (USDT) *</label>
-          <input 
-            type="number" 
-            value={depositData.amount} 
-            onChange={e => setDepositData({ ...depositData, amount: e.target.value })} 
-            placeholder="Enter amount in USDT" 
-            className="w-full bg-black/40 border border-white/10 rounded-xl p-4 font-bold text-lg outline-none focus:border-[#00F5A0] transition-all" 
-            disabled={showTimer}
-            min="1"
-            step="0.01"
-            required
-          />
-        </div>
+ {/* Amount Input */}
+<div className="mb-3">
+  <label className="text-xs text-gray-500 mb-1 block">Amount (USDT) *</label>
+  <input 
+    type="number" 
+    value={depositData.amount} 
+    onChange={e => {
+      const value = e.target.value;
+      setDepositData({ ...depositData, amount: value });
+      
+      // Optional: Show warning if below minimum
+      if (value && Number(value) < 50) {
+        toast.error("Minimum deposit is $50 USDT", {
+          duration: 2000,
+          icon: '⚠️'
+        });
+      }
+    }} 
+    placeholder="Enter amount in USDT" 
+    className="w-full bg-black/40 border border-white/10 rounded-xl p-4 font-bold text-lg outline-none focus:border-[#00F5A0] transition-all" 
+    disabled={showTimer}
+    min="50"
+    step="0.01"
+    required
+  />
+  
+  {/* ✅ Min/Max Indicator - Add this */}
+  <div className="flex justify-between items-center mt-2 px-2">
+    <span className="text-[10px] text-orange-400 font-bold flex items-center gap-1">
+      <AlertCircle size={10} />
+      Minimum: $50 USDT
+    </span>
+  </div>
+  
+  {/* ✅ Info about INR conversion */}
+  {depositData.amount && Number(depositData.amount) >= 50 && (
+    <div className="mt-2 p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
+      <p className="text-[10px] text-blue-400 flex items-center gap-1">
+        <Zap size={10} />
+        You will receive: ₹{(Number(depositData.amount) * 95).toLocaleString()} INR
+      </p>
+    </div>
+  )}
+  
+  {/* ✅ Warning for below minimum */}
+  {depositData.amount && Number(depositData.amount) < 50 && (
+    <div className="mt-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+      <p className="text-[10px] text-red-400 flex items-center gap-1">
+        <AlertCircle size={10} />
+        Minimum deposit amount is $50 USDT
+      </p>
+    </div>
+  )}
+</div>
         
         {/* Transaction Hash Input */}
         <div className="mb-4">
@@ -3608,42 +3885,153 @@ const HistoryPage = ({ transactions }) => (
   </div>
 );
 
-// ReferralPage Component - FULL UPDATED with Stats and Filters
+// ReferralPage Component - COMPLETE FIXED VERSION
+
 const ReferralPage = ({ referralData, teamStats }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [showTeamCashback, setShowTeamCashback] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [expandedMember, setExpandedMember] = useState(null);
-  const [statsFilter, setStatsFilter] = useState('total'); // 'today' or 'total'
+  const [expandedLevel, setExpandedLevel] = useState(null);
+  const [statsFilter, setStatsFilter] = useState('total');
+  const [legStatus, setLegStatus] = useState(null);
+  const [nextLeg, setNextLeg] = useState(null);
+  const [memberDetails, setMemberDetails] = useState({});
+  const [loadingMember, setLoadingMember] = useState(false);
   const [todayStats, setTodayStats] = useState({
     teamBusiness: 0,
     yourCommission: 0,
     teamMembers: 0
   });
 
-// ReferralPage Component मध्ये हा useEffect जोडा
-
-// Load today's stats
-useEffect(() => {
-  const fetchTodayStats = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const data = await getTodayTeamStats(token);
-      
-      if (data.success) {
-        setTodayStats({
-          teamBusiness: data.teamBusiness || 0,
-          yourCommission: data.yourCommission || 0,
-          teamMembers: data.teamMembers || 0
-        });
+  // Load leg status
+  useEffect(() => {
+    const fetchLegStatus = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const { getLegUnlockingStatus, getNextLegRequirement } = await import("../services/authService");
+        
+        const status = await getLegUnlockingStatus(token);
+        // console.log("Leg Status:", status);
+        setLegStatus(status);
+        
+        const next = await getNextLegRequirement(token);
+        // console.log("Next Leg:", next);
+        if (next?.success) {
+          setNextLeg(next.data);
+        }
+      } catch (error) {
+        // console.error("Error fetching leg status:", error);
       }
-    } catch (error) {
-      console.error("Error fetching today stats:", error);
-    }
-  };
+    };
+    
+    fetchLegStatus();
+  }, []);
+
+  // Load today's stats
+  useEffect(() => {
+    const fetchTodayStats = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const data = await getTodayTeamStats(token);
+        
+        if (data?.success) {
+          setTodayStats({
+            teamBusiness: data.teamBusiness || 0,
+            yourCommission: data.yourCommission || 0,
+            teamMembers: data.teamMembers || 0
+          });
+        }
+      } catch (error) {
+        // console.error("Error fetching today stats:", error);
+      }
+    };
+    
+    fetchTodayStats();
+  }, []);
+
+// UserDashboard.jsx मध्ये fetchMemberDetails function दुरुस्त करा
+
+const fetchMemberDetails = async (memberId) => {
+  // Skip if already loaded
+  if (memberDetails[memberId]) {
+    // console.log("Member details already loaded for:", memberId);
+    return;
+  }
   
-  fetchTodayStats();
-}, []);
+  setLoadingMember(true);
+  try {
+    const token = localStorage.getItem("token");
+    const { getMemberDetails } = await import("../services/authService");
+    
+    // console.log("Fetching details for member ID:", memberId);
+    
+    // Try to fetch from API
+    const response = await getMemberDetails(memberId, token);
+    // console.log("Member details response:", response);
+    
+    // If API returns data, use it
+    if (response && response.success && response.data) {
+      setMemberDetails(prev => ({
+        ...prev,
+        [memberId]: response.data
+      }));
+    } 
+    // If API returns data without success flag but has data
+    else if (response && response.data) {
+      setMemberDetails(prev => ({
+        ...prev,
+        [memberId]: response.data
+      }));
+    }
+    // If API returns data directly
+    else if (response && response.userId) {
+      setMemberDetails(prev => ({
+        ...prev,
+        [memberId]: response
+      }));
+    }
+    // Fallback data
+    else {
+      // console.log("Using fallback data for member:", memberId);
+      setMemberDetails(prev => ({
+        ...prev,
+        [memberId]: {
+          userId: memberId,
+          totalEarnings: 0,
+          teamCashback: 0,
+          directReferrals: 0,
+          totalTeam: 0,
+          legsUnlocked: {
+            leg1: true, leg2: false, leg3: false,
+            leg4: false, leg5: false, leg6: false, leg7: false
+          },
+          recentActivity: []
+        }
+      }));
+    }
+  } catch (error) {
+    // console.error("Error fetching member details:", error);
+    // Set fallback data on error
+    setMemberDetails(prev => ({
+      ...prev,
+      [memberId]: {
+        userId: memberId,
+        totalEarnings: 0,
+        teamCashback: 0,
+        directReferrals: 0,
+        totalTeam: 0,
+        legsUnlocked: {
+          leg1: true, leg2: false, leg3: false,
+          leg4: false, leg5: false, leg6: false, leg7: false
+        },
+        recentActivity: []
+      }
+    }));
+  } finally {
+    setLoadingMember(false);
+  }
+};
 
   const copyReferralCode = () => {
     navigator.clipboard.writeText(referralData.referralCode);
@@ -3674,15 +4062,15 @@ useEffect(() => {
     { level: 21, rate: "63%", color: "from-purple-500 to-pink-500" }
   ];
 
-  // Group levels by legs (7 legs for 21 levels)
+  // Group levels by legs
   const legs = [
-    { name: "Leg 1", levels: [1, 2, 3], unlocked: true },
-    { name: "Leg 2", levels: [4, 5, 6], unlocked: teamStats?.legsUnlocked?.leg2 },
-    { name: "Leg 3", levels: [7, 8, 9], unlocked: teamStats?.legsUnlocked?.leg3 },
-    { name: "Leg 4", levels: [10, 11, 12], unlocked: teamStats?.legsUnlocked?.leg4 },
-    { name: "Leg 5", levels: [13, 14, 15], unlocked: teamStats?.legsUnlocked?.leg5 },
-    { name: "Leg 6", levels: [16, 17, 18], unlocked: teamStats?.legsUnlocked?.leg6 },
-    { name: "Leg 7", levels: [19, 20, 21], unlocked: teamStats?.legsUnlocked?.leg7 }
+    { name: "Leg 1", levels: [1, 2, 3], required: 0, unlocked: true },
+    { name: "Leg 2", levels: [4, 5, 6], required: 1, unlocked: legStatus?.legsUnlocked?.leg2 || teamStats?.legsUnlocked?.leg2 },
+    { name: "Leg 3", levels: [7, 8, 9], required: 2, unlocked: legStatus?.legsUnlocked?.leg3 || teamStats?.legsUnlocked?.leg3 },
+    { name: "Leg 4", levels: [10, 11, 12], required: 3, unlocked: legStatus?.legsUnlocked?.leg4 || teamStats?.legsUnlocked?.leg4 },
+    { name: "Leg 5", levels: [13, 14, 15], required: 4, unlocked: legStatus?.legsUnlocked?.leg5 || teamStats?.legsUnlocked?.leg5 },
+    { name: "Leg 6", levels: [16, 17, 18], required: 5, unlocked: legStatus?.legsUnlocked?.leg6 || teamStats?.legsUnlocked?.leg6 },
+    { name: "Leg 7", levels: [19, 20, 21], required: 6, unlocked: legStatus?.legsUnlocked?.leg7 || teamStats?.legsUnlocked?.leg7 }
   ];
 
   // Calculate total team business
@@ -3694,6 +4082,181 @@ useEffect(() => {
         return sum;
       }, 0) 
     : 0;
+
+// ReferralPage मध्ये LevelMembersList कंपोनेंट सुधारित करा
+
+// ✅ IMPROVED: Level Members List Component with member details
+const LevelMembersList = ({ level, levelStats }) => {
+  // Debug
+  // console.log(`Level ${level} stats:`, levelStats);
+  
+  if (!levelStats) {
+    return (
+      <div className="text-center py-4 bg-black/20 rounded-lg">
+        <p className="text-xs text-gray-500">No data for Level {level}</p>
+      </div>
+    );
+  }
+
+  if (!levelStats.usersList || levelStats.usersList.length === 0) {
+    return (
+      <div className="text-center py-4 bg-black/20 rounded-lg">
+        <p className="text-xs text-gray-500">No members in Level {level}</p>
+        <p className="text-[8px] text-gray-600 mt-1">
+          Total users: {levelStats.users || 0}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 mt-2">
+      {levelStats.usersList.map((member, idx) => {
+        const isExpanded = expandedMember === member.userId;
+        const details = memberDetails[member.userId];
+        
+        return (
+          <div key={idx} className="bg-black/30 rounded-xl overflow-hidden border border-white/5 hover:border-[#00F5A0]/20 transition-all">
+            
+            {/* Member Header - Always Visible */}
+            <div 
+              className="p-4 cursor-pointer hover:bg-white/5 transition-all"
+              onClick={() => {
+                if (isExpanded) {
+                  setExpandedMember(null);
+                } else {
+                  setExpandedMember(member.userId);
+                  fetchMemberDetails(member.userId);
+                }
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  {/* Avatar with user ID first letter */}
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-black text-lg shadow-lg">
+                    {member.userId?.charAt(0).toUpperCase() || '?'}
+                  </div>
+                  
+                  {/* Member Basic Info */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-base font-bold text-white">{member.userId}</p>
+                      <span className="text-[8px] bg-[#00F5A0]/20 text-[#00F5A0] px-2 py-0.5 rounded-full">
+                        Level {level}
+                      </span>
+                    </div>
+                    
+                    {/* Quick Stats Preview */}
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="text-[#00F5A0]">
+                        ₹{Number(member.earnings || 0).toFixed(2)} earned
+                      </span>
+                      <span className="text-gray-500">•</span>
+                      <span className="text-orange-400">
+                        ₹{Number(member.teamCashback || 0).toFixed(2)} team
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Expand/Collapse Button */}
+                <button className="text-[#00F5A0] p-2 hover:bg-white/5 rounded-lg transition-all">
+                  {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Expanded Member Details */}
+            {isExpanded && (
+              <div className="p-4 border-t border-white/10 bg-black/40">
+                
+                {/* Loading State */}
+                {loadingMember && !details && (
+                  <div className="flex items-center justify-center py-6">
+                    <Loader size={24} className="animate-spin text-[#00F5A0]" />
+                    <span className="ml-2 text-xs text-gray-400">Loading member details...</span>
+                  </div>
+                )}
+
+                {/* Member Details */}
+                {details && (
+                  <div className="space-y-4">
+                    
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="bg-black/40 p-3 rounded-lg text-center">
+                        <p className="text-[8px] text-gray-500 mb-1">Total Earnings</p>
+                        <p className="text-sm font-bold text-[#00F5A0]">
+                          ₹{Number(details.totalEarnings || 0).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="bg-black/40 p-3 rounded-lg text-center">
+                        <p className="text-[8px] text-gray-500 mb-1">Team Cashback</p>
+                        <p className="text-sm font-bold text-orange-400">
+                          ₹{Number(details.teamCashback || 0).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="bg-black/40 p-3 rounded-lg text-center">
+                        <p className="text-[8px] text-gray-500 mb-1">Direct Referrals</p>
+                        <p className="text-sm font-bold text-blue-400">{details.directReferrals || 0}</p>
+                      </div>
+                      <div className="bg-black/40 p-3 rounded-lg text-center">
+                        <p className="text-[8px] text-gray-500 mb-1">Total Team</p>
+                        <p className="text-sm font-bold text-purple-400">{details.totalTeam || 0}</p>
+                      </div>
+                    </div>
+
+                    {/* Member's Own Downline Preview */}
+                    {details.downlineCount && (
+                      <div className="bg-black/40 p-3 rounded-lg">
+                        <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+                          <Users size={12} className="text-[#00F5A0]" />
+                          Member's Downline
+                        </p>
+                        <div className="grid grid-cols-7 gap-1">
+                          {[1,2,3,4,5,6,7].map(lvl => {
+                            const count = details.downlineCount[`level${lvl}`] || 0;
+                            return (
+                              <div key={lvl} className="text-center">
+                                <span className="text-[7px] text-gray-500">L{lvl}</span>
+                                <p className={`text-[9px] font-bold ${count > 0 ? 'text-[#00F5A0]' : 'text-gray-600'}`}>
+                                  {count}
+                                </p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Recent Activity */}
+                    {details.recentActivity && details.recentActivity.length > 0 && (
+                      <div className="bg-black/40 p-3 rounded-lg">
+                        <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+                          <Clock size={12} className="text-[#00F5A0]" />
+                          Recent Activity
+                        </p>
+                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                          {details.recentActivity.map((activity, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-[10px] bg-black/60 p-2 rounded">
+                              <span className="text-gray-400">{activity.date}</span>
+                              <span className="text-[#00F5A0]">₹{Number(activity.amount).toFixed(2)}</span>
+                              <span className="text-gray-500">{activity.type}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in">
@@ -3722,7 +4285,111 @@ useEffect(() => {
         </p>
       </div>
 
-      {/* Enhanced Stats Grid with Today/Total Filter */}
+      {/* Leg Unlocking Status Card */}
+      <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
+        <h3 className="text-lg font-black italic mb-4 flex items-center gap-2">
+          <Zap size={20} className="text-[#00F5A0]" />
+          Leg Unlocking Status (Based on Direct Referrals)
+        </h3>
+        
+        {/* Direct Referrals Count */}
+        <div className="mb-6 p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-300">Your Direct Referrals:</span>
+            <span className="text-2xl font-black text-[#00F5A0]">
+              {nextLeg?.directReferrals || legStatus?.directReferrals || 0}
+            </span>
+          </div>
+          
+          {/* Next Leg Requirement */}
+          {nextLeg?.nextLegToUnlock && (
+            <div className="mt-3 pt-3 border-t border-purple-500/20">
+              <p className="text-xs text-yellow-400 font-bold flex items-center gap-2">
+  <AlertCircle size={14} />
+  {nextLeg?.nextLegToUnlock?.isUnlockable 
+    ? `🎉 You can unlock ${nextLeg.nextLegToUnlock.leg} now!`
+    : `Need ${nextLeg?.nextLegToUnlock?.remainingToUnlock || 0} more direct referral${
+        nextLeg?.nextLegToUnlock?.remainingToUnlock > 1 ? 's' : ''
+      } to unlock ${nextLeg?.nextLegToUnlock?.leg || ''} (Levels ${
+        nextLeg?.nextLegToUnlock?.levelsInThisLeg?.join('-') || 'N/A'
+      })`}
+</p>
+            </div>
+          )}
+        </div>
+
+
+{/* Leg Grid */}
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+  {legs.map((leg, index) => {
+    const legDetail = legStatus?.legDetails?.[`leg${index + 1}`];
+    
+    return (
+      <div 
+        key={index}
+        className={`p-4 rounded-xl border transition-all ${
+          leg.unlocked 
+            ? 'bg-gradient-to-br from-[#00F5A0]/20 to-green-500/20 border-[#00F5A0] shadow-[0_0_15px_rgba(0,245,160,0.3)]' 
+            : 'bg-gray-800/50 border-gray-700 opacity-70'
+        }`}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-lg font-black">{leg.name}</span>
+          {leg.unlocked ? (
+            <span className="text-[8px] bg-green-500 text-black px-2 py-1 rounded-full font-bold">OPEN</span>
+          ) : (
+            <span className="text-[8px] bg-red-500/20 text-red-500 px-2 py-1 rounded-full font-bold">LOCKED</span>
+          )}
+        </div>
+        
+        <div className="space-y-2 mb-3">
+          {leg.levels.map(level => {
+            const levelStats = teamStats?.[`level${level}`];
+            return (
+              <div 
+                key={level} 
+                className="flex justify-between items-center text-xs p-1 hover:bg-white/5 rounded cursor-pointer"
+                onClick={() => {
+                  if (levelStats?.users > 0) {
+                    setExpandedLevel(level);
+                    setActiveTab("Referral");
+                  }
+                }}
+              >
+                <span className="text-gray-400 flex items-center gap-1">
+                  <span>Level {level}</span>
+                  {levelStats?.users > 0 && (
+                    <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1 rounded-full">
+                      {levelStats.users}
+                    </span>
+                  )}
+                </span>
+                <span className={`font-bold ${leg.unlocked ? 'text-[#00F5A0]' : 'text-gray-500'}`}>
+                  {levelStats?.users || 0} members
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Requirement */}
+        {!leg.unlocked && index > 0 && (
+          <div className="mt-2 pt-2 border-t border-yellow-500/20">
+            <p className="text-[8px] text-yellow-500">
+              Need: {leg.required} direct referral{leg.required > 1 ? 's' : ''}
+            </p>
+            <p className="text-[8px] text-gray-500 mt-1">
+              Current: {nextLeg?.directReferrals || 0}
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  })}
+</div>
+      </div>
+
+      {/* Stats Grid */}
       <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-black italic">Team Statistics</h3>
@@ -3751,7 +4418,7 @@ useEffect(() => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Total Team Members Card */}
+          {/* Team Members Card */}
           <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-[#00F5A0]/20 transition-all">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-[#00F5A0]/10 flex items-center justify-center">
@@ -3769,7 +4436,7 @@ useEffect(() => {
             </p>
           </div>
 
-          {/* Total Team Business Card */}
+          {/* Team Business Card */}
           <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-[#00F5A0]/20 transition-all">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-[#00F5A0]/10 flex items-center justify-center">
@@ -3789,7 +4456,7 @@ useEffect(() => {
             </p>
           </div>
 
-          {/* Your Cashback From Team Card */}
+          {/* Your Commission Card */}
           <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-orange-400/20 transition-all">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
@@ -3809,235 +4476,126 @@ useEffect(() => {
             </p>
           </div>
         </div>
-
-        {/* Level-wise Quick Stats */}
-        <div className="mt-6 pt-4 border-t border-white/10">
-          <h4 className="text-sm font-bold mb-3 flex items-center gap-2">
-            <TrendingUp size={14} className="text-[#00F5A0]" />
-            Level-wise Team Business
-          </h4>
-          <div className="grid grid-cols-3 md:grid-cols-7 gap-2">
-            {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
-              const levelStats = teamStats?.[`level${level}`];
-              return (
-                <div 
-                  key={level} 
-                  className={`bg-black/30 p-2 rounded-lg text-center ${
-                    levelStats?.unlocked ? 'opacity-100' : 'opacity-50'
-                  }`}
-                >
-                  <div className="flex justify-center items-center gap-1 mb-1">
-                    <span className="text-[8px] text-gray-500">L{level}</span>
-                    {levelStats?.unlocked ? (
-                      <span className="text-[8px] text-green-500">🔓</span>
-                    ) : (
-                      <span className="text-[8px] text-yellow-500">🔒</span>
-                    )}
-                  </div>
-                  <p className="text-[10px] font-bold text-[#00F5A0] truncate">
-                    ₹{(levelStats?.teamCashback || 0).toFixed(2)}
-                  </p>
-                  <p className="text-[7px] text-gray-600">{levelStats?.users || 0} members</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </div>
 
-      {/* Team Cashback Section - Main */}
-      <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Users size={20} className="text-[#00F5A0]" />
-            <h3 className="text-lg font-black italic">Cashback on Team Business</h3>
-          </div>
-          <button
-            onClick={() => setShowTeamCashback(!showTeamCashback)}
-            className="text-[#00F5A0] hover:bg-[#00F5A0]/10 p-2 rounded-lg transition-all"
-          >
-            {showTeamCashback ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-          </button>
-        </div>
 
-        {/* Commission Rates by Legs */}
-        <div className="space-y-4 mb-4">
-          {legs.map((leg, index) => (
-            <div key={index} className="border border-white/10 rounded-xl overflow-hidden">
-              <div className={`p-3 flex items-center justify-between ${
-                leg.unlocked ? 'bg-[#00F5A0]/10' : 'bg-gray-800/50'
-              }`}>
-                <div className="flex items-center gap-2">
-                  <span className={`text-sm font-bold ${leg.unlocked ? 'text-[#00F5A0]' : 'text-gray-500'}`}>
-                    {leg.name}
-                  </span>
-                  {!leg.unlocked && (
-                    <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded-full">
-                      Locked
-                    </span>
-                  )}
+{/* Level-wise Members List */}
+<div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
+  <div className="flex items-center justify-between mb-6">
+    <h3 className="text-lg font-black italic flex items-center gap-2">
+      <Users size={20} className="text-[#00F5A0]" />
+      Level-wise Team Members
+    </h3>
+    <span className="text-[10px] text-gray-500">Click on level to expand and see members</span>
+  </div>
+
+  {/* Level Quick Filters */}
+  <div className="grid grid-cols-7 gap-1 mb-6">
+    {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
+      const hasMembers = teamStats?.[`level${level}`]?.users > 0;
+      return (
+        <button
+          key={level}
+          onClick={() => hasMembers && setExpandedLevel(expandedLevel === level ? null : level)}
+          className={`text-[8px] py-2 rounded-lg font-bold transition-all ${
+            expandedLevel === level 
+              ? 'bg-[#00F5A0] text-black' 
+              : hasMembers
+                ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 cursor-pointer'
+                : 'bg-white/5 text-gray-500 cursor-not-allowed opacity-50'
+          }`}
+          disabled={!hasMembers}
+        >
+          L{level}
+          {hasMembers && (
+            <span className="ml-1 text-[6px] bg-blue-500 text-white px-1 rounded-full">
+              {teamStats[`level${level}`].users}
+            </span>
+          )}
+        </button>
+      );
+    })}
+  </div>
+
+  {/* Level-wise Details */}
+  <div className="space-y-4">
+    {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
+      const levelStats = teamStats?.[`level${level}`];
+      const isExpanded = expandedLevel === level;
+      
+      // Only show levels with members
+      if (!levelStats || levelStats.users === 0) {
+        return null;
+      }
+      
+      return (
+        <div key={level} className="border border-white/10 rounded-xl overflow-hidden">
+          {/* Level Header - Shows summary */}
+          <div 
+            className="p-4 bg-gradient-to-r from-white/5 to-transparent cursor-pointer hover:bg-white/10 transition-all"
+            onClick={() => setExpandedLevel(isExpanded ? null : level)}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                {/* Level Number with gradient */}
+                <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${
+                  levels.find(l => l.level === level)?.color || 'from-gray-500 to-gray-600'
+                } flex items-center justify-center text-white font-black`}>
+                  {level}
                 </div>
-                <div className="flex gap-2">
-                  {leg.levels.map(level => {
-                    const levelData = levels.find(l => l.level === level);
-                    return (
-                      <div key={level} className={`text-[10px] px-2 py-1 rounded ${
-                        leg.unlocked ? `bg-gradient-to-r ${levelData.color} text-white` : 'bg-gray-700 text-gray-500'
-                      }`}>
-                        L{level}: {levelData.rate}
-                      </div>
-                    );
-                  })}
+                
+                {/* Level Info */}
+                <div>
+                  <h4 className="text-sm font-bold">Level {level}</h4>
+                  <p className="text-[10px] text-gray-400">
+                    Rate: {levels.find(l => l.level === level)?.rate} | 
+                    Members: {levelStats.users} | 
+                    Team Cashback: ₹{Number(levelStats.teamCashback || 0).toFixed(2)}
+                  </p>
                 </div>
               </div>
               
-              {showTeamCashback && leg.unlocked && leg.levels.map(level => {
-                const levelStats = teamStats?.[`level${level}`];
-                if (!levelStats) return null;
-                
-                return (
-                  <div key={level} className="p-3 border-t border-white/5">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-gray-400">Level {level}</span>
-                      <span className="text-xs text-[#00F5A0]">
-                        {levelStats.users} members
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div className="bg-black/40 p-2 rounded-lg">
-                        <p className="text-[8px] text-gray-500">Team Cashback</p>
-                        <p className="text-sm font-bold text-[#00F5A0]">
-                          ₹{(levelStats.teamCashback || 0).toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="bg-black/40 p-2 rounded-lg">
-                        <p className="text-[8px] text-gray-500">Your Commission</p>
-                        <p className="text-sm font-bold text-orange-400">
-                          ₹{(levelStats.yourCommission || 0).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Members List */}
-                    {levelStats.usersList && levelStats.usersList.length > 0 && (
-                      <div className="mt-2">
-                        <button
-                          onClick={() => setSelectedLevel(selectedLevel === level ? null : level)}
-                          className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                        >
-                          <Users size={12} />
-                          {selectedLevel === level ? 'Hide members' : `View ${levelStats.users} members`}
-                        </button>
-
-                        {selectedLevel === level && (
-                          <div className="mt-2 space-y-2 max-h-60 overflow-y-auto">
-                            {levelStats.usersList.map((member, i) => (
-                              <div key={i} className="bg-black/30 rounded-lg p-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
-                                      {member.userId?.charAt(0) || '?'}
-                                    </div>
-                                    <div>
-                                      <p className="text-xs font-bold text-white">{member.userId}</p>
-                                      <p className="text-[8px] text-gray-500">Level {level} Member</p>
-                                    </div>
-                                  </div>
-                                  <button
-                                    onClick={() => setExpandedMember(expandedMember === member.userId ? null : member.userId)}
-                                    className="text-[#00F5A0] hover:text-[#00d88c]"
-                                  >
-                                    {expandedMember === member.userId ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                                  </button>
-                                </div>
-
-                                {expandedMember === member.userId && (
-                                  <div className="mt-2 pt-2 border-t border-white/10">
-                                    <div className="grid grid-cols-2 gap-2 text-[10px]">
-                                      <div>
-                                        <p className="text-gray-500">Total Earnings</p>
-                                        <p className="text-[#00F5A0] font-bold">₹{(member.earnings || 0).toFixed(2)}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-gray-500">Team Cashback</p>
-                                        <p className="text-orange-400 font-bold">₹{(member.teamCashback || 0).toFixed(2)}</p>
-                                      </div>
-                                    </div>
-                                    
-                                    {/* Member's own team (if any) */}
-                                    {member.downline && member.downline.length > 0 && (
-                                      <div className="mt-2">
-                                        <p className="text-[8px] text-gray-500 mb-1">Downline Members:</p>
-                                        <div className="space-y-1">
-                                          {member.downline.slice(0, 3).map((down, idx) => (
-                                            <div key={idx} className="flex justify-between text-[8px] bg-black/40 p-1 rounded">
-                                              <span className="text-gray-400">{down.userId}</span>
-                                              <span className="text-[#00F5A0]">₹{(down.earnings || 0).toFixed(2)}</span>
-                                            </div>
-                                          ))}
-                                          {member.downline.length > 3 && (
-                                            <p className="text-[7px] text-gray-600 text-center">
-                                              +{member.downline.length - 3} more members
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-
-        {/* Unlock Next Leg Info */}
-        {legs.some(leg => !leg.unlocked) && (
-          <div className="mt-4 p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
-            <p className="text-[10px] text-blue-400 flex items-center gap-1">
-              <TrendingUp size={12} />
-              To unlock next leg, add at least 1 member in the last level of current leg
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Commission Rates Summary (Collapsible) */}
-      <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Award size={20} className="text-[#00F5A0]" />
-            <h3 className="text-lg font-black italic">Commission Rates (All 21 Levels)</h3>
-          </div>
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="text-[#00F5A0] hover:bg-[#00F5A0]/10 p-2 rounded-lg transition-all"
-          >
-            {showDetails ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-          </button>
-        </div>
-
-        {showDetails && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {levels.map((level) => (
-              <div key={level.level} className="bg-black/40 p-2 rounded-lg text-center">
-                <span className="text-[8px] text-gray-500">Level {level.level}</span>
-                <div className={`text-xs font-bold bg-gradient-to-r ${level.color} text-white px-2 py-1 rounded mt-1`}>
-                  {level.rate}
+              {/* Your Commission and Expand Button */}
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-xs text-gray-400">Your Commission</p>
+                  <p className="text-sm font-bold text-orange-400">
+                    ₹{Number(levelStats.yourCommission || 0).toFixed(2)}
+                  </p>
                 </div>
+                {isExpanded ? <ChevronUp size={20} className="text-[#00F5A0]" /> : <ChevronDown size={20} className="text-[#00F5A0]" />}
               </div>
-            ))}
+            </div>
           </div>
-        )}
+
+          {/* Expanded Members List - Shows all members in this level */}
+          {isExpanded && (
+            <div className="p-4 border-t border-white/10 bg-black/20">
+              <h5 className="text-xs font-bold text-[#00F5A0] mb-3 flex items-center gap-2">
+                <Users size={14} />
+                Members in Level {level} ({levelStats.users} total)
+              </h5>
+              <LevelMembersList level={level} levelStats={levelStats} />
+            </div>
+          )}
+        </div>
+      );
+    })}
+
+    {/* No Members Message */}
+    {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].every(
+      level => !teamStats?.[`level${level}`] || teamStats[`level${level}`].users === 0
+    ) && (
+      <div className="text-center py-10">
+        <Users size={40} className="mx-auto mb-3 text-gray-600" />
+        <p className="text-gray-500 font-bold">No team members yet</p>
+        <p className="text-[10px] text-gray-600 mt-2">
+          Share your referral code to build your team
+        </p>
       </div>
+    )}
+  </div>
+</div>
     </div>
   );
 };

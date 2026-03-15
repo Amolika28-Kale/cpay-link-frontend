@@ -5,7 +5,7 @@ import {
   Zap, Clock, Search, ScanLine, Eye, ListOrdered, TrendingUp, Award,
   ChevronDown, ChevronUp, User, Copy, DollarSign, PieChart, BarChart3,
   Users2, GitBranch, Network, Wallet, Coins, History, Download,
-  Filter
+  Filter, ChevronLeft, ChevronRight, AlertCircle, Info,CheckCircle
 } from "lucide-react";
 import { 
   getAllUsers, getAllDeposits, updateDepositStatus, 
@@ -13,8 +13,6 @@ import {
   getAllScanners, getAllTransactions, getSystemStats, getUserDetails 
 } from "../services/adminService";
 import toast from 'react-hot-toast';
-// Add these imports at the top of your file if not already present
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
@@ -72,7 +70,6 @@ export default function AdminDashboard() {
       setTransactions(Array.isArray(tData) ? tData : []);
       setSystemStats(statsData || null);
     } catch (err) {
-      console.error("Data Fetch Error:", err);
       toast.error("Failed to load data");
     } finally {
       setLoading(false);
@@ -165,7 +162,6 @@ export default function AdminDashboard() {
             onClick={() => {setActiveTab("Deposits"); setIsSidebarOpen(false);}} 
             highlight={pendingDeposits > 0}
           />
-         
           <SidebarLink 
             icon={<ScanLine size={18}/>} 
             label="Scanners" 
@@ -249,15 +245,6 @@ export default function AdminDashboard() {
           />
         )}
         
-        {/* WITHDRAWS TAB */}
-        {activeTab === "Withdraws" && (
-          <WithdrawsView 
-            withdraws={withdraws}
-            pendingWithdraws={pendingWithdraws}
-            handleAction={handleAction}
-          />
-        )}
-        
         {/* SCANNERS TAB */}
         {activeTab === "Scanners" && (
           <ScannersView scanners={scanners} />
@@ -286,48 +273,34 @@ export default function AdminDashboard() {
   );
 }
 
-/* ================= DASHBOARD VIEW - RESPONSIVE (NO WITHDRAW/EXCHANGE) ================= */
+/* ================= DASHBOARD VIEW ================= */
 const DashboardView = ({ 
-  systemStats, users, deposits, withdraws, scanners, transactions,
-  exchangeRate, setExchangeRate, updateExchangeRate,
-  pendingDeposits, pendingWithdraws
+  users, deposits, scanners, transactions,
+  pendingDeposits
 }) => {
-  // Calculate total volume
   const totalDepositVolume = deposits.reduce((sum, d) => d.status === 'approved' ? sum + d.amount : sum, 0);
   const totalScannerVolume = scanners.reduce((sum, s) => s.status === 'COMPLETED' ? sum + s.amount : sum, 0);
   
   return (
     <div className="space-y-4 sm:space-y-6 md:space-y-8 animate-in fade-in duration-500">
-      
-      {/* Stats Grid - Responsive */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4">
-        <StatBox 
-          label="Total Users" 
-          val={users.length} 
-          icon={<Users size={16} className="sm:w-[18px] sm:h-[18px]" />}
-        />
+        <StatBox label="Total Users" val={users.length} icon={<Users size={16} />} />
         <StatBox 
           label="Active Scanners" 
           val={scanners.filter(s => s.status === 'ACTIVE').length} 
           highlight={scanners.filter(s => s.status === 'ACTIVE').length > 0}
-          icon={<ScanLine size={16} className="sm:w-[18px] sm:h-[18px]" />}
+          icon={<ScanLine size={16} />}
         />
         <StatBox 
           label="Pending Deposits" 
           val={pendingDeposits} 
           highlight={pendingDeposits > 0}
-          icon={<CreditCard size={16} className="sm:w-[18px] sm:h-[18px]" />}
+          icon={<CreditCard size={16} />}
         />
-        <StatBox 
-          label="Total Transactions" 
-          val={transactions.length} 
-          icon={<Clock size={16} className="sm:w-[18px] sm:h-[18px]" />}
-        />
+        <StatBox label="Total Transactions" val={transactions.length} icon={<Clock size={16} />} />
       </div>
 
-      {/* Volume Stats - Responsive */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-        {/* Deposit Volume Card */}
         <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl">
           <p className="text-[8px] sm:text-[9px] md:text-[10px] text-blue-400 font-black uppercase mb-1 sm:mb-2">
             Deposit Volume
@@ -335,12 +308,7 @@ const DashboardView = ({
           <p className="text-xl sm:text-2xl md:text-3xl font-black text-white">
             ${totalDepositVolume.toFixed(2)}
           </p>
-          <p className="text-[6px] sm:text-[7px] md:text-[8px] text-gray-500 mt-1">
-            Total approved deposits
-          </p>
         </div>
-        
-        {/* Scanner Volume Card */}
         <div className="bg-gradient-to-br from-[#00F5A0]/10 to-green-600/5 border border-[#00F5A0]/20 p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl">
           <p className="text-[8px] sm:text-[9px] md:text-[10px] text-[#00F5A0] font-black uppercase mb-1 sm:mb-2">
             Scanner Volume
@@ -348,104 +316,51 @@ const DashboardView = ({
           <p className="text-xl sm:text-2xl md:text-3xl font-black text-white">
             ₹{totalScannerVolume.toFixed(2)}
           </p>
-          <p className="text-[6px] sm:text-[7px] md:text-[8px] text-gray-500 mt-1">
-            Total completed scans
-          </p>
         </div>
       </div>
 
-      {/* Recent Transactions - Full Width Responsive */}
       <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl sm:rounded-3xl md:rounded-[2.5rem] p-4 sm:p-5 md:p-6 lg:p-8">
-        {/* Header */}
-        <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 mb-4 sm:mb-5 md:mb-6">
-          <h3 className="text-base sm:text-lg md:text-xl font-bold italic flex items-center gap-2">
-            <Clock size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 text-[#00F5A0]" /> 
-            <span>Recent Transactions</span>
-          </h3>
-          
-          {/* Pending Badge */}
-          {(pendingDeposits > 0 || pendingWithdraws > 0) && (
-            <span className="bg-red-500/10 text-red-500 text-[8px] sm:text-[9px] px-2 sm:px-3 py-1 rounded-full animate-pulse w-fit">
-              {pendingDeposits + pendingWithdraws} pending
-            </span>
-          )}
-        </div>
-
-        {/* Transactions List - Responsive */}
-        <div className="space-y-2 sm:space-y-3 max-h-[300px] sm:max-h-[350px] md:max-h-[400px] overflow-y-auto pr-1 sm:pr-2 scrollbar-thin scrollbar-thumb-white/10">
+        <h3 className="text-base sm:text-lg md:text-xl font-bold italic mb-4 sm:mb-5 md:mb-6 flex items-center gap-2">
+          <Clock size={16} className="text-[#00F5A0]" /> Recent Transactions
+        </h3>
+        <div className="space-y-2 sm:space-y-3 max-h-[300px] sm:max-h-[350px] md:max-h-[400px] overflow-y-auto">
           {transactions.slice(0, 10).map(tx => (
-            <div 
-              key={tx._id} 
-              className="flex flex-col xs:flex-row xs:justify-between xs:items-center gap-2 xs:gap-3 p-3 sm:p-4 bg-white/5 rounded-xl sm:rounded-2xl border border-white/5 group transition-all hover:bg-white/[0.08]"
-            >
-              {/* Left Section - User Info */}
-              <div className="flex gap-2 sm:gap-3 md:gap-4 items-center min-w-0 flex-1">
-                {/* Type Icon */}
-                <div className={`w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full flex-shrink-0 flex items-center justify-center font-black italic text-[10px] sm:text-xs ${
-                  tx.type === 'DEBIT' ? 'text-red-400 bg-red-400/10' : 
-                  tx.type === 'CREDIT' ? 'text-green-400 bg-green-400/10' :
-                  'text-[#00F5A0] bg-[#00F5A0]/10'
+            <div key={tx._id} className="flex flex-col xs:flex-row xs:justify-between xs:items-center gap-2 p-3 bg-white/5 rounded-xl border border-white/5">
+              <div className="flex gap-3 items-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs ${
+                  tx.type === 'DEBIT' ? 'bg-red-400/10 text-red-400' : 
+                  tx.type === 'CREDIT' ? 'bg-green-400/10 text-green-400' :
+                  'bg-[#00F5A0]/10 text-[#00F5A0]'
                 }`}>
                   {tx.type ? tx.type[0] : 'T'}
                 </div>
-                
-                {/* User Details */}
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs sm:text-sm font-bold truncate max-w-[120px] xs:max-w-[150px] sm:max-w-[200px]">
-                    {tx.user?.email || tx.user?.userId || 'System'}
-                  </p>
-                  <p className="text-[7px] sm:text-[8px] md:text-[9px] text-gray-500 font-mono uppercase italic">
-                    {tx.type || 'TRANSFER'} • {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                <div>
+                  <p className="text-xs font-bold">{tx.user?.email || tx.user?.userId || 'System'}</p>
+                  <p className="text-[7px] text-gray-500">{tx.type} • {new Date(tx.createdAt).toLocaleTimeString()}</p>
                 </div>
               </div>
-
-              {/* Right Section - Amount */}
-              <div className="text-right flex-shrink-0 pl-10 xs:pl-0">
-                <p className="text-xs sm:text-sm font-black italic text-[#00F5A0]">
-                  {tx.type === 'DEBIT' ? '-' : '+'}₹{tx.amount}
-                </p>
-                <p className="text-[6px] sm:text-[7px] md:text-[8px] text-gray-600 font-bold uppercase hidden xs:block">
-                  {tx.fromWallet || 'System'} → {tx.toWallet || 'System'}
-                </p>
-              </div>
+              <p className="text-xs font-black text-[#00F5A0]">
+                {tx.type === 'DEBIT' ? '-' : '+'}₹{tx.amount}
+              </p>
             </div>
           ))}
-
-          {/* Empty State */}
-          {transactions.length === 0 && (
-            <div className="text-center py-8 sm:py-10 md:py-12">
-              <Clock size={32} className="mx-auto mb-3 opacity-30 text-gray-500" />
-              <p className="text-xs sm:text-sm text-gray-500">No transactions yet</p>
-            </div>
-          )}
         </div>
-
-        {/* View All Link (if more than 10 transactions) */}
-        {transactions.length > 10 && (
-          <div className="mt-3 sm:mt-4 text-center">
-            <button className="text-[10px] sm:text-xs text-[#00F5A0] font-bold hover:underline">
-              View All Transactions ({transactions.length})
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
 };
 
-
-/* ================= USERS VIEW - FULLY RESPONSIVE ================= */
+/* ================= USERS VIEW ================= */
 const UsersView = ({ 
   users, searchTerm, setSearchTerm, setSelectedUser, 
   expandedUser, setExpandedUser, expandedLevel, setExpandedLevel,
   copyToClipboard 
 }) => {
-  const [viewMode, setViewMode] = useState('table'); // 'table' or 'cards'
+  const [viewMode, setViewMode] = useState('cards');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   
-  // Filter users based on search
   const filteredUsers = users.filter(u => 
     u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.userId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -453,598 +368,751 @@ const UsersView = ({
     u.referralCode?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Pagination
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
   const paginatedUsers = filteredUsers.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  // Handle window resize for responsive view mode
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 768) {
-        setViewMode('table');
-      }
+      setViewMode(window.innerWidth >= 768 ? 'table' : 'cards');
     };
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   return (
-    <div className="bg-[#0A1F1A] border border-white/10 rounded-xl md:rounded-2xl lg:rounded-[2rem] overflow-hidden animate-in fade-in">
-      
-      {/* Header */}
-      <div className="p-4 sm:p-5 md:p-6 lg:p-8 border-b border-white/5">
-        <div className="flex flex-col sm:flex-row justify-between gap-3 sm:gap-4">
-          <h3 className="text-base sm:text-lg md:text-xl font-bold italic uppercase tracking-tighter flex items-center gap-2">
-            <Users size={16} className="sm:w-[18px] sm:h-[18px] md:w-5 md:h-5 text-[#00F5A0]" />
-            <span>User Base</span>
+    <div className="bg-[#0A1F1A] border border-white/10 rounded-xl md:rounded-2xl lg:rounded-[2rem] overflow-hidden">
+      <div className="p-3 sm:p-4 md:p-5 lg:p-6 border-b border-white/5">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
+          <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold italic flex items-center gap-2">
+            <Users size={16} className="text-[#00F5A0]" />
+            <span>Users - Referral Details</span>
             <span className="bg-[#00F5A0]/10 text-[#00F5A0] text-[8px] sm:text-[10px] px-2 py-0.5 rounded-full">
               {filteredUsers.length}
             </span>
           </h3>
           
-          <div className="flex flex-col xs:flex-row gap-2">
-            {/* Mobile View Toggle */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <div className="flex md:hidden bg-white/5 rounded-lg p-1">
-              <button
-                onClick={() => setViewMode('table')}
-                className={`flex-1 px-3 py-1.5 rounded text-[10px] font-bold transition-all ${
-                  viewMode === 'table' ? 'bg-[#00F5A0] text-black' : 'text-gray-400'
-                }`}
-              >
-                Table
-              </button>
-              <button
-                onClick={() => setViewMode('cards')}
-                className={`flex-1 px-3 py-1.5 rounded text-[10px] font-bold transition-all ${
-                  viewMode === 'cards' ? 'bg-[#00F5A0] text-black' : 'text-gray-400'
-                }`}
-              >
-                Cards
-              </button>
+              <button onClick={() => setViewMode('table')} className={`px-2 py-1 rounded text-[8px] font-bold ${viewMode === 'table' ? 'bg-[#00F5A0] text-black' : 'text-gray-400'}`}>Table</button>
+              <button onClick={() => setViewMode('cards')} className={`px-2 py-1 rounded text-[8px] font-bold ${viewMode === 'cards' ? 'bg-[#00F5A0] text-black' : 'text-gray-400'}`}>Cards</button>
             </div>
-
-            {/* Search Bar */}
-            <div className="relative w-full sm:w-64 md:w-80">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
-              <input 
-                type="text" 
-                placeholder="Search users..." 
-                value={searchTerm} 
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }} 
-                className="bg-black/40 border border-white/10 rounded-lg md:rounded-xl pl-8 sm:pl-9 md:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 text-xs sm:text-sm w-full outline-none focus:border-[#00F5A0] transition-all" 
-              />
+            <div className="relative flex-1 sm:flex-initial sm:w-48 md:w-64">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500" size={12} />
+              <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="bg-black/40 border border-white/10 rounded-lg pl-7 pr-2 py-1.5 text-[10px] sm:text-xs w-full outline-none focus:border-[#00F5A0]" />
             </div>
           </div>
         </div>
 
-        {/* Items Per Page & Pagination Info (Mobile) */}
-        <div className="flex md:hidden items-center justify-between mt-3">
-          <select
-            value={itemsPerPage}
-            onChange={(e) => {
-              setItemsPerPage(Number(e.target.value));
-              setCurrentPage(1);
-            }}
-            className="bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] font-bold text-white/80 outline-none"
-          >
-            <option value="5">5 per page</option>
-            <option value="10">10 per page</option>
-            <option value="20">20 per page</option>
-            <option value="50">50 per page</option>
-          </select>
-          
-          <span className="text-[8px] text-gray-500">
-            Page {currentPage} of {totalPages || 1}
-          </span>
+        {/* Mobile Filters */}
+        <div className="md:hidden">
+          <button onClick={() => setShowMobileFilters(!showMobileFilters)} className="w-full flex items-center justify-between bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold">
+            <span className="flex items-center gap-2"><Filter size={12} /> Filter & Sort</span>
+            {showMobileFilters ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+          {showMobileFilters && (
+            <div className="mt-2 p-2 bg-black/40 rounded-lg border border-white/5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[8px] text-gray-500">Show:</span>
+                <select value={itemsPerPage} onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }} className="bg-black/60 border border-white/10 rounded px-2 py-1 text-[8px] font-bold">
+                  <option value="5">5 per page</option>
+                  <option value="10">10 per page</option>
+                  <option value="20">20 per page</option>
+                  <option value="50">50 per page</option>
+                </select>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[8px] text-gray-500">Page {currentPage} of {totalPages || 1}</span>
+                <div className="flex gap-1">
+                  <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className={`px-2 py-1 rounded text-[8px] font-bold ${currentPage === 1 ? 'bg-white/5 text-gray-600 cursor-not-allowed' : 'bg-[#00F5A0] text-black'}`}>Prev</button>
+                  <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className={`px-2 py-1 rounded text-[8px] font-bold ${currentPage === totalPages ? 'bg-white/5 text-gray-600 cursor-not-allowed' : 'bg-[#00F5A0] text-black'}`}>Next</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Items Per Page */}
+        <div className="hidden md:flex items-center justify-between mt-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-gray-500">Show:</span>
+            <select value={itemsPerPage} onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }} className="bg-black/40 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold">
+              <option value="10">10 per page</option>
+              <option value="25">25 per page</option>
+              <option value="50">50 per page</option>
+              <option value="100">100 per page</option>
+            </select>
+            <span className="text-[10px] text-gray-500">
+              Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredUsers.length)} of {filteredUsers.length}
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Desktop Table View */}
-      <div className={`hidden md:block overflow-x-auto`}>
-        <table className="w-full text-left">
-          <thead className="text-[8px] lg:text-[10px] uppercase text-gray-600 font-black border-b border-white/5 bg-black/10">
-            <tr>
-              <th className="px-3 lg:px-4 py-3 lg:py-5">User</th>
-              <th className="px-3 lg:px-4 py-3 lg:py-5">Wallets</th>
-              <th className="px-3 lg:px-4 py-3 lg:py-5">Scanners</th>
-              <th className="px-3 lg:px-4 py-3 lg:py-5">Team</th>
-              <th className="px-3 lg:px-4 py-3 lg:py-5">Earnings</th>
-              <th className="px-3 lg:px-4 py-3 lg:py-5 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {paginatedUsers.length > 0 ? (
-              paginatedUsers.map(u => {
+      {viewMode === 'table' && (
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="text-[8px] lg:text-[10px] uppercase text-gray-600 font-black border-b border-white/5 bg-black/10">
+              <tr>
+                <th className="px-2 lg:px-3 py-2 lg:py-3">User</th>
+                <th className="px-2 lg:px-3 py-2 lg:py-3">Direct</th>
+                <th className="px-2 lg:px-3 py-2 lg:py-3">Team</th>
+                <th className="px-2 lg:px-3 py-2 lg:py-3">Levels</th>
+                <th className="px-2 lg:px-3 py-2 lg:py-3">Earnings</th>
+                <th className="px-2 lg:px-3 py-2 lg:py-3">Team Cashback</th>
+                <th className="px-2 lg:px-3 py-2 lg:py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {paginatedUsers.map(u => {
                 const teamCount = calculateTeamCount(u);
+                const directCount = u.referralTree?.level1?.length || 0;
+                const totalEarnings = u.referralEarnings?.total || 0;
+                const teamCashback = Object.values(u.teamCashback || {}).reduce((sum, l) => sum + (l.total || 0), 0);
+                const level1 = u.referralTree?.level1?.length || 0;
+                const level2 = u.referralTree?.level2?.length || 0;
+                const level3 = u.referralTree?.level3?.length || 0;
+                
                 return (
                   <React.Fragment key={u._id}>
-                    <tr className="hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => setExpandedUser(expandedUser === u._id ? null : u._id)}>
-                      <td className="px-3 lg:px-4 py-3 lg:py-4">
-                        <UserTableCell user={u} />
+                    <tr className="hover:bg-white/[0.02] cursor-pointer" onClick={() => setExpandedUser(expandedUser === u._id ? null : u._id)}>
+                      <td className="px-2 lg:px-3 py-2 lg:py-3"><UserTableCell user={u} /></td>
+                      <td className="px-2 lg:px-3 py-2 lg:py-3"><span className="text-xs lg:text-sm font-bold text-blue-400">{directCount}</span></td>
+                      <td className="px-2 lg:px-3 py-2 lg:py-3"><span className="text-xs lg:text-sm font-bold text-[#00F5A0]">{teamCount}</span></td>
+                      <td className="px-2 lg:px-3 py-2 lg:py-3">
+                        <div className="flex gap-1">
+                          <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1 py-0.5 rounded">L1:{level1}</span>
+                          <span className="text-[8px] bg-green-500/20 text-green-400 px-1 py-0.5 rounded">L2:{level2}</span>
+                          <span className="text-[8px] bg-orange-500/20 text-orange-400 px-1 py-0.5 rounded">L3:{level3}</span>
+                        </div>
                       </td>
-                      <td className="px-3 lg:px-4 py-3 lg:py-4">
-                        <WalletCell user={u} />
-                      </td>
-                      <td className="px-3 lg:px-4 py-3 lg:py-4">
-                        <ScannerCell user={u} />
-                      </td>
-                      <td className="px-3 lg:px-4 py-3 lg:py-4">
-                        <span className="text-xs lg:text-sm font-bold text-[#00F5A0]">{teamCount}</span>
-                      </td>
-                      <td className="px-3 lg:px-4 py-3 lg:py-4">
-                        <p className="text-xs lg:text-sm font-bold text-orange-400">
-                          ₹{u.referralEarnings?.total?.toFixed(2) || 0}
-                        </p>
-                      </td>
-                      <td className="px-3 lg:px-4 py-3 lg:py-4 text-right">
-                        <ActionButtons 
-                          user={u}
-                          expandedUser={expandedUser}
-                          setExpandedUser={setExpandedUser}
-                          setSelectedUser={setSelectedUser}
-                        />
+                      <td className="px-2 lg:px-3 py-2 lg:py-3"><p className="text-xs lg:text-sm font-bold text-orange-400">₹{totalEarnings.toFixed(2)}</p></td>
+                      <td className="px-2 lg:px-3 py-2 lg:py-3"><p className="text-xs lg:text-sm font-bold text-green-400">₹{teamCashback.toFixed(2)}</p></td>
+                      <td className="px-2 lg:px-3 py-2 lg:py-3 text-right">
+                        <ActionButtons user={u} expandedUser={expandedUser} setExpandedUser={setExpandedUser} setSelectedUser={setSelectedUser} />
                       </td>
                     </tr>
-                    
-                    {/* Expanded Row */}
                     {expandedUser === u._id && (
                       <tr className="bg-black/40">
-                        <td colSpan="6" className="px-3 lg:px-4 py-4 lg:py-6">
-                          <UserExpandedDetails 
-                            user={u} 
-                            copyToClipboard={copyToClipboard}
-                            expandedLevel={expandedLevel}
-                            setExpandedLevel={setExpandedLevel}
-                          />
+                        <td colSpan="7" className="px-3 lg:px-4 py-3 lg:py-4">
+                          <UserExpandedDetails user={u} copyToClipboard={copyToClipboard} expandedLevel={expandedLevel} setExpandedLevel={setExpandedLevel} />
                         </td>
                       </tr>
                     )}
                   </React.Fragment>
                 );
-              })
-            ) : (
-              <tr>
-                <td colSpan="6" className="px-8 py-12 text-center text-gray-500">
-                  <Users size={32} className="mx-auto mb-3 opacity-30" />
-                  <p className="text-sm font-bold">No users found</p>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Mobile Card View */}
-      <div className={`md:hidden space-y-2 p-3 ${viewMode === 'cards' ? 'block' : 'hidden'}`}>
-        {paginatedUsers.length > 0 ? (
-          paginatedUsers.map(u => (
-            <MobileUserCard 
-              key={u._id}
-              user={u}
-              expandedUser={expandedUser}
-              setExpandedUser={setExpandedUser}
-              setSelectedUser={setSelectedUser}
-              copyToClipboard={copyToClipboard}
-              expandedLevel={expandedLevel}
-              setExpandedLevel={setExpandedLevel}
-            />
-          ))
-        ) : (
-          <div className="p-8 text-center text-gray-500 bg-black/40 rounded-xl">
-            <Users size={32} className="mx-auto mb-3 opacity-30" />
-            <p className="text-xs font-bold">No users found</p>
-          </div>
-        )}
-      </div>
+      {(viewMode === 'cards' || window.innerWidth < 768) && (
+        <div className="md:hidden space-y-2 p-3">
+          {paginatedUsers.map(u => (
+            <MobileUserCard key={u._id} user={u} expandedUser={expandedUser} setExpandedUser={setExpandedUser} setSelectedUser={setSelectedUser} copyToClipboard={copyToClipboard} expandedLevel={expandedLevel} setExpandedLevel={setExpandedLevel} />
+          ))}
+        </div>
+      )}
 
-      {/* Mobile Table View (Compact) */}
-      <div className={`md:hidden overflow-x-auto ${viewMode === 'table' ? 'block' : 'hidden'}`}>
-        <table className="w-full text-left min-w-[300px]">
-          <thead className="text-[8px] uppercase text-gray-600 font-black border-b border-white/5 bg-black/20">
-            <tr>
-              <th className="px-2 py-2">User</th>
-              <th className="px-2 py-2">Wallet</th>
-              <th className="px-2 py-2">Team</th>
-              <th className="px-2 py-2 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5">
-            {paginatedUsers.map(u => (
-              <tr key={u._id} className="hover:bg-white/[0.02]">
-                <td className="px-2 py-2">
-                  <p className="text-[10px] font-bold truncate max-w-[80px]">
-                    {u.email?.split('@')[0] || u.userId?.slice(-8)}
-                  </p>
-                </td>
-                <td className="px-2 py-2">
-                  <p className="text-[8px] text-[#00F5A0]">₹{u.wallets?.INR?.toFixed(0) || 0}</p>
-                </td>
-                <td className="px-2 py-2">
-                  <span className="text-[8px] text-blue-400">{calculateTeamCount(u)}</span>
-                </td>
-                <td className="px-2 py-2 text-right">
-                  <button
-                    onClick={() => setSelectedUser(u)}
-                    className="bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-1 rounded text-[8px] font-bold"
-                  >
-                    View
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination Controls */}
+      {/* Pagination */}
       {filteredUsers.length > itemsPerPage && (
-        <div className="p-3 sm:p-4 md:p-5 lg:p-6 border-t border-white/5">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            {/* Items Per Page (Desktop) */}
-            <div className="hidden md:flex items-center gap-2">
-              <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] font-bold text-white/80 outline-none"
-              >
-                <option value="10">10 per page</option>
-                <option value="25">25 per page</option>
-                <option value="50">50 per page</option>
-                <option value="100">100 per page</option>
-              </select>
-              <span className="text-[10px] text-gray-500">
-                Showing {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredUsers.length)} of {filteredUsers.length}
-              </span>
-            </div>
-
-            {/* Pagination Buttons */}
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 ${
-                  currentPage === 1 
-                    ? 'bg-white/5 text-gray-600 cursor-not-allowed' 
-                    : 'bg-[#00F5A0] text-black hover:bg-[#00d88c]'
-                }`}
-              >
-                <ChevronLeft size={12} />
-                <span className="hidden xs:inline">Prev</span>
-              </button>
-              
-              <span className="md:hidden text-[10px] text-gray-500 px-2">
-                {currentPage} / {totalPages}
-              </span>
-              
-              <div className="hidden md:flex items-center gap-1">
-                {[...Array(Math.min(5, totalPages))].map((_, i) => {
-                  let pageNum = i + 1;
-                  if (totalPages > 5) {
-                    if (currentPage > 3) {
-                      pageNum = currentPage - 3 + i;
-                    }
-                    if (pageNum > totalPages) return null;
-                  }
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`w-7 h-7 rounded-lg text-[10px] font-bold transition-all ${
-                        currentPage === pageNum
-                          ? 'bg-[#00F5A0] text-black'
-                          : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className={`px-2 sm:px-3 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 ${
-                  currentPage === totalPages 
-                    ? 'bg-white/5 text-gray-600 cursor-not-allowed' 
-                    : 'bg-[#00F5A0] text-black hover:bg-[#00d88c]'
-                }`}
-              >
-                <span className="hidden xs:inline">Next</span>
-                <ChevronRight size={12} />
-              </button>
-            </div>
-          </div>
+        <div className="flex items-center justify-between p-3 border-t border-white/5">
+          <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold ${currentPage === 1 ? 'bg-white/5 text-gray-600 cursor-not-allowed' : 'bg-[#00F5A0] text-black'}`}>Previous</button>
+          <span className="text-[10px] text-gray-500">Page {currentPage} of {totalPages}</span>
+          <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold ${currentPage === totalPages ? 'bg-white/5 text-gray-600 cursor-not-allowed' : 'bg-[#00F5A0] text-black'}`}>Next</button>
         </div>
       )}
     </div>
   );
 };
 
-/* ================= MOBILE USER CARD COMPONENT ================= */
+/* ================= MOBILE USER CARD ================= */
 const MobileUserCard = ({ user, expandedUser, setExpandedUser, setSelectedUser, copyToClipboard, expandedLevel, setExpandedLevel }) => {
   const isExpanded = expandedUser === user._id;
   const teamCount = calculateTeamCount(user);
+  const directCount = user.referralTree?.level1?.length || 0;
+  const totalEarnings = user.referralEarnings?.total || 0;
 
   return (
     <div className="bg-black/40 border border-white/5 rounded-xl overflow-hidden">
-      {/* Card Header */}
-      <div 
-        className="p-3 flex items-center justify-between cursor-pointer"
-        onClick={() => setExpandedUser(isExpanded ? null : user._id)}
-      >
+      <div className="p-3 flex items-center justify-between cursor-pointer" onClick={() => setExpandedUser(isExpanded ? null : user._id)}>
         <div className="flex items-center gap-2 flex-1">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00F5A0] to-green-600 flex items-center justify-center text-black font-bold text-sm flex-shrink-0">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00F5A0] to-green-600 flex items-center justify-center text-black font-bold text-sm">
             {user.email?.charAt(0)?.toUpperCase() || user.userId?.charAt(0) || 'U'}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold truncate max-w-[120px]">
-              {user.email || user.userId}
-            </p>
-            <p className="text-[8px] text-gray-500 font-mono">
-              ID: {user._id?.slice(-8)}
-            </p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[8px] text-blue-400">📱 {user.scanners?.created?.length || 0}</span>
-              <span className="text-[8px] text-[#00F5A0]">👥 {teamCount}</span>
+          <div className="flex-1">
+            <p className="text-xs font-bold">{user.email?.split('@')[0] || user.userId}</p>
+            <div className="flex gap-1 mt-1">
+              <span className="text-[7px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">D:{directCount}</span>
+              <span className="text-[7px] bg-[#00F5A0]/20 text-[#00F5A0] px-1.5 py-0.5 rounded">T:{teamCount}</span>
+              <span className="text-[7px] bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded">₹{totalEarnings.toFixed(0)}</span>
             </div>
           </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <p className="text-xs font-bold text-orange-400">
-            ₹{user.referralEarnings?.total?.toFixed(2) || 0}
-          </p>
-          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        <div className="flex items-center gap-1">
+          <button onClick={(e) => { e.stopPropagation(); setSelectedUser(user); }} className="bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-1 rounded-lg text-[8px] font-bold">View</button>
+          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </div>
       </div>
-
-      {/* Quick Actions */}
-      <div className="px-3 pb-2 flex gap-2">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setSelectedUser(user);
-          }}
-          className="flex-1 bg-[#00F5A0]/10 text-[#00F5A0] py-2 rounded-lg text-[10px] font-bold"
-        >
-          View Details
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            copyToClipboard(user.referralCode);
-          }}
-          className="bg-white/5 text-gray-400 px-3 py-2 rounded-lg text-[10px] font-bold flex items-center gap-1"
-        >
-          <Copy size={10} /> Ref
-        </button>
+      <div className="px-3 pb-2 flex gap-1">
+        <button onClick={(e) => { e.stopPropagation(); copyToClipboard(user.referralCode); }} className="bg-white/5 text-gray-400 px-2 py-1 rounded-lg text-[8px] font-bold flex items-center gap-1"><Copy size={8} /> Copy Ref</button>
       </div>
-
-      {/* Expanded Content */}
       {isExpanded && (
         <div className="px-3 pb-3 pt-1 border-t border-white/5">
-          <UserExpandedDetails 
-            user={user} 
-            copyToClipboard={copyToClipboard}
-            expandedLevel={expandedLevel}
-            setExpandedLevel={setExpandedLevel}
-            mobileView={true}
-          />
+          <UserExpandedDetails user={user} copyToClipboard={copyToClipboard} expandedLevel={expandedLevel} setExpandedLevel={setExpandedLevel} mobileView={true} />
         </div>
       )}
     </div>
   );
 };
 
-/* ================= HELPER COMPONENTS FOR TABLE CELLS ================= */
-const UserTableCell = ({ user }) => (
-  <div className="flex items-center gap-2">
-    <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-gradient-to-br from-[#00F5A0] to-green-600 flex items-center justify-center text-black font-bold text-xs flex-shrink-0">
-      {user.email?.charAt(0)?.toUpperCase() || user.userId?.charAt(0) || 'U'}
-    </div>
-    <div className="min-w-0">
-      <p className="font-bold text-xs lg:text-sm truncate max-w-[100px] lg:max-w-[150px]">
-        {user.email || user.userId}
-      </p>
-      <div className="flex items-center gap-1">
-        <p className="text-[6px] lg:text-[8px] text-gray-500 font-mono">
-          {user._id?.slice(-6)}
-        </p>
-        <span className="text-[6px] lg:text-[8px] text-[#00F5A0]">
-          • {user.referralCode}
-        </span>
-      </div>
-    </div>
-  </div>
-);
-
-const WalletCell = ({ user }) => (
-  <div className="space-y-0.5">
-    <p className="text-[8px] lg:text-[10px]">
-      <span className="text-blue-400">₮</span> {user.wallets?.USDT?.toFixed(2) || 0}
-    </p>
-    <p className="text-[8px] lg:text-[10px]">
-      <span className="text-[#00F5A0]">₹</span> {user.wallets?.INR?.toFixed(2) || 0}
-    </p>
-  </div>
-);
-
-const ScannerCell = ({ user }) => (
-  <div className="flex items-center gap-1 lg:gap-2">
-    <span className="text-xs lg:text-sm font-bold text-blue-400">
-      {user.scanners?.created?.length || 0}
-    </span>
-    <span className="text-gray-600 text-[8px] lg:text-[10px]">/</span>
-    <span className="text-xs lg:text-sm font-bold text-green-400">
-      {user.scanners?.accepted?.length || 0}
-    </span>
-  </div>
-);
-
-const ActionButtons = ({ user, expandedUser, setExpandedUser, setSelectedUser }) => (
-  <div className="flex items-center justify-end gap-1 lg:gap-2">
-    <button 
-      onClick={(e) => {
-        e.stopPropagation();
-        setSelectedUser(user);
-      }}
-      className="bg-[#00F5A0]/10 text-[#00F5A0] px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg text-[8px] lg:text-[10px] font-bold hover:bg-[#00F5A0]/20 transition-all"
-    >
-      Details
-    </button>
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        setExpandedUser(expandedUser === user._id ? null : user._id);
-      }}
-      className="text-gray-500 hover:text-white p-1"
-    >
-      {expandedUser === user._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-    </button>
-  </div>
-);
-
-/* ================= HELPER FUNCTION ================= */
-const calculateTeamCount = (user) => {
-  let count = 0;
-  if (user.referralTree) {
-    for (let i = 1; i <= 21; i++) {
-      count += user.referralTree[`level${i}`]?.length || 0;
-    }
-  }
-  return count;
-};
-
-/* ================= USER EXPANDED DETAILS - RESPONSIVE ================= */
+/* ================= USER EXPANDED DETAILS - WITH PAY REQUEST STATS ================= */
 const UserExpandedDetails = ({ user, copyToClipboard, expandedLevel, setExpandedLevel, mobileView = false }) => {
-  // Calculate team members per level
+  // Add these state variables at the beginning of UserExpandedDetails component
+const [showCreatedList, setShowCreatedList] = useState(false);
+const [showAcceptedList, setShowAcceptedList] = useState(false);
   const teamLevels = [];
   for (let i = 1; i <= 21; i++) {
     const levelMembers = user.referralTree?.[`level${i}`] || [];
     if (levelMembers.length > 0) {
-      teamLevels.push({
-        level: i,
-        count: levelMembers.length,
-        members: levelMembers
-      });
+      teamLevels.push({ level: i, count: levelMembers.length, members: levelMembers });
     }
   }
 
-  // Calculate scanner stats
   const createdScanners = user.scanners?.created || [];
   const acceptedScanners = user.scanners?.accepted || [];
-  const createdTotal = createdScanners.reduce((sum, s) => sum + (s.amount || 0), 0);
-  const acceptedTotal = acceptedScanners.reduce((sum, s) => sum + (s.amount || 0), 0);
+  const referralEarnings = user.referralEarnings || {};
+  const teamCashback = user.teamCashback || {};
+
+  // ✅ Pay Request Statistics
+  const totalPayRequests = user.totalPayRequests || 0;
+  const totalAcceptedRequests = user.totalAcceptedRequests || 0;
+  const pendingPayRequests = totalPayRequests - totalAcceptedRequests;
+
+  // ✅ Scanner Statistics with Details
+  const createdScannersTotal = createdScanners.reduce((sum, s) => sum + (s.amount || 0), 0);
+  const acceptedScannersTotal = acceptedScanners.reduce((sum, s) => sum + (s.amount || 0), 0);
+  
+  // ✅ Group scanners by status
+  const createdByStatus = {
+    ACTIVE: createdScanners.filter(s => s.status === 'ACTIVE').length,
+    ACCEPTED: createdScanners.filter(s => s.status === 'ACCEPTED').length,
+    PAYMENT_SUBMITTED: createdScanners.filter(s => s.status === 'PAYMENT_SUBMITTED').length,
+    COMPLETED: createdScanners.filter(s => s.status === 'COMPLETED').length,
+    EXPIRED: createdScanners.filter(s => s.status === 'EXPIRED').length
+  };
+
+  const acceptedByStatus = {
+    ACTIVE: acceptedScanners.filter(s => s.status === 'ACTIVE').length,
+    ACCEPTED: acceptedScanners.filter(s => s.status === 'ACCEPTED').length,
+    PAYMENT_SUBMITTED: acceptedScanners.filter(s => s.status === 'PAYMENT_SUBMITTED').length,
+    COMPLETED: acceptedScanners.filter(s => s.status === 'COMPLETED').length,
+    EXPIRED: acceptedScanners.filter(s => s.status === 'EXPIRED').length
+  };
 
   return (
-    <div className="space-y-3 md:space-y-4 lg:space-y-6">
-      
-      {/* Quick Stats Grid - Responsive */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 lg:gap-4">
+    <div className="space-y-3 md:space-y-4">
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <QuickStatCard label="User ID" value={user.userId} />
         <QuickStatCard label="Referral Code" value={user.referralCode} copyable onCopy={() => copyToClipboard(user.referralCode)} />
         <QuickStatCard label="Joined" value={new Date(user.createdAt).toLocaleDateString()} />
         <QuickStatCard label="Referred By" value={user.referredBy?.userId || 'None'} />
       </div>
 
-      {/* Wallets - Responsive Grid */}
-      <div className="bg-black/40 p-3 md:p-4 rounded-lg md:rounded-xl">
-        <h4 className="text-[10px] md:text-xs font-bold mb-2 md:mb-3 text-[#00F5A0] flex items-center gap-2">
-          <Wallet size={mobileView ? 12 : 14} /> Wallet Balances
-        </h4>
-        <div className="grid grid-cols-3 gap-2 md:gap-4">
-          <WalletBalanceCard 
-            label="USDT" 
-            value={user.wallets?.USDT?.toFixed(2) || 0} 
-            color="blue"
-            mobileView={mobileView}
-          />
-          <WalletBalanceCard 
-            label="INR" 
-            value={`₹${user.wallets?.INR?.toFixed(2) || 0}`} 
-            color="green"
-            mobileView={mobileView}
-          />
-          <WalletBalanceCard 
-            label="CASHBACK" 
-            value={`₹${user.wallets?.CASHBACK?.toFixed(2) || 0}`} 
-            color="orange"
-            mobileView={mobileView}
-          />
+      {/* Wallets - Commented as per your code */}
+      {/* <div className="bg-black/40 p-3 rounded-lg">
+        <h4 className="text-[10px] font-bold mb-2 text-[#00F5A0]">Wallet Balances</h4>
+        <div className="grid grid-cols-3 gap-2">
+          <WalletBalanceCard label="USDT" value={user.wallets?.USDT?.toFixed(2) || 0} color="blue" />
+          <WalletBalanceCard label="INR" value={`₹${user.wallets?.INR?.toFixed(2) || 0}`} color="green" />
+          <WalletBalanceCard label="CASHBACK" value={`₹${user.wallets?.CASHBACK?.toFixed(2) || 0}`} color="orange" />
         </div>
+      </div> */}
+
+      {/* Referral Summary */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <SummaryCard label="Direct" value={user.referralTree?.level1?.length || 0} color="blue" />
+        <SummaryCard label="Total Team" value={teamLevels.reduce((sum, l) => sum + l.count, 0)} color="purple" />
+        <SummaryCard label="Earnings" value={`₹${referralEarnings.total?.toFixed(2) || 0}`} color="orange" />
+        <SummaryCard label="Team Cashback" value={`₹${Object.values(teamCashback).reduce((sum, l) => sum + (l.total || 0), 0).toFixed(2)}`} color="green" />
       </div>
 
-      {/* Scanner Stats - Responsive */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-        <ScannerStatCard 
-          title="Created Scanners"
-          count={createdScanners.length}
-          total={createdTotal}
-          scanners={createdScanners}
-          color="blue"
-          icon={<ScanLine size={mobileView ? 12 : 14} />}
-          mobileView={mobileView}
-        />
-        <ScannerStatCard 
-          title="Accepted Scanners"
-          count={acceptedScanners.length}
-          total={acceptedTotal}
-          scanners={acceptedScanners}
-          color="green"
-          icon={<Check size={mobileView ? 12 : 14} />}
-          mobileView={mobileView}
-        />
-      </div>
-
-      {/* Team Structure - Responsive */}
-      <div className="bg-black/40 p-3 md:p-4 rounded-lg md:rounded-xl">
-        <h4 className="text-[10px] md:text-xs font-bold mb-2 md:mb-3 text-[#00F5A0] flex items-center gap-2">
-          <Network size={mobileView ? 12 : 14} /> Team Structure ({teamLevels.reduce((sum, l) => sum + l.count, 0)} members)
+      {/* ✅ PAY REQUEST STATISTICS - NEW SECTION */}
+      <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 p-3 rounded-lg">
+        <h4 className="text-[10px] font-bold mb-2 text-blue-400 flex items-center gap-2">
+          <CreditCard size={12} /> Pay Request Statistics
         </h4>
-        <div className="space-y-2 max-h-48 md:max-h-60 lg:max-h-96 overflow-y-auto">
-          {teamLevels.length > 0 ? (
-            teamLevels.map(level => (
-              <TeamLevelCard 
-                key={level.level}
-                level={level}
-                expandedLevel={expandedLevel}
-                setExpandedLevel={setExpandedLevel}
-                mobileView={mobileView}
-              />
-            ))
-          ) : (
-            <p className="text-center text-gray-500 py-4 text-[10px] md:text-xs">No team members yet</p>
+        
+        <div className="grid grid-cols-3 gap-2 mb-2">
+          <div className="bg-black/40 p-2 rounded text-center">
+            <p className="text-[6px] text-gray-500">Total Created</p>
+            <p className="text-sm font-bold text-[#00F5A0]">{totalPayRequests}</p>
+          </div>
+          <div className="bg-black/40 p-2 rounded text-center">
+            <p className="text-[6px] text-gray-500">Total Accepted</p>
+            <p className="text-sm font-bold text-green-400">{totalAcceptedRequests}</p>
+          </div>
+          <div className="bg-black/40 p-2 rounded text-center">
+            <p className="text-[6px] text-gray-500">Pending</p>
+            <p className="text-sm font-bold text-orange-400">{pendingPayRequests}</p>
+          </div>
+        </div>
+
+        
+      </div>
+
+      {/* ✅ CREATED SCANNERS DETAILS */}
+      {createdScanners.length > 0 && (
+        <div className="bg-black/40 p-3 rounded-lg">
+          <h4 className="text-[10px] font-bold mb-2 text-blue-400 flex items-center gap-2">
+            <ScanLine size={12} /> Created Scanners ({createdScanners.length})
+          </h4>
+          
+          {/* Status Distribution */}
+          <div className="grid grid-cols-5 gap-1 mb-2">
+            <StatusBadge label="Active" count={createdByStatus.ACTIVE} color="green" />
+            <StatusBadge label="Accepted" count={createdByStatus.ACCEPTED} color="blue" />
+            <StatusBadge label="Payment" count={createdByStatus.PAYMENT_SUBMITTED} color="yellow" />
+            <StatusBadge label="Completed" count={createdByStatus.COMPLETED} color="purple" />
+            <StatusBadge label="Expired" count={createdByStatus.EXPIRED} color="gray" />
+          </div>
+
+          {/* Recent Scanners List */}
+          <button
+            onClick={() => setShowCreatedList(!showCreatedList)}
+            className="w-full flex items-center justify-between text-[8px] text-gray-400 mt-1"
+          >
+            <span>View Recent Scanners</span>
+            {showCreatedList ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+          </button>
+
+          {showCreatedList && (
+            <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+              {createdScanners.slice(0, 5).map(s => (
+                <div key={s._id} className="bg-black/60 p-2 rounded text-[8px]">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">₹{s.amount}</span>
+                    <StatusBadge label={s.status} count={1} color={s.status} mini />
+                  </div>
+                  <div className="flex justify-between text-[6px] text-gray-500">
+                    <span>{new Date(s.createdAt).toLocaleDateString()}</span>
+                    {s.acceptedBy && <span>Accepted by: {s.acceptedBy.userId}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
+      )}
+
+      {/* ✅ ACCEPTED SCANNERS DETAILS */}
+      {acceptedScanners.length > 0 && (
+        <div className="bg-black/40 p-3 rounded-lg">
+          <h4 className="text-[10px] font-bold mb-2 text-green-400 flex items-center gap-2">
+            <CheckCircle size={12} /> Accepted Scanners ({acceptedScanners.length})
+          </h4>
+          
+          {/* Status Distribution */}
+          <div className="grid grid-cols-5 gap-1 mb-2">
+            <StatusBadge label="Active" count={acceptedByStatus.ACTIVE} color="green" />
+            <StatusBadge label="Accepted" count={acceptedByStatus.ACCEPTED} color="blue" />
+            <StatusBadge label="Payment" count={acceptedByStatus.PAYMENT_SUBMITTED} color="yellow" />
+            <StatusBadge label="Completed" count={acceptedByStatus.COMPLETED} color="purple" />
+            <StatusBadge label="Expired" count={acceptedByStatus.EXPIRED} color="gray" />
+          </div>
+
+          {/* Recent Accepted List */}
+          <button
+            onClick={() => setShowAcceptedList(!showAcceptedList)}
+            className="w-full flex items-center justify-between text-[8px] text-gray-400 mt-1"
+          >
+            <span>View Recent Accepted</span>
+            {showAcceptedList ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+          </button>
+
+          {showAcceptedList && (
+            <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
+              {acceptedScanners.slice(0, 5).map(s => (
+                <div key={s._id} className="bg-black/60 p-2 rounded text-[8px]">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">₹{s.amount}</span>
+                    <StatusBadge label={s.status} count={1} color={s.status} mini />
+                  </div>
+                  <div className="flex justify-between text-[6px] text-gray-500">
+                    <span>Created by: {s.user?.userId}</span>
+                    <span>{new Date(s.acceptedAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Legs Unlocked */}
+      <LegsUnlockedView user={user} />
+
+      {/* Leg-wise Team Structure */}
+      <LegWiseTeamStructure user={user} teamLevels={teamLevels} expandedLevel={expandedLevel} setExpandedLevel={setExpandedLevel} />
+
+      {/* Earnings */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <CommissionByLevel earnings={referralEarnings} />
+        <TeamCashbackByLevel teamCashback={teamCashback} />
+      </div>
+    </div>
+  );
+};
+
+/* ================= STATUS BADGE COMPONENT ================= */
+const StatusBadge = ({ label, count, color, mini = false }) => {
+  const getColorClass = (color) => {
+    if (mini) {
+      switch(color) {
+        case 'ACTIVE': return 'bg-green-500/20 text-green-500';
+        case 'ACCEPTED': return 'bg-blue-500/20 text-blue-500';
+        case 'PAYMENT_SUBMITTED': return 'bg-yellow-500/20 text-yellow-500';
+        case 'COMPLETED': return 'bg-purple-500/20 text-purple-500';
+        case 'EXPIRED': return 'bg-gray-500/20 text-gray-500';
+        default: return 'bg-white/10 text-white/50';
+      }
+    }
+    
+    const colorMap = {
+      green: 'bg-green-500/20 text-green-500',
+      blue: 'bg-blue-500/20 text-blue-500',
+      yellow: 'bg-yellow-500/20 text-yellow-500',
+      purple: 'bg-purple-500/20 text-purple-500',
+      gray: 'bg-gray-500/20 text-gray-500'
+    };
+    return colorMap[color] || colorMap.gray;
+  };
+
+  return (
+    <div className={`${getColorClass(color)} ${mini ? 'px-1 py-0.5 text-[6px]' : 'px-2 py-1 text-[8px]'} rounded-full text-center font-bold`}>
+      {mini ? label : `${label}: ${count}`}
+    </div>
+  );
+};
+
+/* ================= LEG-WISE TEAM STRUCTURE ================= */
+const LegWiseTeamStructure = ({ user, teamLevels, expandedLevel, setExpandedLevel }) => {
+  const legs = [
+    { name: "Leg 1", levels: [1,2,3], color: "yellow" },
+    { name: "Leg 2", levels: [4,5,6], color: "blue" },
+    { name: "Leg 3", levels: [7,8,9], color: "green" },
+    { name: "Leg 4", levels: [10,11,12], color: "purple" },
+    { name: "Leg 5", levels: [13,14,15], color: "pink" },
+    { name: "Leg 6", levels: [16,17,18], color: "indigo" },
+    { name: "Leg 7", levels: [19,20,21], color: "orange" }
+  ];
+
+  const [selectedLeg, setSelectedLeg] = useState(null);
+   const API_BASE = 'https://cpay-link-backend.onrender.com';
+    // const API_BASE = 'http://localhost:5000';
+
+
+  const getLegColor = (color) => {
+    const colors = {
+      yellow: 'from-yellow-500/20 to-yellow-600/5 border-yellow-500/20 text-yellow-400',
+      blue: 'from-blue-500/20 to-blue-600/5 border-blue-500/20 text-blue-400',
+      green: 'from-green-500/20 to-green-600/5 border-green-500/20 text-green-400',
+      purple: 'from-purple-500/20 to-purple-600/5 border-purple-500/20 text-purple-400',
+      pink: 'from-pink-500/20 to-pink-600/5 border-pink-500/20 text-pink-400',
+      indigo: 'from-indigo-500/20 to-indigo-600/5 border-indigo-500/20 text-indigo-400',
+      orange: 'from-orange-500/20 to-orange-600/5 border-orange-500/20 text-orange-400'
+    };
+    return colors[color] || colors.blue;
+  };
+
+  return (
+    <div className="bg-black/40 p-3 md:p-4 rounded-lg">
+      <h4 className="text-[10px] md:text-xs font-bold mb-3 text-[#00F5A0] flex items-center gap-2">
+        <GitBranch size={14} /> Leg-wise Team Structure
+      </h4>
+
+      {/* Leg Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+        {legs.map((leg, index) => {
+          const legLevels = teamLevels.filter(l => leg.levels.includes(l.level));
+          const totalMembers = legLevels.reduce((sum, l) => sum + l.count, 0);
+          const isUnlocked = user.legsUnlocked?.[`leg${index + 1}`] || false;
+
+          return (
+            <button
+              key={leg.name}
+              onClick={() => setSelectedLeg(selectedLeg === index ? null : index)}
+              className={`bg-gradient-to-br ${getLegColor(leg.color)} border p-3 rounded-lg text-left transition-all hover:scale-105 ${selectedLeg === index ? 'ring-2 ring-[#00F5A0]' : ''} ${!isUnlocked ? 'opacity-50' : ''}`}
+            >
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-xs font-bold">{leg.name}</span>
+                <span className="text-[8px] px-1.5 py-0.5 rounded-full bg-black/30">
+                  {isUnlocked ? '✓' : '🔒'}
+                </span>
+              </div>
+              <p className="text-lg font-black">{totalMembers}</p>
+              <p className="text-[6px] opacity-70">Levels {leg.levels.join('-')}</p>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Earnings by Level - Responsive */}
-      <div className="bg-black/40 p-3 md:p-4 rounded-lg md:rounded-xl">
-        <h4 className="text-[10px] md:text-xs font-bold mb-2 md:mb-3 text-orange-400 flex items-center gap-2">
-          <Coins size={mobileView ? 12 : 14} /> Commission Earnings
-        </h4>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1 md:gap-2 max-h-40 md:max-h-60 overflow-y-auto">
-          {user.referralEarnings && Object.entries(user.referralEarnings).map(([level, amount]) => {
-            if (level === 'total' || amount === 0) return null;
-            return (
-              <EarningBadge key={level} level={level} amount={amount} />
-            );
-          })}
+      {/* Selected Leg Details */}
+      {selectedLeg !== null && (
+        <div className="mt-3 border-t border-white/10 pt-3">
+          <h5 className="text-[10px] font-bold mb-2 text-[#00F5A0]">{legs[selectedLeg].name} - Level-wise Members</h5>
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {legs[selectedLeg].levels.map(level => {
+              const levelData = teamLevels.find(l => l.level === level);
+              if (!levelData) return null;
+              
+              return (
+                <TeamLevelCardWithMembers
+                  key={level}
+                  level={levelData}
+                  expandedLevel={expandedLevel}
+                  setExpandedLevel={setExpandedLevel}
+                  legName={legs[selectedLeg].name}
+                />
+              );
+            })}
+          </div>
         </div>
-        <div className="mt-2 md:mt-3 pt-2 border-t border-white/10">
-          <div className="flex justify-between text-[8px] md:text-[10px] lg:text-xs">
-            <span className="text-gray-400">Total Earnings:</span>
-            <span className="text-orange-400 font-bold">₹{user.referralEarnings?.total || 0}</span>
+      )}
+    </div>
+  );
+};
+
+/* ================= TEAM LEVEL CARD WITH MEMBERS ================= */
+const TeamLevelCardWithMembers = ({ level, expandedLevel, setExpandedLevel, legName }) => {
+  const [memberDetails, setMemberDetails] = useState({});
+  const [selectedMember, setSelectedMember] = useState(null);
+  const [showMemberModal, setShowMemberModal] = useState(false);
+  const [expandedMemberId, setExpandedMemberId] = useState(null);
+
+  const API_BASE = 'https://cpay-link-backend.onrender.com';
+    // const API_BASE = 'http://localhost:5000';
+
+  const fetchMemberDetails = async (memberId) => {
+    if (memberDetails[memberId]) {
+      setSelectedMember(memberDetails[memberId]);
+      setShowMemberModal(true);
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/api/admin/user/${memberId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMemberDetails(prev => ({ ...prev, [memberId]: data.user }));
+        setSelectedMember(data.user);
+        setShowMemberModal(true);
+      }
+    } catch (error) {
+      console.error("Error fetching member:", error);
+      toast.error("Failed to load member details");
+    }
+  };
+
+  return (
+    <>
+      <div className="border border-white/10 rounded-lg overflow-hidden">
+        <button
+          onClick={() => setExpandedLevel(expandedLevel === level.level ? null : level.level)}
+          className="w-full flex justify-between items-center p-2 bg-black/30 hover:bg-black/50"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-[8px] font-bold bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-1 rounded-full">
+              Level {level.level}
+            </span>
+            <span className="text-[6px] text-gray-400">{level.count} members</span>
+          </div>
+          {expandedLevel === level.level ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        </button>
+        
+        {expandedLevel === level.level && (
+          <div className="p-2 bg-black/20 space-y-1">
+            {level.members.map(memberId => (
+              <MemberCard
+                key={memberId}
+                memberId={memberId}
+                levelNum={level.level}
+                legName={legName}
+                onMemberClick={fetchMemberDetails}
+                isExpanded={expandedMemberId === memberId}
+                onToggleExpand={() => setExpandedMemberId(expandedMemberId === memberId ? null : memberId)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showMemberModal && selectedMember && (
+        <MemberHistoryModal
+          member={selectedMember}
+          onClose={() => { setShowMemberModal(false); setSelectedMember(null); }}
+          levelNum={level.level}
+          legName={legName}
+        />
+      )}
+    </>
+  );
+};
+
+/* ================= MEMBER CARD ================= */
+const MemberCard = ({ memberId, levelNum, legName, onMemberClick, isExpanded, onToggleExpand }) => {
+  const [member, setMember] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const API_BASE = 'https://cpay-link-backend.onrender.com';
+    // const API_BASE = 'http://localhost:5000';
+
+
+  useEffect(() => {
+    const fetchMember = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE}/api/admin/user/${memberId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) setMember(data.user);
+      } catch (error) {
+        console.error("Error fetching member:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMember();
+  }, [memberId]);
+
+  if (loading) return <div className="bg-black/40 p-2 rounded animate-pulse h-10"></div>;
+
+  const teamCashbackTotal = Object.values(member?.teamCashback || {}).reduce((sum, l) => sum + (l.total || 0), 0);
+
+  return (
+    <div className="bg-black/40 border border-white/5 rounded-lg overflow-hidden">
+      <div className="p-2 flex items-center justify-between cursor-pointer hover:bg-black/60" onClick={onToggleExpand}>
+        <div className="flex items-center gap-2 flex-1">
+          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#00F5A0] to-green-600 flex items-center justify-center text-black font-bold text-[8px]">
+            {member?.userId?.charAt(0) || member?.email?.charAt(0) || 'U'}
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-1">
+              <span className="text-[8px] font-bold">{member?.userId || member?.email?.split('@')[0] || memberId.slice(-8)}</span>
+              <span className="text-[5px] bg-[#00F5A0]/20 text-[#00F5A0] px-1 rounded-full">{legName}</span>
+            </div>
+            <div className="flex gap-1 mt-0.5">
+              <span className="text-[5px] bg-blue-500/20 text-blue-400 px-1 rounded">D:{member?.referralTree?.level1?.length || 0}</span>
+              <span className="text-[5px] bg-orange-500/20 text-orange-400 px-1 rounded">₹{member?.referralEarnings?.total || 0}</span>
+              <span className="text-[5px] bg-green-500/20 text-green-400 px-1 rounded">T:₹{teamCashbackTotal}</span>
+            </div>
+          </div>
+        </div>
+        {isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+      </div>
+      
+      {isExpanded && (
+        <div className="p-2 pt-0 border-t border-white/5">
+          <button
+            onClick={() => onMemberClick(memberId)}
+            className="w-full bg-[#00F5A0]/10 text-[#00F5A0] py-1 rounded text-[6px] font-bold hover:bg-[#00F5A0]/20"
+          >
+            View Full History
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ================= LEGS UNLOCKED VIEW ================= */
+const LegsUnlockedView = ({ user }) => {
+  const legRequirements = [
+    { leg: "Leg 1", required: 1, levels: "1-3" },
+    { leg: "Leg 2", required: 2, levels: "4-6" },
+    { leg: "Leg 3", required: 3, levels: "7-9" },
+    { leg: "Leg 4", required: 4, levels: "10-12" },
+    { leg: "Leg 5", required: 5, levels: "13-15" },
+    { leg: "Leg 6", required: 6, levels: "16-18" },
+    { leg: "Leg 7", required: 7, levels: "19-21" }
+  ];
+
+  return (
+    <div className="bg-black/40 p-3 rounded-lg">
+      <h4 className="text-[10px] font-bold mb-2 text-[#00F5A0]">Legs Unlocked</h4>
+      <div className="grid grid-cols-7 gap-1">
+        {legRequirements.map((item, index) => {
+          const legKey = `leg${index + 1}`;
+          const unlocked = user.legsUnlocked?.[legKey] || false;
+          return (
+            <div key={legKey} className={`text-center p-1 rounded ${unlocked ? 'bg-green-500/20' : 'bg-gray-700/50'}`}>
+              <span className="text-[6px] font-bold block">{item.leg}</span>
+              <span className={`text-[8px] font-bold ${unlocked ? 'text-green-400' : 'text-gray-500'}`}>
+                {unlocked ? '✓' : `${item.required}`}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+/* ================= MEMBER HISTORY MODAL ================= */
+const MemberHistoryModal = ({ member, onClose, levelNum, legName }) => {
+  const [activeTab, setActiveTab] = useState('overview');
+
+  const teamCashbackTotal = Object.values(member?.teamCashback || {}).reduce((sum, l) => sum + (l.total || 0), 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[1000] p-4 overflow-y-auto">
+      <div className="bg-[#0A1F1A] border border-white/10 rounded-[2rem] w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-[#0A1F1A] p-4 border-b border-white/10 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00F5A0] to-green-600 flex items-center justify-center text-black font-bold text-sm">
+              {member?.userId?.charAt(0) || member?.email?.charAt(0) || 'U'}
+            </div>
+            <div>
+              <h2 className="text-lg font-bold">{member?.userId || member?.email?.split('@')[0] || 'User'}</h2>
+              <p className="text-[8px] text-gray-500">{legName} • Level {levelNum}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg"><X size={20} /></button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <QuickStatCard label="User ID" value={member?.userId} />
+            <QuickStatCard label="Referral Code" value={member?.referralCode} />
+            <QuickStatCard label="Direct" value={member?.referralTree?.level1?.length || 0} />
+            <QuickStatCard label="Earnings" value={`₹${member?.referralEarnings?.total || 0}`} />
+          </div>
+
+          {/* Wallets */}
+          <div className="bg-black/40 p-3 rounded-lg">
+            <h4 className="text-[10px] font-bold mb-2 text-[#00F5A0]">Wallets</h4>
+            <div className="grid grid-cols-3 gap-2">
+              <div><p className="text-[6px] text-gray-500">USDT</p><p className="text-sm font-bold text-blue-400">{member?.wallets?.USDT?.toFixed(2) || 0}</p></div>
+              <div><p className="text-[6px] text-gray-500">INR</p><p className="text-sm font-bold text-[#00F5A0]">₹{member?.wallets?.INR?.toFixed(2) || 0}</p></div>
+              <div><p className="text-[6px] text-gray-500">CASHBACK</p><p className="text-sm font-bold text-orange-400">₹{member?.wallets?.CASHBACK?.toFixed(2) || 0}</p></div>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-black/40 p-2 rounded"><p className="text-[6px] text-gray-500">Team Cashback</p><p className="text-sm font-bold text-green-400">₹{teamCashbackTotal}</p></div>
+            <div className="bg-black/40 p-2 rounded"><p className="text-[6px] text-gray-500">Total Team</p><p className="text-sm font-bold text-purple-400">{calculateTeamCount(member)}</p></div>
           </div>
         </div>
       </div>
@@ -1052,65 +1120,111 @@ const UserExpandedDetails = ({ user, copyToClipboard, expandedLevel, setExpanded
   );
 };
 
-/* ================= SUB-COMPONENTS FOR EXPANDED DETAILS ================= */
-const QuickStatCard = ({ label, value, copyable, onCopy }) => (
-  <div className="bg-black/40 p-2 md:p-3 lg:p-4 rounded-lg md:rounded-xl">
-    <p className="text-[6px] md:text-[8px] text-gray-500">{label}</p>
-    <div className="flex items-center gap-1 md:gap-2">
-      <p className="text-[8px] md:text-[10px] lg:text-xs font-bold truncate">{value}</p>
-      {copyable && (
-        <button onClick={onCopy} className="text-[#00F5A0] hover:text-[#00d88c] flex-shrink-0">
-          <Copy size={10} className="md:w-3 md:h-3" />
-        </button>
-      )}
+/* ================= HELPER COMPONENTS ================= */
+const UserTableCell = ({ user }) => (
+  <div className="flex items-center gap-2">
+    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#00F5A0] to-green-600 flex items-center justify-center text-black font-bold text-xs">
+      {user.email?.charAt(0)?.toUpperCase() || user.userId?.charAt(0) || 'U'}
+    </div>
+    <div>
+      <p className="font-bold text-xs">{user.email || user.userId}</p>
+      <p className="text-[6px] text-gray-500">{user._id?.slice(-6)} • {user.referralCode}</p>
     </div>
   </div>
 );
 
-const WalletBalanceCard = ({ label, value, color, mobileView }) => {
-  const colorClasses = {
-    blue: 'text-blue-400',
-    green: 'text-[#00F5A0]',
-    orange: 'text-orange-400'
-  };
+const ActionButtons = ({ user, expandedUser, setExpandedUser, setSelectedUser }) => (
+  <div className="flex items-center justify-end gap-1">
+    <button onClick={(e) => { e.stopPropagation(); setSelectedUser(user); }} className="bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-1 rounded-lg text-[8px] font-bold">Details</button>
+    <button onClick={(e) => { e.stopPropagation(); setExpandedUser(expandedUser === user._id ? null : user._id); }} className="text-gray-500 p-1">
+      {expandedUser === user._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+    </button>
+  </div>
+);
 
+const QuickStatCard = ({ label, value, copyable, onCopy }) => (
+  <div className="bg-black/40 p-2 rounded-lg">
+    <p className="text-[6px] text-gray-500">{label}</p>
+    <div className="flex items-center gap-1">
+      <p className="text-[8px] font-bold truncate">{value}</p>
+      {copyable && <button onClick={onCopy} className="text-[#00F5A0]"><Copy size={8} /></button>}
+    </div>
+  </div>
+);
+
+const WalletBalanceCard = ({ label, value, color }) => {
+  const colors = { blue: 'text-blue-400', green: 'text-[#00F5A0]', orange: 'text-orange-400' };
   return (
     <div>
-      <p className="text-[8px] md:text-[10px] text-gray-500">{label}</p>
-      <p className={`text-sm md:text-base lg:text-lg font-bold ${colorClasses[color]}`}>
-        {value}
-      </p>
+      <p className="text-[6px] text-gray-500">{label}</p>
+      <p className={`text-sm font-bold ${colors[color]}`}>{value}</p>
     </div>
   );
 };
 
-const ScannerStatCard = ({ title, count, total, scanners, color, icon, mobileView }) => {
+const SummaryCard = ({ label, value, color }) => {
+  const colors = { blue: 'text-blue-400', purple: 'text-purple-400', orange: 'text-orange-400', green: 'text-green-400' };
+  return (
+    <div className="bg-gradient-to-br from-${color}-500/10 border border-${color}-500/20 p-2 rounded-lg">
+      <p className="text-[6px] text-gray-500">{label}</p>
+      <p className={`text-sm font-bold ${colors[color]}`}>{value}</p>
+    </div>
+  );
+};
+
+const CommissionByLevel = ({ earnings }) => (
+  <div className="bg-black/40 p-2 rounded-lg">
+    <h4 className="text-[8px] font-bold mb-1 text-orange-400">Commission by Level</h4>
+    <div className="space-y-1 max-h-32 overflow-y-auto">
+      {Object.entries(earnings).map(([level, amount]) => {
+        if (level === 'total' || amount === 0) return null;
+        return (
+          <div key={level} className="flex justify-between text-[6px] py-0.5 border-b border-white/5">
+            <span className="text-gray-400">{level}:</span>
+            <span className="font-bold text-orange-400">₹{amount}</span>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
+
+const TeamCashbackByLevel = ({ teamCashback }) => (
+  <div className="bg-black/40 p-2 rounded-lg">
+    <h4 className="text-[8px] font-bold mb-1 text-green-400">Team Cashback</h4>
+    <div className="space-y-1 max-h-32 overflow-y-auto">
+      {Object.entries(teamCashback).map(([level, data]) => {
+        if (data.total === 0) return null;
+        return (
+          <div key={level} className="flex justify-between text-[6px] py-0.5 border-b border-white/5">
+            <span className="text-gray-400">{level}:</span>
+            <span className="font-bold text-green-400">₹{data.total} ({data.count})</span>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
+
+const ScannerStatCard = ({ title, count, total, scanners, color }) => {
   const [showList, setShowList] = useState(false);
+  const colors = { blue: 'text-blue-400', green: 'text-green-400' };
   
   return (
-    <div className="bg-black/40 p-3 md:p-4 rounded-lg md:rounded-xl">
-      <div className="flex items-center justify-between mb-2">
-        <h4 className={`text-[10px] md:text-xs font-bold text-${color}-400 flex items-center gap-2`}>
-          {icon} {title} ({count})
-        </h4>
+    <div className="bg-black/40 p-2 rounded-lg">
+      <div className="flex justify-between items-center mb-1">
+        <h4 className={`text-[8px] font-bold ${colors[color]}`}>{title} ({count})</h4>
         {scanners.length > 0 && (
-          <button
-            onClick={() => setShowList(!showList)}
-            className="text-gray-500 hover:text-white"
-          >
-            {showList ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          <button onClick={() => setShowList(!showList)} className="text-gray-500">
+            {showList ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
           </button>
         )}
       </div>
-      <p className="text-sm md:text-base lg:text-lg font-bold">₹{total.toFixed(2)}</p>
-      <p className="text-[6px] md:text-[8px] text-gray-500 mt-1">Total Volume</p>
-      
+      <p className="text-sm font-bold">₹{total.toFixed(2)}</p>
       {showList && scanners.length > 0 && (
-        <div className="mt-2 max-h-24 md:max-h-32 overflow-y-auto border-t border-white/5 pt-2">
+        <div className="mt-1 max-h-20 overflow-y-auto border-t border-white/5 pt-1">
           {scanners.map(s => (
-            <div key={s._id} className="text-[6px] md:text-[8px] text-gray-400 py-1 border-b border-white/5">
-              ₹{s.amount} - {s.status} ({new Date(s.createdAt).toLocaleDateString()})
-            </div>
+            <div key={s._id} className="text-[5px] text-gray-400 py-0.5">₹{s.amount} - {s.status}</div>
           ))}
         </div>
       )}
@@ -1118,38 +1232,15 @@ const ScannerStatCard = ({ title, count, total, scanners, color, icon, mobileVie
   );
 };
 
-const TeamLevelCard = ({ level, expandedLevel, setExpandedLevel, mobileView }) => (
-  <div className="border border-white/10 rounded-lg overflow-hidden">
-    <button
-      onClick={() => setExpandedLevel(expandedLevel === level.level ? null : level.level)}
-      className="w-full flex justify-between items-center p-2 md:p-3 bg-black/30 hover:bg-black/50 transition-colors"
-    >
-      <div className="flex items-center gap-2 md:gap-3">
-        <span className="text-[8px] md:text-[10px] lg:text-xs font-bold">Level {level.level}</span>
-        <span className="text-[6px] md:text-[8px] lg:text-[10px] text-[#00F5A0]">{level.count} members</span>
-      </div>
-      {expandedLevel === level.level ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-    </button>
-    
-    {expandedLevel === level.level && (
-      <div className="p-2 md:p-3 bg-black/20 grid grid-cols-2 gap-1 md:gap-2">
-        {level.members.map(memberId => (
-          <div key={memberId} className="text-[6px] md:text-[8px] bg-black/40 p-1 md:p-2 rounded">
-            <p className="font-mono truncate">{memberId.toString().slice(-8)}</p>
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-);
-
-const EarningBadge = ({ level, amount }) => (
-  <div className="bg-black/30 p-1 md:p-2 rounded text-center">
-    <p className="text-[6px] md:text-[8px] text-gray-500">{level}</p>
-    <p className="text-[8px] md:text-[10px] font-bold text-orange-400">₹{amount}</p>
-  </div>
-);
-
+const calculateTeamCount = (user) => {
+  let count = 0;
+  if (user?.referralTree) {
+    for (let i = 1; i <= 21; i++) {
+      count += user.referralTree[`level${i}`]?.length || 0;
+    }
+  }
+  return count;
+};
 
 /* ================= DEPOSITS VIEW - FULLY RESPONSIVE ================= */
 const DepositsView = ({ deposits, pendingDeposits, handleAction }) => {
@@ -2566,11 +2657,14 @@ const MobileLedgerCard = ({ transaction: tx, formatDate }) => {
 };
 
 
-/* ================= USER DETAILS MODAL ================= */
+/* ================= USER DETAILS MODAL - WITH COMPLETE PAY REQUEST STATS ================= */
 const UserDetailsModal = ({ user, onClose }) => {
   const [userDetails, setUserDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedLevel, setExpandedLevel] = useState(null);
+  const [showCreatedList, setShowCreatedList] = useState(false);
+  const [showAcceptedList, setShowAcceptedList] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview'); // overview, scanners, earnings, team
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -2592,160 +2686,216 @@ const UserDetailsModal = ({ user, onClose }) => {
     );
   }
 
+  // Calculate scanner statistics
+  const createdScanners = userDetails?.scanners?.created || [];
+  const acceptedScanners = userDetails?.scanners?.accepted || [];
+  
+  const totalPayRequests = userDetails?.totalPayRequests || 0;
+  const totalAcceptedRequests = userDetails?.totalAcceptedRequests || 0;
+  const pendingPayRequests = totalPayRequests - totalAcceptedRequests;
+  
+  const createdTotalAmount = createdScanners.reduce((sum, s) => sum + (s.amount || 0), 0);
+  const acceptedTotalAmount = acceptedScanners.reduce((sum, s) => sum + (s.amount || 0), 0);
+
+  // Group scanners by status
+  const createdByStatus = {
+    ACTIVE: createdScanners.filter(s => s.status === 'ACTIVE').length,
+    ACCEPTED: createdScanners.filter(s => s.status === 'ACCEPTED').length,
+    PAYMENT_SUBMITTED: createdScanners.filter(s => s.status === 'PAYMENT_SUBMITTED').length,
+    COMPLETED: createdScanners.filter(s => s.status === 'COMPLETED').length,
+    EXPIRED: createdScanners.filter(s => s.status === 'EXPIRED').length
+  };
+
+  const acceptedByStatus = {
+    ACTIVE: acceptedScanners.filter(s => s.status === 'ACTIVE').length,
+    ACCEPTED: acceptedScanners.filter(s => s.status === 'ACCEPTED').length,
+    PAYMENT_SUBMITTED: acceptedScanners.filter(s => s.status === 'PAYMENT_SUBMITTED').length,
+    COMPLETED: acceptedScanners.filter(s => s.status === 'COMPLETED').length,
+    EXPIRED: acceptedScanners.filter(s => s.status === 'EXPIRED').length
+  };
+
   return (
     <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[1000] p-4 overflow-y-auto">
       <div className="bg-[#0A1F1A] border border-white/10 rounded-[2rem] w-full max-w-6xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-[#0A1F1A] p-6 border-b border-white/10 flex justify-between items-center">
-          <h2 className="text-2xl font-black italic">User Details: {userDetails?.userId || userDetails?.email}</h2>
+        {/* Header */}
+        <div className="sticky top-0 bg-[#0A1F1A] p-6 border-b border-white/10 flex justify-between items-center z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#00F5A0] to-green-600 flex items-center justify-center text-black font-bold text-lg">
+              {userDetails?.userId?.charAt(0) || userDetails?.email?.charAt(0) || 'U'}
+            </div>
+            <div>
+              <h2 className="text-2xl font-black italic">{userDetails?.userId || userDetails?.email}</h2>
+              <p className="text-[10px] text-gray-500">Joined: {new Date(userDetails?.createdAt).toLocaleDateString()}</p>
+            </div>
+          </div>
           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg">
             <X size={20} />
           </button>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="flex gap-2 p-4 border-b border-white/5 overflow-x-auto">
+          <TabButton 
+            label="Overview" 
+            active={activeTab === 'overview'} 
+            onClick={() => setActiveTab('overview')} 
+          />
+          
+          <TabButton 
+            label="Earnings" 
+            active={activeTab === 'earnings'} 
+            onClick={() => setActiveTab('earnings')}
+          />
+          <TabButton 
+            label="Team" 
+            active={activeTab === 'team'} 
+            onClick={() => setActiveTab('team')}
+            badge={userDetails?.team?.total || 0}
+          />
+        </div>
+
         <div className="p-6 space-y-6">
-          {/* Basic Info */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-black/40 p-4 rounded-xl">
-              <p className="text-[8px] text-gray-500">User ID</p>
-              <p className="text-sm font-bold">{userDetails?.userId}</p>
-            </div>
-            <div className="bg-black/40 p-4 rounded-xl">
-              <p className="text-[8px] text-gray-500">Referral Code</p>
-              <p className="text-sm font-bold text-[#00F5A0]">{userDetails?.referralCode}</p>
-            </div>
-            <div className="bg-black/40 p-4 rounded-xl">
-              <p className="text-[8px] text-gray-500">Joined</p>
-              <p className="text-xs">{new Date(userDetails?.createdAt).toLocaleDateString()}</p>
-            </div>
-            <div className="bg-black/40 p-4 rounded-xl">
-              <p className="text-[8px] text-gray-500">Referred By</p>
-              <p className="text-xs">{userDetails?.referredBy?.userId || 'None'}</p>
-            </div>
-          </div>
+          
+          {/* ========== OVERVIEW TAB ========== */}
+          {activeTab === 'overview' && (
+            <>
+              {/* Basic Info */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <InfoCard label="User ID" value={userDetails?.userId} />
+                <InfoCard label="Referral Code" value={userDetails?.referralCode} copyable />
+                <InfoCard label="Joined" value={new Date(userDetails?.createdAt).toLocaleDateString()} />
+                <InfoCard label="Referred By" value={userDetails?.referredBy?.userId || 'None'} />
+              </div>
 
-          {/* Wallets */}
-          <div className="bg-black/40 p-4 rounded-xl">
-            <h3 className="text-sm font-bold mb-3">Wallet Balances</h3>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <p className="text-[10px] text-gray-500">USDT</p>
-                <p className="text-lg font-bold text-blue-400">{userDetails?.wallets?.USDT?.toFixed(2) || 0}</p>
+              {/* Wallets */}
+              <div className="bg-black/40 p-4 rounded-xl">
+                <h3 className="text-sm font-bold mb-3 text-[#00F5A0]">Wallet Balances</h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <WalletInfo label="USDT" value={userDetails?.wallets?.USDT?.toFixed(2) || 0} color="blue" />
+                  <WalletInfo label="INR" value={`₹${userDetails?.wallets?.INR?.toFixed(2) || 0}`} color="green" />
+                  <WalletInfo label="CASHBACK" value={`₹${userDetails?.wallets?.CASHBACK?.toFixed(2) || 0}`} color="orange" />
+                </div>
               </div>
-              <div>
-                <p className="text-[10px] text-gray-500">INR</p>
-                <p className="text-lg font-bold text-[#00F5A0]">₹{userDetails?.wallets?.INR?.toFixed(2) || 0}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-500">CASHBACK</p>
-                <p className="text-lg font-bold text-orange-400">₹{userDetails?.wallets?.CASHBACK?.toFixed(2) || 0}</p>
-              </div>
-            </div>
-          </div>
 
-          {/* Scanner Stats */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-black/40 p-4 rounded-xl">
-              <h3 className="text-sm font-bold mb-3 text-blue-400">Created Scanners</h3>
-              <p className="text-2xl font-bold">{userDetails?.scanners?.created?.length || 0}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Total Amount: ₹{userDetails?.scanners?.created?.reduce((sum, s) => sum + s.amount, 0) || 0}
-              </p>
-              <div className="mt-2 max-h-40 overflow-y-auto">
-                {userDetails?.scanners?.created?.map(s => (
-                  <div key={s._id} className="text-[8px] text-gray-400 py-1 border-b border-white/5">
-                    ₹{s.amount} - {s.status} ({new Date(s.createdAt).toLocaleDateString()})
+              {/* Pay Request Summary Card */}
+              <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 p-4 rounded-xl">
+                <h3 className="text-sm font-bold mb-3 text-blue-400 flex items-center gap-2">
+                  <CreditCard size={16} /> Pay Request Summary
+                </h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <p className="text-[10px] text-gray-500">Created</p>
+                    <p className="text-2xl font-bold text-[#00F5A0]">{totalPayRequests}</p>
+                    {/* <p className="text-[8px] text-gray-500">₹{createdTotalAmount.toLocaleString()}</p> */}
                   </div>
-                ))}
-              </div>
-            </div>
-            <div className="bg-black/40 p-4 rounded-xl">
-              <h3 className="text-sm font-bold mb-3 text-green-400">Accepted Scanners</h3>
-              <p className="text-2xl font-bold">{userDetails?.scanners?.accepted?.length || 0}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Total Amount: ₹{userDetails?.scanners?.accepted?.reduce((sum, s) => sum + s.amount, 0) || 0}
-              </p>
-              <div className="mt-2 max-h-40 overflow-y-auto">
-                {userDetails?.scanners?.accepted?.map(s => (
-                  <div key={s._id} className="text-[8px] text-gray-400 py-1 border-b border-white/5">
-                    ₹{s.amount} - Created by: {s.user?.userId}
+                  <div className="text-center">
+                    <p className="text-[10px] text-gray-500">Accepted</p>
+                    <p className="text-2xl font-bold text-green-400">{totalAcceptedRequests}</p>
+                    {/* <p className="text-[8px] text-gray-500">₹{acceptedTotalAmount.toLocaleString()}</p> */}
                   </div>
-                ))}
+                  <div className="text-center">
+                    <p className="text-[10px] text-gray-500">Pending</p>
+                    <p className="text-2xl font-bold text-orange-400">{pendingPayRequests}</p>
+                    {/* <p className="text-[8px] text-gray-500">Awaiting</p> */}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* Team Structure */}
-          {userDetails?.team?.levels && userDetails.team.levels.length > 0 && (
-            <div className="bg-black/40 p-4 rounded-xl">
-              <h3 className="text-sm font-bold mb-3 text-[#00F5A0]">Team Structure ({userDetails.team.total} members)</h3>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {userDetails.team.levels.map(level => (
-                  <div key={level.level} className="border border-white/10 rounded-lg overflow-hidden">
-                    <button
-                      onClick={() => setExpandedLevel(expandedLevel === level.level ? null : level.level)}
-                      className="w-full flex justify-between items-center p-3 bg-black/30 hover:bg-black/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-bold">Level {level.level}</span>
-                        <span className="text-[10px] text-[#00F5A0]">{level.count} members</span>
+              {/* Quick Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <StatCard label="Direct Referrals" value={userDetails?.referralTree?.level1?.length || 0} color="blue" />
+                <StatCard label="Total Team" value={userDetails?.team?.total || 0} color="purple" />
+                <StatCard label="Total Earnings" value={`₹${userDetails?.earnings?.total || 0}`} color="orange" />
+                <StatCard label="Team Cashback" value={`₹${Object.values(userDetails?.teamCashback || {}).reduce((s, l) => s + (l.total || 0), 0)}`} color="green" />
+              </div>
+
+              {/* Recent Activity Preview */}
+              {userDetails?.transactions && userDetails.transactions.length > 0 && (
+                <div className="bg-black/40 p-4 rounded-xl">
+                  <h3 className="text-sm font-bold mb-3 text-gray-400">Recent Activity</h3>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {userDetails.transactions.slice(0, 5).map(tx => (
+                      <div key={tx._id} className="flex justify-between items-center text-[10px] bg-black/30 p-2 rounded">
+                        <span className="text-gray-400">{new Date(tx.createdAt).toLocaleDateString()}</span>
+                        <span className={`font-bold ${tx.type === 'CREDIT' ? 'text-green-400' : 'text-red-400'}`}>
+                          {tx.type}
+                        </span>
+                        <span className="font-bold text-[#00F5A0]">₹{tx.amount}</span>
                       </div>
-                      {expandedLevel === level.level ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </button>
-                    
-                    {expandedLevel === level.level && (
-                      <div className="p-3 bg-black/20 grid grid-cols-2 gap-2">
-                        {level.members.map(member => (
-                          <div key={member.userId} className="text-[8px] bg-black/40 p-2 rounded">
-                            <p className="font-bold">{member.userId}</p>
-                            <p className="text-gray-500">Earned: ₹{member.earnings}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    ))}
                   </div>
-                ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ========== EARNINGS TAB ========== */}
+          {activeTab === 'earnings' && (
+            <div className="space-y-6">
+              {/* Commission by Level */}
+              <div className="bg-black/40 p-4 rounded-xl">
+                <h3 className="text-sm font-bold mb-3 text-orange-400">Commission by Level</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-60 overflow-y-auto">
+                  {Object.entries(userDetails?.earnings || {}).map(([level, amount]) => {
+                    if (level === 'total' || amount === 0) return null;
+                    return (
+                      <div key={level} className="bg-black/30 p-3 rounded-lg text-center">
+                        <p className="text-[8px] text-gray-500">{level}</p>
+                        <p className="text-sm font-bold text-orange-400">₹{amount}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-400">Total Commission:</span>
+                    <span className="text-lg font-bold text-orange-400">₹{userDetails?.earnings?.total || 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Team Cashback by Level */}
+              <div className="bg-black/40 p-4 rounded-xl">
+                <h3 className="text-sm font-bold mb-3 text-green-400">Team Cashback by Level</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {Object.entries(userDetails?.teamCashback || {}).map(([level, data]) => {
+                    if (data.total === 0) return null;
+                    return (
+                      <div key={level} className="flex justify-between items-center bg-black/30 p-2 rounded-lg">
+                        <span className="text-xs text-gray-400">{level}:</span>
+                        <div>
+                          <span className="text-sm font-bold text-green-400">₹{data.total}</span>
+                          <span className="text-[8px] text-gray-500 ml-2">({data.count} members)</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
 
-          {/* Earnings by Level */}
-          <div className="bg-black/40 p-4 rounded-xl">
-            <h3 className="text-sm font-bold mb-3 text-orange-400">Commission Earnings</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-60 overflow-y-auto">
-              {Object.entries(userDetails?.earnings || {}).map(([level, amount]) => {
-                if (level === 'total' || amount === 0) return null;
-                return (
-                  <div key={level} className="bg-black/30 p-2 rounded text-center">
-                    <p className="text-[8px] text-gray-500">{level}</p>
-                    <p className="text-[10px] font-bold text-orange-400">₹{amount}</p>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-3 pt-3 border-t border-white/10">
-              <p className="text-sm font-bold text-right">
-                Total: <span className="text-orange-400">₹{userDetails?.earnings?.total || 0}</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Transactions */}
-          {userDetails?.transactions && userDetails.transactions.length > 0 && (
+          {/* ========== TEAM TAB ========== */}
+          {activeTab === 'team' && (
             <div className="bg-black/40 p-4 rounded-xl">
-              <h3 className="text-sm font-bold mb-3 text-blue-400">Recent Transactions</h3>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {userDetails.transactions.slice(0, 10).map(tx => (
-                  <div key={tx._id} className="flex justify-between items-center text-[10px] bg-black/30 p-2 rounded">
-                    <div>
-                      <span className="text-gray-400">{new Date(tx.createdAt).toLocaleString()}</span>
-                      <span className={`ml-2 ${tx.type === 'CREDIT' ? 'text-green-400' : 'text-red-400'}`}>
-                        {tx.type}
-                      </span>
-                    </div>
-                    <span className="font-bold text-[#00F5A0]">₹{tx.amount}</span>
-                  </div>
-                ))}
-              </div>
+              <h3 className="text-sm font-bold mb-3 text-[#00F5A0]">Team Structure ({userDetails?.team?.total || 0} members)</h3>
+              {userDetails?.team?.levels && userDetails.team.levels.length > 0 ? (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {userDetails.team.levels.map(level => (
+                    <TeamLevelCard
+                      key={level.level}
+                      level={level}
+                      expandedLevel={expandedLevel}
+                      setExpandedLevel={setExpandedLevel}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Users size={32} className="mx-auto mb-2 opacity-30" />
+                  <p className="text-xs">No team members yet</p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -2753,6 +2903,83 @@ const UserDetailsModal = ({ user, onClose }) => {
     </div>
   );
 };
+
+/* ================= HELPER COMPONENTS FOR MODAL ================= */
+
+// Tab Button Component
+const TabButton = ({ label, active, onClick, badge }) => (
+  <button
+    onClick={onClick}
+    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+      active 
+        ? 'bg-[#00F5A0] text-black' 
+        : 'bg-white/5 text-gray-400 hover:bg-white/10'
+    }`}
+  >
+    {label}
+    {badge > 0 && (
+      <span className={`text-[8px] px-1.5 py-0.5 rounded-full ${
+        active ? 'bg-black text-white' : 'bg-gray-600 text-white'
+      }`}>
+        {badge}
+      </span>
+    )}
+  </button>
+);
+
+// Info Card Component
+const InfoCard = ({ label, value, copyable }) => (
+  <div className="bg-black/40 p-4 rounded-xl">
+    <p className="text-[8px] text-gray-500">{label}</p>
+    <p className="text-sm font-bold truncate">{value}</p>
+  </div>
+);
+
+// Wallet Info Component
+const WalletInfo = ({ label, value, color }) => {
+  const colors = {
+    blue: 'text-blue-400',
+    green: 'text-[#00F5A0]',
+    orange: 'text-orange-400'
+  };
+  return (
+    <div>
+      <p className="text-[8px] text-gray-500">{label}</p>
+      <p className={`text-lg font-bold ${colors[color]}`}>{value}</p>
+    </div>
+  );
+};
+
+
+
+
+
+// Team Level Card Component
+const TeamLevelCard = ({ level, expandedLevel, setExpandedLevel }) => (
+  <div className="border border-white/10 rounded-lg overflow-hidden">
+    <button
+      onClick={() => setExpandedLevel(expandedLevel === level.level ? null : level.level)}
+      className="w-full flex justify-between items-center p-3 bg-black/30 hover:bg-black/50 transition-colors"
+    >
+      <div className="flex items-center gap-3">
+        <span className="text-xs font-bold">Level {level.level}</span>
+        <span className="text-[10px] text-[#00F5A0]">{level.count} members</span>
+      </div>
+      {expandedLevel === level.level ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+    </button>
+    
+    {expandedLevel === level.level && (
+      <div className="p-3 bg-black/20 grid grid-cols-2 gap-2">
+        {level.members.map(member => (
+          <div key={member.userId} className="text-[8px] bg-black/40 p-2 rounded">
+            <p className="font-bold">{member.userId}</p>
+            <p className="text-gray-500">Earned: ₹{member.earnings}</p>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);
 
 /* ================= SIDEBAR LINK COMPONENT ================= */
 const SidebarLink = ({ icon, label, active, badge, onClick, highlight }) => (

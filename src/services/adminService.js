@@ -51,7 +51,7 @@ export const getSystemStats = async () => {
     });
     return await res.json();
   } catch (error) {
-    console.error("Error fetching system stats:", error);
+    // console.error("Error fetching system stats:", error);
     return null;
   }
 };
@@ -65,8 +65,29 @@ export const getUserDetails = async (userId) => {
     });
     return await res.json();
   } catch (error) {
-    console.error("Error fetching user details:", error);
+    // console.error("Error fetching user details:", error);
     return null;
   }
 };
 
+
+// services/adminService.js
+
+// Get all users with complete referral details
+export const getAllUsersWithReferrals = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_BASE}/admin/users-with-referrals`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      }
+    });
+    
+    if (!res.ok) throw new Error("Failed to fetch users with referrals");
+    return await res.json();
+  } catch (error) {
+    // console.error("Error fetching users with referrals:", error);
+    throw error;
+  }
+};

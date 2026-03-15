@@ -7,6 +7,8 @@ const jsonHeaders = {
   "Content-Type": "application/json",
 };
 
+
+
 export const login = async (userId, pin) => {
   try {
     // console.log("🔐 Login attempt:", { userId, pin }); // Debug log
@@ -71,7 +73,7 @@ export const adminLogin = async (adminId, pin) => {
       };
     }
   } catch (error) {
-    console.error("❌ Admin login error:", error);
+    // console.error("❌ Admin login error:", error);
     return { 
       success: false, 
       message: error.message || "Network error" 
@@ -133,7 +135,7 @@ export const register = async (userData) => {
       };
     }
   } catch (error) {
-    console.error("❌ Register error:", error);
+    // console.error("❌ Register error:", error);
     return { 
       success: false, 
       message: error.message || "Network error" 
@@ -149,7 +151,8 @@ export const getReferralStats = async (token) => {
     });
     return await res.json();
   } catch (error) {
-    console.error("Fetch error:", error);
+    // console.error("Fetch error:", error);
+
     return { message: "Network error" };
   }
 };
@@ -161,7 +164,7 @@ export const getTeamCashbackSummary = async (token) => {
     });
     return await res.json();
   } catch (error) {
-    console.error("Error fetching team cashback:", error);
+    // console.error("Error fetching team cashback:", error);
     return null;
   }
 };
@@ -178,7 +181,7 @@ export const activateWallet = async (token, dailyLimit) => {
     });
     return await res.json();
   } catch (error) {
-    console.error("Error activating wallet:", error);
+    // console.error("Error activating wallet:", error);
     return { message: "Network error" };
   }
 };
@@ -190,7 +193,7 @@ export const getActivationStatus = async (token) => {
     });
     return await res.json();
   } catch (error) {
-    console.error("Error fetching activation status:", error);
+    // console.error("Error fetching activation status:", error);
     return { activated: false };
   }
 };
@@ -206,12 +209,115 @@ export const getTodayTeamStats = async (token) => {
     const data = await res.json();
     return data;
   } catch (error) {
-    console.error("Error fetching today's team stats:", error);
+    // console.error("Error fetching today's team stats:", error);
     return { 
       success: false, 
       teamBusiness: 0, 
       yourCommission: 0, 
       teamMembers: 0 
+    };
+  }
+};
+
+
+// services/authService.js
+
+// ✅ Leg Unlocking Status मिळवण्यासाठी
+export const getLegUnlockingStatus = async (token) => {
+  try {
+    const res = await fetch(`${API_BASE}/auth/leg-status`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    
+    if (!res.ok) throw new Error("Failed to fetch leg status");
+    return await res.json();
+  } catch (error) {
+    // console.error("Error fetching leg status:", error);
+    throw error;
+  }
+};
+
+// ✅ Next Leg Requirement मिळवण्यासाठी
+export const getNextLegRequirement = async (token) => {
+  try {
+    const res = await fetch(`${API_BASE}/auth/next-leg-requirement`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    
+    if (!res.ok) throw new Error("Failed to fetch next leg requirement");
+    return await res.json();
+  } catch (error) {
+    // console.error("Error fetching next leg requirement:", error);
+    throw error;
+  }
+};
+
+// services/authService.js
+
+// services/authService.js
+
+// ✅ Member Details मिळवण्यासाठी - FIXED with better error handling
+export const getMemberDetails = async (memberId, token) => {
+  try {
+    // console.log("Fetching member details for:", memberId);
+    
+    // Ensure memberId is a string
+    const id = String(memberId);
+    
+    const res = await fetch(`${API_BASE}/auth/member-details/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    
+    const data = await res.json();
+    // console.log("Member details response status:", res.status);
+    
+    if (!res.ok) {
+      // console.error("Error response:", data);
+      // Return fallback data instead of throwing
+      return {
+        success: false,
+        data: {
+          userId: memberId,
+          totalEarnings: 0,
+          teamCashback: 0,
+          directReferrals: 0,
+          totalTeam: 0,
+          legsUnlocked: {
+            leg1: true, leg2: false, leg3: false,
+            leg4: false, leg5: false, leg6: false, leg7: false
+          },
+          recentActivity: []
+        }
+      };
+    }
+    
+    return data;
+  } catch (error) {
+    // console.error("Error fetching member details:", error);
+    // Return fallback data on network error
+    return {
+      success: false,
+      data: {
+        userId: memberId,
+        totalEarnings: 0,
+        teamCashback: 0,
+        directReferrals: 0,
+        totalTeam: 0,
+        legsUnlocked: {
+          leg1: true, leg2: false, leg3: false,
+          leg4: false, leg5: false, leg6: false, leg7: false
+        },
+        recentActivity: []
+      }
     };
   }
 };
