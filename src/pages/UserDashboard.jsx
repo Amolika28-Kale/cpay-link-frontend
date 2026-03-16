@@ -3885,41 +3885,771 @@ const HistoryPage = ({ transactions }) => (
   </div>
 );
 
-// ReferralPage Component - COMPLETE FIXED VERSION
+// // ReferralPage Component - COMPLETE FIXED VERSION
 
+// const ReferralPage = ({ referralData, teamStats }) => {
+//   const [showDetails, setShowDetails] = useState(false);
+//   const [showTeamCashback, setShowTeamCashback] = useState(false);
+//   const [selectedLevel, setSelectedLevel] = useState(null);
+//   const [expandedMember, setExpandedMember] = useState(null);
+//   const [expandedLevel, setExpandedLevel] = useState(null);
+//   const [statsFilter, setStatsFilter] = useState('total');
+//   const [legStatus, setLegStatus] = useState(null);
+//   const [nextLeg, setNextLeg] = useState(null);
+//   const [memberDetails, setMemberDetails] = useState({});
+//   const [loadingMember, setLoadingMember] = useState(false);
+//   const [todayStats, setTodayStats] = useState({
+//     teamBusiness: 0,
+//     yourCommission: 0,
+//     teamMembers: 0
+//   });
+
+//   // Load leg status
+//   useEffect(() => {
+//     const fetchLegStatus = async () => {
+//       try {
+//         const token = localStorage.getItem("token");
+//         const { getLegUnlockingStatus, getNextLegRequirement } = await import("../services/authService");
+        
+//         const status = await getLegUnlockingStatus(token);
+//         // console.log("Leg Status:", status);
+//         setLegStatus(status);
+        
+//         const next = await getNextLegRequirement(token);
+//         // console.log("Next Leg:", next);
+//         if (next?.success) {
+//           setNextLeg(next.data);
+//         }
+//       } catch (error) {
+//         // console.error("Error fetching leg status:", error);
+//       }
+//     };
+    
+//     fetchLegStatus();
+//   }, []);
+
+//   // Load today's stats
+//   useEffect(() => {
+//     const fetchTodayStats = async () => {
+//       try {
+//         const token = localStorage.getItem("token");
+//         const data = await getTodayTeamStats(token);
+        
+//         if (data?.success) {
+//           setTodayStats({
+//             teamBusiness: data.teamBusiness || 0,
+//             yourCommission: data.yourCommission || 0,
+//             teamMembers: data.teamMembers || 0
+//           });
+//         }
+//       } catch (error) {
+//         // console.error("Error fetching today stats:", error);
+//       }
+//     };
+    
+//     fetchTodayStats();
+//   }, []);
+
+// // UserDashboard.jsx मध्ये fetchMemberDetails function दुरुस्त करा
+
+// const fetchMemberDetails = async (memberId) => {
+//   // Skip if already loaded
+//   if (memberDetails[memberId]) {
+//     // console.log("Member details already loaded for:", memberId);
+//     return;
+//   }
+  
+//   setLoadingMember(true);
+//   try {
+//     const token = localStorage.getItem("token");
+//     const { getMemberDetails } = await import("../services/authService");
+    
+//     // console.log("Fetching details for member ID:", memberId);
+    
+//     // Try to fetch from API
+//     const response = await getMemberDetails(memberId, token);
+//     // console.log("Member details response:", response);
+    
+//     // If API returns data, use it
+//     if (response && response.success && response.data) {
+//       setMemberDetails(prev => ({
+//         ...prev,
+//         [memberId]: response.data
+//       }));
+//     } 
+//     // If API returns data without success flag but has data
+//     else if (response && response.data) {
+//       setMemberDetails(prev => ({
+//         ...prev,
+//         [memberId]: response.data
+//       }));
+//     }
+//     // If API returns data directly
+//     else if (response && response.userId) {
+//       setMemberDetails(prev => ({
+//         ...prev,
+//         [memberId]: response
+//       }));
+//     }
+//     // Fallback data
+//     else {
+//       // console.log("Using fallback data for member:", memberId);
+//       setMemberDetails(prev => ({
+//         ...prev,
+//         [memberId]: {
+//           userId: memberId,
+//           totalEarnings: 0,
+//           teamCashback: 0,
+//           directReferrals: 0,
+//           totalTeam: 0,
+//           legsUnlocked: {
+//             leg1: true, leg2: false, leg3: false,
+//             leg4: false, leg5: false, leg6: false, leg7: false
+//           },
+//           recentActivity: []
+//         }
+//       }));
+//     }
+//   } catch (error) {
+//     // console.error("Error fetching member details:", error);
+//     // Set fallback data on error
+//     setMemberDetails(prev => ({
+//       ...prev,
+//       [memberId]: {
+//         userId: memberId,
+//         totalEarnings: 0,
+//         teamCashback: 0,
+//         directReferrals: 0,
+//         totalTeam: 0,
+//         legsUnlocked: {
+//           leg1: true, leg2: false, leg3: false,
+//           leg4: false, leg5: false, leg6: false, leg7: false
+//         },
+//         recentActivity: []
+//       }
+//     }));
+//   } finally {
+//     setLoadingMember(false);
+//   }
+// };
+
+//   const copyReferralCode = () => {
+//     navigator.clipboard.writeText(referralData.referralCode);
+//     toast.success('Referral code copied!', { duration: 2000 });
+//   };
+
+//   const levels = [
+//     { level: 1, rate: "30%", color: "from-yellow-500 to-orange-500" },
+//     { level: 2, rate: "15%", color: "from-blue-500 to-cyan-500" },
+//     { level: 3, rate: "10%", color: "from-green-500 to-emerald-500" },
+//     { level: 4, rate: "5%", color: "from-purple-500 to-pink-500" },
+//     { level: 5, rate: "30%", color: "from-red-500 to-rose-500" },
+//     { level: 6, rate: "3%", color: "from-indigo-500 to-purple-500" },
+//     { level: 7, rate: "4%", color: "from-pink-500 to-red-500" },
+//     { level: 8, rate: "3%", color: "from-teal-500 to-green-500" },
+//     { level: 9, rate: "3%", color: "from-cyan-500 to-blue-500" },
+//     { level: 10, rate: "30%", color: "from-orange-500 to-red-500" },
+//     { level: 11, rate: "3%", color: "from-lime-500 to-green-500" },
+//     { level: 12, rate: "3%", color: "from-amber-500 to-orange-500" },
+//     { level: 13, rate: "3%", color: "from-emerald-500 to-teal-500" },
+//     { level: 14, rate: "3%", color: "from-sky-500 to-blue-500" },
+//     { level: 15, rate: "3%", color: "from-violet-500 to-purple-500" },
+//     { level: 16, rate: "5%", color: "from-fuchsia-500 to-pink-500" },
+//     { level: 17, rate: "10%", color: "from-rose-500 to-red-500" },
+//     { level: 18, rate: "15%", color: "from-amber-500 to-orange-500" },
+//     { level: 19, rate: "30%", color: "from-emerald-500 to-teal-500" },
+//     { level: 20, rate: "30%", color: "from-blue-500 to-indigo-500" },
+//     { level: 21, rate: "63%", color: "from-purple-500 to-pink-500" }
+//   ];
+
+//   // Group levels by legs
+//   const legs = [
+//     { name: "Leg 1", levels: [1, 2, 3], required: 0, unlocked: true },
+//     { name: "Leg 2", levels: [4, 5, 6], required: 1, unlocked: legStatus?.legsUnlocked?.leg2 || teamStats?.legsUnlocked?.leg2 },
+//     { name: "Leg 3", levels: [7, 8, 9], required: 2, unlocked: legStatus?.legsUnlocked?.leg3 || teamStats?.legsUnlocked?.leg3 },
+//     { name: "Leg 4", levels: [10, 11, 12], required: 3, unlocked: legStatus?.legsUnlocked?.leg4 || teamStats?.legsUnlocked?.leg4 },
+//     { name: "Leg 5", levels: [13, 14, 15], required: 4, unlocked: legStatus?.legsUnlocked?.leg5 || teamStats?.legsUnlocked?.leg5 },
+//     { name: "Leg 6", levels: [16, 17, 18], required: 5, unlocked: legStatus?.legsUnlocked?.leg6 || teamStats?.legsUnlocked?.leg6 },
+//     { name: "Leg 7", levels: [19, 20, 21], required: 6, unlocked: legStatus?.legsUnlocked?.leg7 || teamStats?.legsUnlocked?.leg7 }
+//   ];
+
+//   // Calculate total team business
+//   const totalTeamBusiness = teamStats 
+//     ? Object.values(teamStats).reduce((sum, level) => {
+//         if (level && typeof level === 'object' && level.teamCashback) {
+//           return sum + (level.teamCashback || 0);
+//         }
+//         return sum;
+//       }, 0) 
+//     : 0;
+
+// // ReferralPage मध्ये LevelMembersList कंपोनेंट सुधारित करा
+
+// // ✅ IMPROVED: Level Members List Component with member details
+// const LevelMembersList = ({ level, levelStats }) => {
+//   // Debug
+//   // console.log(`Level ${level} stats:`, levelStats);
+  
+//   if (!levelStats) {
+//     return (
+//       <div className="text-center py-4 bg-black/20 rounded-lg">
+//         <p className="text-xs text-gray-500">No data for Level {level}</p>
+//       </div>
+//     );
+//   }
+
+//   if (!levelStats.usersList || levelStats.usersList.length === 0) {
+//     return (
+//       <div className="text-center py-4 bg-black/20 rounded-lg">
+//         <p className="text-xs text-gray-500">No members in Level {level}</p>
+//         <p className="text-[8px] text-gray-600 mt-1">
+//           Total users: {levelStats.users || 0}
+//         </p>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="space-y-3 mt-2">
+//       {levelStats.usersList.map((member, idx) => {
+//         const isExpanded = expandedMember === member.userId;
+//         const details = memberDetails[member.userId];
+        
+//         return (
+//           <div key={idx} className="bg-black/30 rounded-xl overflow-hidden border border-white/5 hover:border-[#00F5A0]/20 transition-all">
+            
+//             {/* Member Header - Always Visible */}
+//             <div 
+//               className="p-4 cursor-pointer hover:bg-white/5 transition-all"
+//               onClick={() => {
+//                 if (isExpanded) {
+//                   setExpandedMember(null);
+//                 } else {
+//                   setExpandedMember(member.userId);
+//                   fetchMemberDetails(member.userId);
+//                 }
+//               }}
+//             >
+//               <div className="flex items-center justify-between">
+//                 <div className="flex items-center gap-4">
+//                   {/* Avatar with user ID first letter */}
+//                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-black text-lg shadow-lg">
+//                     {member.userId?.charAt(0).toUpperCase() || '?'}
+//                   </div>
+                  
+//                   {/* Member Basic Info */}
+//                   <div>
+//                     <div className="flex items-center gap-2 mb-1">
+//                       <p className="text-base font-bold text-white">{member.userId}</p>
+//                       <span className="text-[8px] bg-[#00F5A0]/20 text-[#00F5A0] px-2 py-0.5 rounded-full">
+//                         Level {level}
+//                       </span>
+//                     </div>
+                    
+//                     {/* Quick Stats Preview */}
+//                     <div className="flex items-center gap-3 text-xs">
+//                       <span className="text-[#00F5A0]">
+//                         ₹{Number(member.earnings || 0).toFixed(2)} earned
+//                       </span>
+//                       <span className="text-gray-500">•</span>
+//                       <span className="text-orange-400">
+//                         ₹{Number(member.teamCashback || 0).toFixed(2)} team
+//                       </span>
+//                     </div>
+//                   </div>
+//                 </div>
+                
+//                 {/* Expand/Collapse Button */}
+//                 <button className="text-[#00F5A0] p-2 hover:bg-white/5 rounded-lg transition-all">
+//                   {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+//                 </button>
+//               </div>
+//             </div>
+
+//             {/* Expanded Member Details */}
+//             {isExpanded && (
+//               <div className="p-4 border-t border-white/10 bg-black/40">
+                
+//                 {/* Loading State */}
+//                 {loadingMember && !details && (
+//                   <div className="flex items-center justify-center py-6">
+//                     <Loader size={24} className="animate-spin text-[#00F5A0]" />
+//                     <span className="ml-2 text-xs text-gray-400">Loading member details...</span>
+//                   </div>
+//                 )}
+
+//                 {/* Member Details */}
+//                 {details && (
+//                   <div className="space-y-4">
+                    
+//                     {/* Stats Grid */}
+//                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+//                       <div className="bg-black/40 p-3 rounded-lg text-center">
+//                         <p className="text-[8px] text-gray-500 mb-1">Total Earnings</p>
+//                         <p className="text-sm font-bold text-[#00F5A0]">
+//                           ₹{Number(details.totalEarnings || 0).toFixed(2)}
+//                         </p>
+//                       </div>
+//                       <div className="bg-black/40 p-3 rounded-lg text-center">
+//                         <p className="text-[8px] text-gray-500 mb-1">Team Cashback</p>
+//                         <p className="text-sm font-bold text-orange-400">
+//                           ₹{Number(details.teamCashback || 0).toFixed(2)}
+//                         </p>
+//                       </div>
+//                       <div className="bg-black/40 p-3 rounded-lg text-center">
+//                         <p className="text-[8px] text-gray-500 mb-1">Direct Referrals</p>
+//                         <p className="text-sm font-bold text-blue-400">{details.directReferrals || 0}</p>
+//                       </div>
+//                       <div className="bg-black/40 p-3 rounded-lg text-center">
+//                         <p className="text-[8px] text-gray-500 mb-1">Total Team</p>
+//                         <p className="text-sm font-bold text-purple-400">{details.totalTeam || 0}</p>
+//                       </div>
+//                     </div>
+
+//                     {/* Member's Own Downline Preview */}
+//                     {details.downlineCount && (
+//                       <div className="bg-black/40 p-3 rounded-lg">
+//                         <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+//                           <Users size={12} className="text-[#00F5A0]" />
+//                           Member's Downline
+//                         </p>
+//                         <div className="grid grid-cols-7 gap-1">
+//                           {[1,2,3,4,5,6,7].map(lvl => {
+//                             const count = details.downlineCount[`level${lvl}`] || 0;
+//                             return (
+//                               <div key={lvl} className="text-center">
+//                                 <span className="text-[7px] text-gray-500">L{lvl}</span>
+//                                 <p className={`text-[9px] font-bold ${count > 0 ? 'text-[#00F5A0]' : 'text-gray-600'}`}>
+//                                   {count}
+//                                 </p>
+//                               </div>
+//                             );
+//                           })}
+//                         </div>
+//                       </div>
+//                     )}
+
+//                     {/* Recent Activity */}
+//                     {details.recentActivity && details.recentActivity.length > 0 && (
+//                       <div className="bg-black/40 p-3 rounded-lg">
+//                         <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+//                           <Clock size={12} className="text-[#00F5A0]" />
+//                           Recent Activity
+//                         </p>
+//                         <div className="space-y-2 max-h-32 overflow-y-auto">
+//                           {details.recentActivity.map((activity, idx) => (
+//                             <div key={idx} className="flex justify-between items-center text-[10px] bg-black/60 p-2 rounded">
+//                               <span className="text-gray-400">{activity.date}</span>
+//                               <span className="text-[#00F5A0]">₹{Number(activity.amount).toFixed(2)}</span>
+//                               <span className="text-gray-500">{activity.type}</span>
+//                             </div>
+//                           ))}
+//                         </div>
+//                       </div>
+//                     )}
+//                   </div>
+//                 )}
+//               </div>
+//             )}
+//           </div>
+//         );
+//       })}
+//     </div>
+//   );
+// };
+
+//   return (
+//     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in">
+      
+//       {/* Referral Code Card */}
+//       <div className="bg-gradient-to-br from-[#00F5A0] to-[#00d88c] p-8 rounded-[2.5rem] text-[#051510] shadow-2xl">
+//         <div className="flex items-center justify-between mb-6">
+//           <h2 className="text-2xl font-black italic">Your Referral Code</h2>
+//           <Gift size={28} className="opacity-60" />
+//         </div>
+        
+//         <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl backdrop-blur-sm">
+//           <span className="text-3xl font-black tracking-widest">
+//             {referralData.referralCode}
+//           </span>
+//           <button
+//             onClick={copyReferralCode}
+//             className="bg-black text-[#00F5A0] p-3 rounded-xl hover:bg-black/80 transition-all"
+//           >
+//             <Copy size={20} />
+//           </button>
+//         </div>
+        
+//         <p className="text-sm font-bold mt-4 opacity-70">
+//           Share this code & earn commissions on 21 levels!
+//         </p>
+//       </div>
+
+//       {/* Leg Unlocking Status Card */}
+//       <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
+//         <h3 className="text-lg font-black italic mb-4 flex items-center gap-2">
+//           <Zap size={20} className="text-[#00F5A0]" />
+//           Leg Unlocking Status (Based on Direct Referrals)
+//         </h3>
+        
+//         {/* Direct Referrals Count */}
+//         <div className="mb-6 p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30">
+//           <div className="flex items-center justify-between">
+//             <span className="text-sm text-gray-300">Your Direct Referrals:</span>
+//             <span className="text-2xl font-black text-[#00F5A0]">
+//               {nextLeg?.directReferrals || legStatus?.directReferrals || 0}
+//             </span>
+//           </div>
+          
+//           {/* Next Leg Requirement */}
+//           {nextLeg?.nextLegToUnlock && (
+//             <div className="mt-3 pt-3 border-t border-purple-500/20">
+//               <p className="text-xs text-yellow-400 font-bold flex items-center gap-2">
+//   <AlertCircle size={14} />
+//   {nextLeg?.nextLegToUnlock?.isUnlockable 
+//     ? `🎉 You can unlock ${nextLeg.nextLegToUnlock.leg} now!`
+//     : `Need ${nextLeg?.nextLegToUnlock?.remainingToUnlock || 0} more direct referral${
+//         nextLeg?.nextLegToUnlock?.remainingToUnlock > 1 ? 's' : ''
+//       } to unlock ${nextLeg?.nextLegToUnlock?.leg || ''} (Levels ${
+//         nextLeg?.nextLegToUnlock?.levelsInThisLeg?.join('-') || 'N/A'
+//       })`}
+// </p>
+//             </div>
+//           )}
+//         </div>
+
+
+// {/* Leg Grid */}
+// <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+//   {legs.map((leg, index) => {
+//     const legDetail = legStatus?.legDetails?.[`leg${index + 1}`];
+    
+//     return (
+//       <div 
+//         key={index}
+//         className={`p-4 rounded-xl border transition-all ${
+//           leg.unlocked 
+//             ? 'bg-gradient-to-br from-[#00F5A0]/20 to-green-500/20 border-[#00F5A0] shadow-[0_0_15px_rgba(0,245,160,0.3)]' 
+//             : 'bg-gray-800/50 border-gray-700 opacity-70'
+//         }`}
+//       >
+//         <div className="flex items-center justify-between mb-3">
+//           <span className="text-lg font-black">{leg.name}</span>
+//           {leg.unlocked ? (
+//             <span className="text-[8px] bg-green-500 text-black px-2 py-1 rounded-full font-bold">OPEN</span>
+//           ) : (
+//             <span className="text-[8px] bg-red-500/20 text-red-500 px-2 py-1 rounded-full font-bold">LOCKED</span>
+//           )}
+//         </div>
+        
+//         <div className="space-y-2 mb-3">
+//           {leg.levels.map(level => {
+//             const levelStats = teamStats?.[`level${level}`];
+//             return (
+//               <div 
+//                 key={level} 
+//                 className="flex justify-between items-center text-xs p-1 hover:bg-white/5 rounded cursor-pointer"
+//                 onClick={() => {
+//                   if (levelStats?.users > 0) {
+//                     setExpandedLevel(level);
+//                     setActiveTab("Referral");
+//                   }
+//                 }}
+//               >
+//                 <span className="text-gray-400 flex items-center gap-1">
+//                   <span>Level {level}</span>
+//                   {levelStats?.users > 0 && (
+//                     <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1 rounded-full">
+//                       {levelStats.users}
+//                     </span>
+//                   )}
+//                 </span>
+//                 <span className={`font-bold ${leg.unlocked ? 'text-[#00F5A0]' : 'text-gray-500'}`}>
+//                   {levelStats?.users || 0} members
+//                 </span>
+//               </div>
+//             );
+//           })}
+//         </div>
+
+//         {/* Requirement */}
+//         {!leg.unlocked && index > 0 && (
+//           <div className="mt-2 pt-2 border-t border-yellow-500/20">
+//             <p className="text-[8px] text-yellow-500">
+//               Need: {leg.required} direct referral{leg.required > 1 ? 's' : ''}
+//             </p>
+//             <p className="text-[8px] text-gray-500 mt-1">
+//               Current: {nextLeg?.directReferrals || 0}
+//             </p>
+//           </div>
+//         )}
+//       </div>
+//     );
+//   })}
+// </div>
+//       </div>
+
+//       {/* Stats Grid */}
+//       <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
+//         <div className="flex items-center justify-between mb-6">
+//           <h3 className="text-lg font-black italic">Team Statistics</h3>
+//           <div className="flex gap-2 bg-black/40 p-1 rounded-lg">
+//             <button
+//               onClick={() => setStatsFilter('today')}
+//               className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+//                 statsFilter === 'today' 
+//                   ? 'bg-[#00F5A0] text-black' 
+//                   : 'text-gray-400 hover:text-white'
+//               }`}
+//             >
+//               Today
+//             </button>
+//             <button
+//               onClick={() => setStatsFilter('total')}
+//               className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+//                 statsFilter === 'total' 
+//                   ? 'bg-[#00F5A0] text-black' 
+//                   : 'text-gray-400 hover:text-white'
+//               }`}
+//             >
+//               Total
+//             </button>
+//           </div>
+//         </div>
+
+//         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+//           {/* Team Members Card */}
+//           <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-[#00F5A0]/20 transition-all">
+//             <div className="flex items-center gap-3 mb-3">
+//               <div className="w-10 h-10 rounded-lg bg-[#00F5A0]/10 flex items-center justify-center">
+//                 <Users size={22} className="text-[#00F5A0]" />
+//               </div>
+//               <div>
+//                 <p className="text-xs text-gray-400">Total Team</p>
+//                 <p className="text-2xl font-black text-white">
+//                   {statsFilter === 'today' ? todayStats.teamMembers : referralData.totalReferrals}
+//                 </p>
+//               </div>
+//             </div>
+//             <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">
+//               {statsFilter === 'today' ? 'Active today' : 'Across 21 levels'}
+//             </p>
+//           </div>
+
+//           {/* Team Business Card */}
+//           <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-[#00F5A0]/20 transition-all">
+//             <div className="flex items-center gap-3 mb-3">
+//               <div className="w-10 h-10 rounded-lg bg-[#00F5A0]/10 flex items-center justify-center">
+//                 <TrendingUp size={22} className="text-[#00F5A0]" />
+//               </div>
+//               <div>
+//                 <p className="text-xs text-gray-400">Team Business</p>
+//                 <p className="text-2xl font-black text-[#00F5A0]">
+//                   ₹{statsFilter === 'today' 
+//                     ? todayStats.teamBusiness.toFixed(2) 
+//                     : totalTeamBusiness.toFixed(2)}
+//                 </p>
+//               </div>
+//             </div>
+//             <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">
+//               Total cashback earned by team
+//             </p>
+//           </div>
+
+//           {/* Your Commission Card */}
+//           <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-orange-400/20 transition-all">
+//             <div className="flex items-center gap-3 mb-3">
+//               <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+//                 <Award size={22} className="text-orange-400" />
+//               </div>
+//               <div>
+//                 <p className="text-xs text-gray-400">Your Commission</p>
+//                 <p className="text-2xl font-black text-orange-400">
+//                   ₹{statsFilter === 'today' 
+//                     ? todayStats.yourCommission.toFixed(2) 
+//                     : Number(referralData.referralEarnings?.total || 0).toFixed(2)}
+//                 </p>
+//               </div>
+//             </div>
+//             <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">
+//               Commission from team
+//             </p>
+//           </div>
+//         </div>
+//       </div>
+
+
+// {/* Level-wise Members List */}
+// <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
+//   <div className="flex items-center justify-between mb-6">
+//     <h3 className="text-lg font-black italic flex items-center gap-2">
+//       <Users size={20} className="text-[#00F5A0]" />
+//       Level-wise Team Members
+//     </h3>
+//     <span className="text-[10px] text-gray-500">Click on level to expand and see members</span>
+//   </div>
+
+//   {/* Level Quick Filters */}
+//   <div className="grid grid-cols-7 gap-1 mb-6">
+//     {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
+//       const hasMembers = teamStats?.[`level${level}`]?.users > 0;
+//       return (
+//         <button
+//           key={level}
+//           onClick={() => hasMembers && setExpandedLevel(expandedLevel === level ? null : level)}
+//           className={`text-[8px] py-2 rounded-lg font-bold transition-all ${
+//             expandedLevel === level 
+//               ? 'bg-[#00F5A0] text-black' 
+//               : hasMembers
+//                 ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 cursor-pointer'
+//                 : 'bg-white/5 text-gray-500 cursor-not-allowed opacity-50'
+//           }`}
+//           disabled={!hasMembers}
+//         >
+//           L{level}
+//           {hasMembers && (
+//             <span className="ml-1 text-[6px] bg-blue-500 text-white px-1 rounded-full">
+//               {teamStats[`level${level}`].users}
+//             </span>
+//           )}
+//         </button>
+//       );
+//     })}
+//   </div>
+
+//   {/* Level-wise Details */}
+//   <div className="space-y-4">
+//     {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
+//       const levelStats = teamStats?.[`level${level}`];
+//       const isExpanded = expandedLevel === level;
+      
+//       // Only show levels with members
+//       if (!levelStats || levelStats.users === 0) {
+//         return null;
+//       }
+      
+//       return (
+//         <div key={level} className="border border-white/10 rounded-xl overflow-hidden">
+//           {/* Level Header - Shows summary */}
+//           <div 
+//             className="p-4 bg-gradient-to-r from-white/5 to-transparent cursor-pointer hover:bg-white/10 transition-all"
+//             onClick={() => setExpandedLevel(isExpanded ? null : level)}
+//           >
+//             <div className="flex items-center justify-between">
+//               <div className="flex items-center gap-4">
+//                 {/* Level Number with gradient */}
+//                 <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${
+//                   levels.find(l => l.level === level)?.color || 'from-gray-500 to-gray-600'
+//                 } flex items-center justify-center text-white font-black`}>
+//                   {level}
+//                 </div>
+                
+//                 {/* Level Info */}
+//                 <div>
+//                   <h4 className="text-sm font-bold">Level {level}</h4>
+//                   <p className="text-[10px] text-gray-400">
+//                     Rate: {levels.find(l => l.level === level)?.rate} | 
+//                     Members: {levelStats.users} | 
+//                     Team Cashback: ₹{Number(levelStats.teamCashback || 0).toFixed(2)}
+//                   </p>
+//                 </div>
+//               </div>
+              
+//               {/* Your Commission and Expand Button */}
+//               <div className="flex items-center gap-4">
+//                 <div className="text-right">
+//                   <p className="text-xs text-gray-400">Your Commission</p>
+//                   <p className="text-sm font-bold text-orange-400">
+//                     ₹{Number(levelStats.yourCommission || 0).toFixed(2)}
+//                   </p>
+//                 </div>
+//                 {isExpanded ? <ChevronUp size={20} className="text-[#00F5A0]" /> : <ChevronDown size={20} className="text-[#00F5A0]" />}
+//               </div>
+//             </div>
+//           </div>
+
+//           {/* Expanded Members List - Shows all members in this level */}
+//           {isExpanded && (
+//             <div className="p-4 border-t border-white/10 bg-black/20">
+//               <h5 className="text-xs font-bold text-[#00F5A0] mb-3 flex items-center gap-2">
+//                 <Users size={14} />
+//                 Members in Level {level} ({levelStats.users} total)
+//               </h5>
+//               <LevelMembersList level={level} levelStats={levelStats} />
+//             </div>
+//           )}
+//         </div>
+//       );
+//     })}
+
+//     {/* No Members Message */}
+//     {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].every(
+//       level => !teamStats?.[`level${level}`] || teamStats[`level${level}`].users === 0
+//     ) && (
+//       <div className="text-center py-10">
+//         <Users size={40} className="mx-auto mb-3 text-gray-600" />
+//         <p className="text-gray-500 font-bold">No team members yet</p>
+//         <p className="text-[10px] text-gray-600 mt-2">
+//           Share your referral code to build your team
+//         </p>
+//       </div>
+//     )}
+//   </div>
+// </div>
+//     </div>
+//   );
+// };
+
+// ReferralPage Component - UPDATED for Dynamic Legs
 const ReferralPage = ({ referralData, teamStats }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [showTeamCashback, setShowTeamCashback] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [expandedMember, setExpandedMember] = useState(null);
   const [expandedLevel, setExpandedLevel] = useState(null);
+  const [expandedLeg, setExpandedLeg] = useState(null);
   const [statsFilter, setStatsFilter] = useState('total');
+  
+  // ========== NEW STATE FOR DYNAMIC LEGS ==========
   const [legStatus, setLegStatus] = useState(null);
-  const [nextLeg, setNextLeg] = useState(null);
+  const [nextLevel, setNextLevel] = useState(null);
   const [memberDetails, setMemberDetails] = useState({});
   const [loadingMember, setLoadingMember] = useState(false);
+  const [legBreakdown, setLegBreakdown] = useState(null);
+  
   const [todayStats, setTodayStats] = useState({
     teamBusiness: 0,
     yourCommission: 0,
     teamMembers: 0
   });
 
-  // Load leg status
+  // ========== LOAD LEG STATUS ==========
   useEffect(() => {
     const fetchLegStatus = async () => {
       try {
         const token = localStorage.getItem("token");
-        const { getLegUnlockingStatus, getNextLegRequirement } = await import("../services/authService");
+        const { 
+          getLegUnlockingStatus, 
+          getNextLevelRequirement,
+          getLegBreakdown 
+        } = await import("../services/authService");
         
+        // Get leg status
         const status = await getLegUnlockingStatus(token);
         // console.log("Leg Status:", status);
         setLegStatus(status);
         
-        const next = await getNextLegRequirement(token);
-        // console.log("Next Leg:", next);
+        // Get next level requirement
+        const next = await getNextLevelRequirement(token);
+        // console.log("Next Level:", next);
         if (next?.success) {
-          setNextLeg(next.data);
+          setNextLevel(next.data);
         }
+        
+        // Get leg breakdown
+        const breakdown = await getLegBreakdown(token);
+        setLegBreakdown(breakdown);
+        
       } catch (error) {
         // console.error("Error fetching leg status:", error);
       }
@@ -3928,7 +4658,7 @@ const ReferralPage = ({ referralData, teamStats }) => {
     fetchLegStatus();
   }, []);
 
-  // Load today's stats
+  // ========== LOAD TODAY'S STATS ==========
   useEffect(() => {
     const fetchTodayStats = async () => {
       try {
@@ -3950,50 +4680,56 @@ const ReferralPage = ({ referralData, teamStats }) => {
     fetchTodayStats();
   }, []);
 
-// UserDashboard.jsx मध्ये fetchMemberDetails function दुरुस्त करा
-
-const fetchMemberDetails = async (memberId) => {
-  // Skip if already loaded
-  if (memberDetails[memberId]) {
-    // console.log("Member details already loaded for:", memberId);
-    return;
-  }
-  
-  setLoadingMember(true);
-  try {
-    const token = localStorage.getItem("token");
-    const { getMemberDetails } = await import("../services/authService");
-    
-    // console.log("Fetching details for member ID:", memberId);
-    
-    // Try to fetch from API
-    const response = await getMemberDetails(memberId, token);
-    // console.log("Member details response:", response);
-    
-    // If API returns data, use it
-    if (response && response.success && response.data) {
-      setMemberDetails(prev => ({
-        ...prev,
-        [memberId]: response.data
-      }));
-    } 
-    // If API returns data without success flag but has data
-    else if (response && response.data) {
-      setMemberDetails(prev => ({
-        ...prev,
-        [memberId]: response.data
-      }));
+  // ========== FETCH MEMBER DETAILS ==========
+  const fetchMemberDetails = async (memberId) => {
+    // Skip if already loaded
+    if (memberDetails[memberId]) {
+      // console.log("Member details already loaded for:", memberId);
+      return;
     }
-    // If API returns data directly
-    else if (response && response.userId) {
-      setMemberDetails(prev => ({
-        ...prev,
-        [memberId]: response
-      }));
-    }
-    // Fallback data
-    else {
-      // console.log("Using fallback data for member:", memberId);
+    
+    setLoadingMember(true);
+    try {
+      const token = localStorage.getItem("token");
+      const { getMemberDetails } = await import("../services/authService");
+      
+      // console.log("Fetching details for member ID:", memberId);
+      
+      const response = await getMemberDetails(memberId, token);
+      
+      if (response && response.success && response.data) {
+        setMemberDetails(prev => ({
+          ...prev,
+          [memberId]: response.data
+        }));
+      } else if (response && response.data) {
+        setMemberDetails(prev => ({
+          ...prev,
+          [memberId]: response.data
+        }));
+      } else if (response && response.userId) {
+        setMemberDetails(prev => ({
+          ...prev,
+          [memberId]: response
+        }));
+      } else {
+        // Fallback data
+        setMemberDetails(prev => ({
+          ...prev,
+          [memberId]: {
+            userId: memberId,
+            totalEarnings: 0,
+            teamCashback: 0,
+            directReferrals: 0,
+            totalTeam: 0,
+            levelEarnings: {},
+            downlineCount: {},
+            recentActivity: []
+          }
+        }));
+      }
+    } catch (error) {
+      // console.error("Error fetching member details:", error);
       setMemberDetails(prev => ({
         ...prev,
         [memberId]: {
@@ -4002,42 +4738,22 @@ const fetchMemberDetails = async (memberId) => {
           teamCashback: 0,
           directReferrals: 0,
           totalTeam: 0,
-          legsUnlocked: {
-            leg1: true, leg2: false, leg3: false,
-            leg4: false, leg5: false, leg6: false, leg7: false
-          },
+          levelEarnings: {},
+          downlineCount: {},
           recentActivity: []
         }
       }));
+    } finally {
+      setLoadingMember(false);
     }
-  } catch (error) {
-    // console.error("Error fetching member details:", error);
-    // Set fallback data on error
-    setMemberDetails(prev => ({
-      ...prev,
-      [memberId]: {
-        userId: memberId,
-        totalEarnings: 0,
-        teamCashback: 0,
-        directReferrals: 0,
-        totalTeam: 0,
-        legsUnlocked: {
-          leg1: true, leg2: false, leg3: false,
-          leg4: false, leg5: false, leg6: false, leg7: false
-        },
-        recentActivity: []
-      }
-    }));
-  } finally {
-    setLoadingMember(false);
-  }
-};
+  };
 
   const copyReferralCode = () => {
     navigator.clipboard.writeText(referralData.referralCode);
     toast.success('Referral code copied!', { duration: 2000 });
   };
 
+  // ========== COMMISSION RATES FOR ALL 21 LEVELS ==========
   const levels = [
     { level: 1, rate: "30%", color: "from-yellow-500 to-orange-500" },
     { level: 2, rate: "15%", color: "from-blue-500 to-cyan-500" },
@@ -4062,18 +4778,7 @@ const fetchMemberDetails = async (memberId) => {
     { level: 21, rate: "63%", color: "from-purple-500 to-pink-500" }
   ];
 
-  // Group levels by legs
-  const legs = [
-    { name: "Leg 1", levels: [1, 2, 3], required: 0, unlocked: true },
-    { name: "Leg 2", levels: [4, 5, 6], required: 1, unlocked: legStatus?.legsUnlocked?.leg2 || teamStats?.legsUnlocked?.leg2 },
-    { name: "Leg 3", levels: [7, 8, 9], required: 2, unlocked: legStatus?.legsUnlocked?.leg3 || teamStats?.legsUnlocked?.leg3 },
-    { name: "Leg 4", levels: [10, 11, 12], required: 3, unlocked: legStatus?.legsUnlocked?.leg4 || teamStats?.legsUnlocked?.leg4 },
-    { name: "Leg 5", levels: [13, 14, 15], required: 4, unlocked: legStatus?.legsUnlocked?.leg5 || teamStats?.legsUnlocked?.leg5 },
-    { name: "Leg 6", levels: [16, 17, 18], required: 5, unlocked: legStatus?.legsUnlocked?.leg6 || teamStats?.legsUnlocked?.leg6 },
-    { name: "Leg 7", levels: [19, 20, 21], required: 6, unlocked: legStatus?.legsUnlocked?.leg7 || teamStats?.legsUnlocked?.leg7 }
-  ];
-
-  // Calculate total team business
+  // ========== CALCULATE TOTAL TEAM BUSINESS ==========
   const totalTeamBusiness = teamStats 
     ? Object.values(teamStats).reduce((sum, level) => {
         if (level && typeof level === 'object' && level.teamCashback) {
@@ -4083,181 +4788,242 @@ const fetchMemberDetails = async (memberId) => {
       }, 0) 
     : 0;
 
-// ReferralPage मध्ये LevelMembersList कंपोनेंट सुधारित करा
+  // ========== LEVEL MEMBERS LIST COMPONENT ==========
+  const LevelMembersList = ({ level, levelStats }) => {
+    if (!levelStats) {
+      return (
+        <div className="text-center py-4 bg-black/20 rounded-lg">
+          <p className="text-xs text-gray-500">No data for Level {level}</p>
+        </div>
+      );
+    }
 
-// ✅ IMPROVED: Level Members List Component with member details
-const LevelMembersList = ({ level, levelStats }) => {
-  // Debug
-  // console.log(`Level ${level} stats:`, levelStats);
-  
-  if (!levelStats) {
+    if (!levelStats.usersList || levelStats.usersList.length === 0) {
+      return (
+        <div className="text-center py-4 bg-black/20 rounded-lg">
+          <p className="text-xs text-gray-500">No members in Level {level}</p>
+          <p className="text-[8px] text-gray-600 mt-1">
+            Total users: {levelStats.users || 0}
+          </p>
+        </div>
+      );
+    }
+
     return (
-      <div className="text-center py-4 bg-black/20 rounded-lg">
-        <p className="text-xs text-gray-500">No data for Level {level}</p>
-      </div>
-    );
-  }
-
-  if (!levelStats.usersList || levelStats.usersList.length === 0) {
-    return (
-      <div className="text-center py-4 bg-black/20 rounded-lg">
-        <p className="text-xs text-gray-500">No members in Level {level}</p>
-        <p className="text-[8px] text-gray-600 mt-1">
-          Total users: {levelStats.users || 0}
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3 mt-2">
-      {levelStats.usersList.map((member, idx) => {
-        const isExpanded = expandedMember === member.userId;
-        const details = memberDetails[member.userId];
-        
-        return (
-          <div key={idx} className="bg-black/30 rounded-xl overflow-hidden border border-white/5 hover:border-[#00F5A0]/20 transition-all">
-            
-            {/* Member Header - Always Visible */}
-            <div 
-              className="p-4 cursor-pointer hover:bg-white/5 transition-all"
-              onClick={() => {
-                if (isExpanded) {
-                  setExpandedMember(null);
-                } else {
-                  setExpandedMember(member.userId);
-                  fetchMemberDetails(member.userId);
-                }
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  {/* Avatar with user ID first letter */}
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-black text-lg shadow-lg">
-                    {member.userId?.charAt(0).toUpperCase() || '?'}
+      <div className="space-y-3 mt-2">
+        {levelStats.usersList.map((member, idx) => {
+          const isExpanded = expandedMember === member.userId;
+          const details = memberDetails[member.userId];
+          
+          return (
+            <div key={idx} className="bg-black/30 rounded-xl overflow-hidden border border-white/5 hover:border-[#00F5A0]/20 transition-all">
+              
+              {/* Member Header */}
+              <div 
+                className="p-4 cursor-pointer hover:bg-white/5 transition-all"
+                onClick={() => {
+                  if (isExpanded) {
+                    setExpandedMember(null);
+                  } else {
+                    setExpandedMember(member.userId);
+                    fetchMemberDetails(member.userId);
+                  }
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    {/* Avatar */}
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-black text-lg shadow-lg">
+                      {member.userId?.charAt(0).toUpperCase() || '?'}
+                    </div>
+                    
+                    {/* Member Basic Info */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-base font-bold text-white">{member.userId}</p>
+                        <span className="text-[8px] bg-[#00F5A0]/20 text-[#00F5A0] px-2 py-0.5 rounded-full">
+                          Level {level}
+                        </span>
+                      </div>
+                      
+                      {/* Quick Stats Preview */}
+                      <div className="flex items-center gap-3 text-xs">
+                        <span className="text-[#00F5A0]">
+                          ₹{Number(member.earnings || 0).toFixed(2)} earned
+                        </span>
+                        <span className="text-gray-500">•</span>
+                        <span className="text-orange-400">
+                          ₹{Number(member.teamCashback || 0).toFixed(2)} team
+                        </span>
+                      </div>
+                    </div>
                   </div>
                   
-                  {/* Member Basic Info */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-base font-bold text-white">{member.userId}</p>
-                      <span className="text-[8px] bg-[#00F5A0]/20 text-[#00F5A0] px-2 py-0.5 rounded-full">
-                        Level {level}
-                      </span>
-                    </div>
-                    
-                    {/* Quick Stats Preview */}
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="text-[#00F5A0]">
-                        ₹{Number(member.earnings || 0).toFixed(2)} earned
-                      </span>
-                      <span className="text-gray-500">•</span>
-                      <span className="text-orange-400">
-                        ₹{Number(member.teamCashback || 0).toFixed(2)} team
-                      </span>
-                    </div>
-                  </div>
+                  {/* Expand/Collapse Button */}
+                  <button className="text-[#00F5A0] p-2 hover:bg-white/5 rounded-lg transition-all">
+                    {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                  </button>
                 </div>
-                
-                {/* Expand/Collapse Button */}
-                <button className="text-[#00F5A0] p-2 hover:bg-white/5 rounded-lg transition-all">
-                  {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                </button>
+              </div>
+
+              {/* Expanded Member Details */}
+              {isExpanded && (
+                <div className="p-4 border-t border-white/10 bg-black/40">
+                  
+                  {/* Loading State */}
+                  {loadingMember && !details && (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader size={24} className="animate-spin text-[#00F5A0]" />
+                      <span className="ml-2 text-xs text-gray-400">Loading member details...</span>
+                    </div>
+                  )}
+
+                  {/* Member Details */}
+                  {details && (
+                    <div className="space-y-4">
+                      
+                      {/* Stats Grid */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="bg-black/40 p-3 rounded-lg text-center">
+                          <p className="text-[8px] text-gray-500 mb-1">Total Earnings</p>
+                          <p className="text-sm font-bold text-[#00F5A0]">
+                            ₹{Number(details.totalEarnings || 0).toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="bg-black/40 p-3 rounded-lg text-center">
+                          <p className="text-[8px] text-gray-500 mb-1">Team Cashback</p>
+                          <p className="text-sm font-bold text-orange-400">
+                            ₹{Number(details.teamCashback || 0).toFixed(2)}
+                          </p>
+                        </div>
+                        <div className="bg-black/40 p-3 rounded-lg text-center">
+                          <p className="text-[8px] text-gray-500 mb-1">Direct Referrals</p>
+                          <p className="text-sm font-bold text-blue-400">{details.directReferrals || 0}</p>
+                        </div>
+                        <div className="bg-black/40 p-3 rounded-lg text-center">
+                          <p className="text-[8px] text-gray-500 mb-1">Total Team</p>
+                          <p className="text-sm font-bold text-purple-400">{details.totalTeam || 0}</p>
+                        </div>
+                      </div>
+
+                      {/* Member's Own Downline Preview */}
+                      {details.downlineCount && (
+                        <div className="bg-black/40 p-3 rounded-lg">
+                          <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+                            <Users size={12} className="text-[#00F5A0]" />
+                            Member's Downline
+                          </p>
+                          <div className="grid grid-cols-7 gap-1">
+                            {[1,2,3,4,5,6,7].map(lvl => {
+                              const count = details.downlineCount[`level${lvl}`] || 0;
+                              return (
+                                <div key={lvl} className="text-center">
+                                  <span className="text-[7px] text-gray-500">L{lvl}</span>
+                                  <p className={`text-[9px] font-bold ${count > 0 ? 'text-[#00F5A0]' : 'text-gray-600'}`}>
+                                    {count}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Recent Activity */}
+                      {details.recentActivity && details.recentActivity.length > 0 && (
+                        <div className="bg-black/40 p-3 rounded-lg">
+                          <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+                            <Clock size={12} className="text-[#00F5A0]" />
+                            Recent Activity
+                          </p>
+                          <div className="space-y-2 max-h-32 overflow-y-auto">
+                            {details.recentActivity.map((activity, idx) => (
+                              <div key={idx} className="flex justify-between items-center text-[10px] bg-black/60 p-2 rounded">
+                                <span className="text-gray-400">{activity.date}</span>
+                                <span className="text-[#00F5A0]">₹{Number(activity.amount).toFixed(2)}</span>
+                                <span className="text-gray-500">{activity.type}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // ========== LEG CARD COMPONENT ==========
+  const LegCard = ({ leg }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    
+    return (
+      <div className="bg-black/30 border border-white/10 rounded-xl overflow-hidden">
+        {/* Leg Header */}
+        <div 
+          className="p-4 cursor-pointer hover:bg-white/5 transition-all"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#00F5A0] to-green-500 flex items-center justify-center text-black font-black">
+                {leg.legNumber}
+              </div>
+              <div>
+                <h4 className="text-sm font-bold">Leg {leg.legNumber}</h4>
+                <p className="text-[10px] text-gray-400">
+                  Root User: {leg.rootUser?.userId || leg.rootUser?.slice(-6) || 'N/A'}
+                </p>
               </div>
             </div>
-
-            {/* Expanded Member Details */}
-            {isExpanded && (
-              <div className="p-4 border-t border-white/10 bg-black/40">
-                
-                {/* Loading State */}
-                {loadingMember && !details && (
-                  <div className="flex items-center justify-center py-6">
-                    <Loader size={24} className="animate-spin text-[#00F5A0]" />
-                    <span className="ml-2 text-xs text-gray-400">Loading member details...</span>
-                  </div>
-                )}
-
-                {/* Member Details */}
-                {details && (
-                  <div className="space-y-4">
-                    
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="bg-black/40 p-3 rounded-lg text-center">
-                        <p className="text-[8px] text-gray-500 mb-1">Total Earnings</p>
-                        <p className="text-sm font-bold text-[#00F5A0]">
-                          ₹{Number(details.totalEarnings || 0).toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="bg-black/40 p-3 rounded-lg text-center">
-                        <p className="text-[8px] text-gray-500 mb-1">Team Cashback</p>
-                        <p className="text-sm font-bold text-orange-400">
-                          ₹{Number(details.teamCashback || 0).toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="bg-black/40 p-3 rounded-lg text-center">
-                        <p className="text-[8px] text-gray-500 mb-1">Direct Referrals</p>
-                        <p className="text-sm font-bold text-blue-400">{details.directReferrals || 0}</p>
-                      </div>
-                      <div className="bg-black/40 p-3 rounded-lg text-center">
-                        <p className="text-[8px] text-gray-500 mb-1">Total Team</p>
-                        <p className="text-sm font-bold text-purple-400">{details.totalTeam || 0}</p>
-                      </div>
-                    </div>
-
-                    {/* Member's Own Downline Preview */}
-                    {details.downlineCount && (
-                      <div className="bg-black/40 p-3 rounded-lg">
-                        <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
-                          <Users size={12} className="text-[#00F5A0]" />
-                          Member's Downline
-                        </p>
-                        <div className="grid grid-cols-7 gap-1">
-                          {[1,2,3,4,5,6,7].map(lvl => {
-                            const count = details.downlineCount[`level${lvl}`] || 0;
-                            return (
-                              <div key={lvl} className="text-center">
-                                <span className="text-[7px] text-gray-500">L{lvl}</span>
-                                <p className={`text-[9px] font-bold ${count > 0 ? 'text-[#00F5A0]' : 'text-gray-600'}`}>
-                                  {count}
-                                </p>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Recent Activity */}
-                    {details.recentActivity && details.recentActivity.length > 0 && (
-                      <div className="bg-black/40 p-3 rounded-lg">
-                        <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
-                          <Clock size={12} className="text-[#00F5A0]" />
-                          Recent Activity
-                        </p>
-                        <div className="space-y-2 max-h-32 overflow-y-auto">
-                          {details.recentActivity.map((activity, idx) => (
-                            <div key={idx} className="flex justify-between items-center text-[10px] bg-black/60 p-2 rounded">
-                              <span className="text-gray-400">{activity.date}</span>
-                              <span className="text-[#00F5A0]">₹{Number(activity.amount).toFixed(2)}</span>
-                              <span className="text-gray-500">{activity.type}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Total Users</p>
+                <p className="text-sm font-bold text-[#00F5A0]">{leg.totalUsers}</p>
               </div>
-            )}
+              {isExpanded ? <ChevronUp size={18} className="text-[#00F5A0]" /> : <ChevronDown size={18} className="text-[#00F5A0]" />}
+            </div>
           </div>
-        );
-      })}
-    </div>
-  );
-};
+        </div>
+        
+        {/* Expanded Leg Details */}
+        {isExpanded && (
+          <div className="p-4 border-t border-white/10 bg-black/20">
+            <h5 className="text-xs font-bold text-[#00F5A0] mb-3">Level-wise Users</h5>
+            <div className="grid grid-cols-7 gap-1">
+              {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
+                const levelData = leg.levels?.[`level${level}`];
+                const userCount = levelData?.users || 0;
+                const isUnlocked = levelData?.isUnlocked || level <= 3;
+                
+                return (
+                  <div 
+                    key={level}
+                    className={`text-center p-1 rounded ${
+                      isUnlocked ? 'bg-[#00F5A0]/10' : 'bg-black/40'
+                    }`}
+                    title={isUnlocked ? `Level ${level} unlocked` : `Level ${level} locked`}
+                  >
+                    <span className="text-[6px] text-gray-500 block">L{level}</span>
+                    <span className={`text-[8px] font-bold ${userCount > 0 ? 'text-[#00F5A0]' : 'text-gray-600'}`}>
+                      {userCount}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
+  // ========== RENDER ==========
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in">
       
@@ -4285,111 +5051,146 @@ const LevelMembersList = ({ level, levelStats }) => {
         </p>
       </div>
 
-      {/* Leg Unlocking Status Card */}
+      {/* ========== DYNAMIC LEGS STATUS CARD ========== */}
       <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
         <h3 className="text-lg font-black italic mb-4 flex items-center gap-2">
           <Zap size={20} className="text-[#00F5A0]" />
-          Leg Unlocking Status (Based on Direct Referrals)
+          Your Referral Network (Dynamic Legs)
         </h3>
         
-        {/* Direct Referrals Count */}
-        <div className="mb-6 p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-300">Your Direct Referrals:</span>
-            <span className="text-2xl font-black text-[#00F5A0]">
-              {nextLeg?.directReferrals || legStatus?.directReferrals || 0}
-            </span>
-          </div>
-          
-          {/* Next Leg Requirement */}
-          {nextLeg?.nextLegToUnlock && (
-            <div className="mt-3 pt-3 border-t border-purple-500/20">
-              <p className="text-xs text-yellow-400 font-bold flex items-center gap-2">
-  <AlertCircle size={14} />
-  {nextLeg?.nextLegToUnlock?.isUnlockable 
-    ? `🎉 You can unlock ${nextLeg.nextLegToUnlock.leg} now!`
-    : `Need ${nextLeg?.nextLegToUnlock?.remainingToUnlock || 0} more direct referral${
-        nextLeg?.nextLegToUnlock?.remainingToUnlock > 1 ? 's' : ''
-      } to unlock ${nextLeg?.nextLegToUnlock?.leg || ''} (Levels ${
-        nextLeg?.nextLegToUnlock?.levelsInThisLeg?.join('-') || 'N/A'
-      })`}
-</p>
-            </div>
-          )}
-        </div>
-
-
-{/* Leg Grid */}
-<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-  {legs.map((leg, index) => {
-    const legDetail = legStatus?.legDetails?.[`leg${index + 1}`];
-    
-    return (
-      <div 
-        key={index}
-        className={`p-4 rounded-xl border transition-all ${
-          leg.unlocked 
-            ? 'bg-gradient-to-br from-[#00F5A0]/20 to-green-500/20 border-[#00F5A0] shadow-[0_0_15px_rgba(0,245,160,0.3)]' 
-            : 'bg-gray-800/50 border-gray-700 opacity-70'
-        }`}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-lg font-black">{leg.name}</span>
-          {leg.unlocked ? (
-            <span className="text-[8px] bg-green-500 text-black px-2 py-1 rounded-full font-bold">OPEN</span>
-          ) : (
-            <span className="text-[8px] bg-red-500/20 text-red-500 px-2 py-1 rounded-full font-bold">LOCKED</span>
-          )}
-        </div>
-        
-        <div className="space-y-2 mb-3">
-          {leg.levels.map(level => {
-            const levelStats = teamStats?.[`level${level}`];
-            return (
-              <div 
-                key={level} 
-                className="flex justify-between items-center text-xs p-1 hover:bg-white/5 rounded cursor-pointer"
-                onClick={() => {
-                  if (levelStats?.users > 0) {
-                    setExpandedLevel(level);
-                    setActiveTab("Referral");
-                  }
-                }}
-              >
-                <span className="text-gray-400 flex items-center gap-1">
-                  <span>Level {level}</span>
-                  {levelStats?.users > 0 && (
-                    <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1 rounded-full">
-                      {levelStats.users}
-                    </span>
-                  )}
-                </span>
-                <span className={`font-bold ${leg.unlocked ? 'text-[#00F5A0]' : 'text-gray-500'}`}>
-                  {levelStats?.users || 0} members
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Requirement */}
-        {!leg.unlocked && index > 0 && (
-          <div className="mt-2 pt-2 border-t border-yellow-500/20">
-            <p className="text-[8px] text-yellow-500">
-              Need: {leg.required} direct referral{leg.required > 1 ? 's' : ''}
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="bg-black/40 p-3 rounded-lg text-center">
+            <p className="text-[8px] text-gray-500">Direct Referrals</p>
+            <p className="text-xl font-black text-[#00F5A0]">
+              {legStatus?.directReferrals || referralData.directReferrals || 0}
             </p>
-            <p className="text-[8px] text-gray-500 mt-1">
-              Current: {nextLeg?.directReferrals || 0}
+            <p className="text-[6px] text-gray-600">= {legStatus?.directReferrals || 0} Legs</p>
+          </div>
+          <div className="bg-black/40 p-3 rounded-lg text-center">
+            <p className="text-[8px] text-gray-500">Total Team</p>
+            <p className="text-xl font-black text-blue-400">
+              {statsFilter === 'today' ? todayStats.teamMembers : referralData.totalReferrals}
+            </p>
+          </div>
+          <div className="bg-black/40 p-3 rounded-lg text-center">
+            <p className="text-[8px] text-gray-500">Team Business</p>
+            <p className="text-xl font-black text-orange-400">
+              ₹{statsFilter === 'today' ? todayStats.teamBusiness.toFixed(2) : totalTeamBusiness.toFixed(2)}
+            </p>
+          </div>
+          <div className="bg-black/40 p-3 rounded-lg text-center">
+            <p className="text-[8px] text-gray-500">Your Commission</p>
+            <p className="text-xl font-black text-[#00F5A0]">
+              ₹{statsFilter === 'today' ? todayStats.yourCommission.toFixed(2) : Number(referralData.referralEarnings?.total || 0).toFixed(2)}
+            </p>
+          </div>
+        </div>
+
+        {/* Next Level to Unlock */}
+        {nextLevel?.nextLevelToUnlock && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertCircle size={16} className="text-yellow-400" />
+              <span className="text-xs font-bold text-yellow-400">Next Level to Unlock</span>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="text-sm font-bold text-white">Level {nextLevel.nextLevelToUnlock.level}</p>
+                <p className="text-[10px] text-gray-400">
+                  Required: {nextLevel.nextLevelToUnlock.requiredLevels?.join(', ')}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Progress</p>
+                <p className="text-sm font-bold text-[#00F5A0]">
+                  {nextLevel.nextLevelToUnlock.completedCount}/{nextLevel.nextLevelToUnlock.requiredLevels?.length}
+                </p>
+              </div>
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="mt-3 w-full h-2 bg-white/10 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-[#00F5A0] to-green-500"
+                style={{ 
+                  width: `${(nextLevel.nextLevelToUnlock.completedCount / nextLevel.nextLevelToUnlock.requiredLevels?.length) * 100}%` 
+                }}
+              />
+            </div>
+            
+            <p className="text-[10px] text-gray-500 mt-2">
+              {nextLevel.nextLevelToUnlock.isUnlockable 
+                ? '✅ You can unlock this level now!' 
+                : `⏳ Need ${nextLevel.nextLevelToUnlock.remainingCount} more level${nextLevel.nextLevelToUnlock.remainingCount > 1 ? 's' : ''} to unlock`}
             </p>
           </div>
         )}
       </div>
-    );
-  })}
-</div>
-      </div>
 
-      {/* Stats Grid */}
+      {/* ========== LEGS LIST ========== */}
+      {legBreakdown?.legs && legBreakdown.legs.length > 0 && (
+        <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
+          <h3 className="text-lg font-black italic mb-4 flex items-center gap-2">
+            <Users size={20} className="text-[#00F5A0]" />
+            Your Legs ({legBreakdown.legs.length} Total)
+          </h3>
+          
+          <div className="space-y-3">
+            {legBreakdown.legs.map((leg, index) => (
+              <LegCard key={index} leg={leg} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ========== LEVEL ACCESSIBILITY MAP ========== */}
+      {legStatus?.levelAccessibility && (
+        <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
+          <h3 className="text-lg font-black italic mb-4 flex items-center gap-2">
+            <TrendingUp size={20} className="text-[#00F5A0]" />
+            Level Accessibility Map
+          </h3>
+          
+          <div className="grid grid-cols-7 gap-1 mb-4">
+            {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
+              const accessible = legStatus.levelAccessibility[`level${level}`]?.isAccessible || level <= 3;
+              const userCount = legStatus.levelAccessibility[`level${level}`]?.usersCount || 0;
+              
+              return (
+                <div 
+                  key={level}
+                  className={`text-center p-2 rounded-lg ${
+                    accessible 
+                      ? 'bg-[#00F5A0]/20 border border-[#00F5A0]/30' 
+                      : 'bg-gray-800/50 border border-gray-700'
+                  }`}
+                >
+                  <span className="text-[8px] text-gray-400 block">L{level}</span>
+                  <span className={`text-xs font-bold ${accessible ? 'text-[#00F5A0]' : 'text-gray-500'}`}>
+                    {accessible ? '✓' : '🔒'}
+                  </span>
+                  {userCount > 0 && (
+                    <span className="text-[8px] text-blue-400 block mt-1">{userCount}</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          
+          <div className="flex justify-between text-[8px] text-gray-500 px-2">
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 bg-[#00F5A0]/20 rounded-full border border-[#00F5A0]/30"></span> Accessible
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 bg-gray-800 rounded-full border border-gray-700"></span> Locked
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ========== STATS GRID ========== */}
       <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-black italic">Team Statistics</h3>
@@ -4478,124 +5279,140 @@ const LevelMembersList = ({ level, levelStats }) => {
         </div>
       </div>
 
+      {/* ========== LEVEL-WISE MEMBERS LIST ========== */}
+      <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-black italic flex items-center gap-2">
+            <Users size={20} className="text-[#00F5A0]" />
+            Level-wise Team Members
+          </h3>
+          <span className="text-[10px] text-gray-500">Click on level to expand</span>
+        </div>
 
-{/* Level-wise Members List */}
-<div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
-  <div className="flex items-center justify-between mb-6">
-    <h3 className="text-lg font-black italic flex items-center gap-2">
-      <Users size={20} className="text-[#00F5A0]" />
-      Level-wise Team Members
-    </h3>
-    <span className="text-[10px] text-gray-500">Click on level to expand and see members</span>
-  </div>
+        {/* Level Quick Filters */}
+        <div className="grid grid-cols-7 gap-1 mb-6">
+          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
+            const hasMembers = teamStats?.[`level${level}`]?.users > 0;
+            const isAccessible = legStatus?.levelAccessibility?.[`level${level}`]?.isAccessible || level <= 3;
+            
+            return (
+              <button
+                key={level}
+                onClick={() => hasMembers && setExpandedLevel(expandedLevel === level ? null : level)}
+                className={`text-[8px] py-2 rounded-lg font-bold transition-all ${
+                  expandedLevel === level 
+                    ? 'bg-[#00F5A0] text-black' 
+                    : hasMembers
+                      ? isAccessible
+                        ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 cursor-pointer'
+                        : 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 cursor-pointer'
+                      : 'bg-white/5 text-gray-500 cursor-not-allowed opacity-50'
+                }`}
+                disabled={!hasMembers}
+              >
+                L{level}
+                {hasMembers && (
+                  <span className="ml-1 text-[6px] bg-blue-500 text-white px-1 rounded-full">
+                    {teamStats[`level${level}`].users}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
 
-  {/* Level Quick Filters */}
-  <div className="grid grid-cols-7 gap-1 mb-6">
-    {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
-      const hasMembers = teamStats?.[`level${level}`]?.users > 0;
-      return (
-        <button
-          key={level}
-          onClick={() => hasMembers && setExpandedLevel(expandedLevel === level ? null : level)}
-          className={`text-[8px] py-2 rounded-lg font-bold transition-all ${
-            expandedLevel === level 
-              ? 'bg-[#00F5A0] text-black' 
-              : hasMembers
-                ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 cursor-pointer'
-                : 'bg-white/5 text-gray-500 cursor-not-allowed opacity-50'
-          }`}
-          disabled={!hasMembers}
-        >
-          L{level}
-          {hasMembers && (
-            <span className="ml-1 text-[6px] bg-blue-500 text-white px-1 rounded-full">
-              {teamStats[`level${level}`].users}
-            </span>
-          )}
-        </button>
-      );
-    })}
-  </div>
-
-  {/* Level-wise Details */}
-  <div className="space-y-4">
-    {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
-      const levelStats = teamStats?.[`level${level}`];
-      const isExpanded = expandedLevel === level;
-      
-      // Only show levels with members
-      if (!levelStats || levelStats.users === 0) {
-        return null;
-      }
-      
-      return (
-        <div key={level} className="border border-white/10 rounded-xl overflow-hidden">
-          {/* Level Header - Shows summary */}
-          <div 
-            className="p-4 bg-gradient-to-r from-white/5 to-transparent cursor-pointer hover:bg-white/10 transition-all"
-            onClick={() => setExpandedLevel(isExpanded ? null : level)}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                {/* Level Number with gradient */}
-                <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${
-                  levels.find(l => l.level === level)?.color || 'from-gray-500 to-gray-600'
-                } flex items-center justify-center text-white font-black`}>
-                  {level}
+        {/* Level-wise Details */}
+        <div className="space-y-4">
+          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
+            const levelStats = teamStats?.[`level${level}`];
+            const isExpanded = expandedLevel === level;
+            const isAccessible = legStatus?.levelAccessibility?.[`level${level}`]?.isAccessible || level <= 3;
+            
+            // Only show levels with members
+            if (!levelStats || levelStats.users === 0) {
+              return null;
+            }
+            
+            return (
+              <div key={level} className="border border-white/10 rounded-xl overflow-hidden">
+                {/* Level Header */}
+                <div 
+                  className={`p-4 cursor-pointer hover:bg-white/10 transition-all ${
+                    isAccessible ? 'bg-gradient-to-r from-[#00F5A0]/5 to-transparent' : 'bg-gray-800/20'
+                  }`}
+                  onClick={() => setExpandedLevel(isExpanded ? null : level)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      {/* Level Number with gradient */}
+                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${
+                        levels.find(l => l.level === level)?.color || 'from-gray-500 to-gray-600'
+                      } flex items-center justify-center text-white font-black`}>
+                        {level}
+                      </div>
+                      
+                      {/* Level Info */}
+                      <div>
+                        <h4 className="text-sm font-bold">Level {level}</h4>
+                        <p className="text-[10px] text-gray-400">
+                          Rate: {levels.find(l => l.level === level)?.rate} | 
+                          Members: {levelStats.users} | 
+                          Team Cashback: ₹{Number(levelStats.teamCashback || 0).toFixed(2)}
+                        </p>
+                        {!isAccessible && (
+                          <p className="text-[8px] text-yellow-500 mt-1">
+                            🔒 Not accessible yet - Complete previous levels first
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Your Commission and Expand Button */}
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-xs text-gray-400">Your Commission</p>
+                        <p className="text-sm font-bold text-orange-400">
+                          ₹{Number(levelStats.yourCommission || 0).toFixed(2)}
+                        </p>
+                      </div>
+                      {isExpanded ? <ChevronUp size={20} className="text-[#00F5A0]" /> : <ChevronDown size={20} className="text-[#00F5A0]" />}
+                    </div>
+                  </div>
                 </div>
-                
-                {/* Level Info */}
-                <div>
-                  <h4 className="text-sm font-bold">Level {level}</h4>
-                  <p className="text-[10px] text-gray-400">
-                    Rate: {levels.find(l => l.level === level)?.rate} | 
-                    Members: {levelStats.users} | 
-                    Team Cashback: ₹{Number(levelStats.teamCashback || 0).toFixed(2)}
-                  </p>
-                </div>
+
+                {/* Expanded Members List */}
+                {isExpanded && (
+                  <div className="p-4 border-t border-white/10 bg-black/20">
+                    <h5 className="text-xs font-bold text-[#00F5A0] mb-3 flex items-center gap-2">
+                      <Users size={14} />
+                      Members in Level {level} ({levelStats.users} total)
+                      {!isAccessible && (
+                        <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded-full">
+                          Locked
+                        </span>
+                      )}
+                    </h5>
+                    <LevelMembersList level={level} levelStats={levelStats} />
+                  </div>
+                )}
               </div>
-              
-              {/* Your Commission and Expand Button */}
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-xs text-gray-400">Your Commission</p>
-                  <p className="text-sm font-bold text-orange-400">
-                    ₹{Number(levelStats.yourCommission || 0).toFixed(2)}
-                  </p>
-                </div>
-                {isExpanded ? <ChevronUp size={20} className="text-[#00F5A0]" /> : <ChevronDown size={20} className="text-[#00F5A0]" />}
-              </div>
-            </div>
-          </div>
+            );
+          })}
 
-          {/* Expanded Members List - Shows all members in this level */}
-          {isExpanded && (
-            <div className="p-4 border-t border-white/10 bg-black/20">
-              <h5 className="text-xs font-bold text-[#00F5A0] mb-3 flex items-center gap-2">
-                <Users size={14} />
-                Members in Level {level} ({levelStats.users} total)
-              </h5>
-              <LevelMembersList level={level} levelStats={levelStats} />
+          {/* No Members Message */}
+          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].every(
+            level => !teamStats?.[`level${level}`] || teamStats[`level${level}`].users === 0
+          ) && (
+            <div className="text-center py-10">
+              <Users size={40} className="mx-auto mb-3 text-gray-600" />
+              <p className="text-gray-500 font-bold">No team members yet</p>
+              <p className="text-[10px] text-gray-600 mt-2">
+                Share your referral code to build your team
+              </p>
             </div>
           )}
         </div>
-      );
-    })}
-
-    {/* No Members Message */}
-    {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].every(
-      level => !teamStats?.[`level${level}`] || teamStats[`level${level}`].users === 0
-    ) && (
-      <div className="text-center py-10">
-        <Users size={40} className="mx-auto mb-3 text-gray-600" />
-        <p className="text-gray-500 font-bold">No team members yet</p>
-        <p className="text-[10px] text-gray-600 mt-2">
-          Share your referral code to build your team
-        </p>
       </div>
-    )}
-  </div>
-</div>
     </div>
   );
 };
