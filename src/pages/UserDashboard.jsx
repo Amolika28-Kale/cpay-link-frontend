@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   LayoutGrid, ArrowRightLeft, Wallet, ScanLine, CheckCircle,
@@ -4600,16 +4600,18 @@ const HistoryPage = ({ transactions }) => (
 //   );
 // };
 
-// ReferralPage Component - FIXED with proper useEffect dependencies
+
+
 const ReferralPage = ({ referralData, teamStats }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [showTeamCashback, setShowTeamCashback] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [expandedMember, setExpandedMember] = useState(null);
   const [expandedLevel, setExpandedLevel] = useState(null);
-  const [expandedLeg, setExpandedLeg] = useState(null);
+  const [expandedLeg, setExpandedLeg] = useState(null); // Track which leg is expanded
   const [expandedLegDetails, setExpandedLegDetails] = useState({});
   const [statsFilter, setStatsFilter] = useState('total');
+  const [showAllLegs, setShowAllLegs] = useState(false); // For pagination
   
   // ========== STATE FOR DYNAMIC LEGS ==========
   const [legStatus, setLegStatus] = useState(null);
@@ -4622,13 +4624,22 @@ const ReferralPage = ({ referralData, teamStats }) => {
   const [missedCommissions, setMissedCommissions] = useState(null);
   const [fomoNotifications, setFomoNotifications] = useState([]);
   const [showFomoModal, setShowFomoModal] = useState(false);
-  const [dataLoaded, setDataLoaded] = useState(false); // Prevent multiple loads
+  const [dataLoaded, setDataLoaded] = useState(false);
+  
+  // ========== OPTIMIZATION STATES FOR 50+ LEGS ==========
+  const [levelUsersCache, setLevelUsersCache] = useState({}); // Cache for leg-level users
+  const [loadingLevels, setLoadingLevels] = useState({}); // Track loading states
+  const [pendingRequests, setPendingRequests] = useState({}); // Prevent duplicate requests
+  const legsPerPage = 20; // Show 20 legs per page
   
   const [todayStats, setTodayStats] = useState({
     teamBusiness: 0,
     yourCommission: 0,
     teamMembers: 0
   });
+
+  // API Base URL
+  const API_BASE = 'https://cpay-link-backend.onrender.com/api';
 
   // ========== HELPER FUNCTIONS ==========
   const getHorizontalRequirement = (level) => {
@@ -4665,14 +4676,79 @@ const ReferralPage = ({ referralData, teamStats }) => {
     return requirements[level] || [];
   };
 
+  // ========== OPTIMIZED FETCH FOR LEG-LEVEL USERS ==========
+  const fetchLegLevelUsers = useCallback(async (legNumber, level) => {
+    const cacheKey = `${legNumber}-${level}`;
+    
+    // Check if already loaded or loading
+    if (levelUsersCache[cacheKey] || pendingRequests[cacheKey]) {
+      return;
+    }
+    
+    // Mark as pending
+    setPendingRequests(prev => ({ ...prev, [cacheKey]: true }));
+    setLoadingLevels(prev => ({ ...prev, [cacheKey]: true }));
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${API_BASE}/auth/leg-users/${legNumber}/${level}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setLevelUsersCache(prev => ({
+          ...prev,
+          [cacheKey]: data.data.users || []
+        }));
+      } else {
+        setLevelUsersCache(prev => ({
+          ...prev,
+          [cacheKey]: []
+        }));
+      }
+    } catch (error) {
+      console.error(`Error fetching leg ${legNumber} level ${level} users:`, error);
+      setLevelUsersCache(prev => ({
+        ...prev,
+        [cacheKey]: []
+      }));
+    } finally {
+      setLoadingLevels(prev => ({ ...prev, [cacheKey]: false }));
+      setPendingRequests(prev => ({ ...prev, [cacheKey]: false }));
+    }
+  }, [API_BASE, levelUsersCache, pendingRequests]);
+
+  // ========== PRELOAD POPULAR LEVELS ==========
+  const preloadPopularLevels = useCallback(async (legs) => {
+    if (!legs || legs.length === 0) return;
+    
+    const preloadLimit = Math.min(legs.length, 5);
+    
+    for (let i = 0; i < preloadLimit; i++) {
+      const leg = legs[i];
+      for (let level = 1; level <= 3; level++) {
+        const cacheKey = `${leg.legNumber}-${level}`;
+        if (!levelUsersCache[cacheKey] && !pendingRequests[cacheKey]) {
+          fetchLegLevelUsers(leg.legNumber, level).catch(console.error);
+        }
+      }
+    }
+  }, [levelUsersCache, pendingRequests, fetchLegLevelUsers]);
+
   // ========== LOAD LEG STATUS - ONCE ==========
   useEffect(() => {
-    // Prevent multiple loads
-    if (dataLoaded) return;
-    
     let isMounted = true;
+    let isFetching = false;
     
     const fetchLegStatus = async () => {
+      if (isFetching || dataLoaded) return;
+      isFetching = true;
+      
       try {
         const token = localStorage.getItem("token");
         const { 
@@ -4683,25 +4759,25 @@ const ReferralPage = ({ referralData, teamStats }) => {
           getFomoNotifications
         } = await import("../services/authService");
         
-        // Get leg status
         const status = await getLegUnlockingStatus(token);
         if (isMounted) setLegStatus(status);
         
-        // Get next level requirement
         const next = await getNextLevelRequirement(token);
         if (isMounted && next?.success) {
           setNextLevel(next.data);
         }
         
-        // Get leg breakdown
         const breakdown = await getLegBreakdown(token);
-        if (isMounted) setLegBreakdown(breakdown);
+        if (isMounted) {
+          setLegBreakdown(breakdown);
+          if (breakdown?.legs) {
+            preloadPopularLevels(breakdown.legs).catch(console.error);
+          }
+        }
         
-        // Get missed commissions
         const missed = await getMissedCommissions(token);
         if (isMounted) setMissedCommissions(missed);
         
-        // Get FOMO notifications
         const fomo = await getFomoNotifications(token);
         if (isMounted) setFomoNotifications(fomo.notifications || []);
         
@@ -4709,6 +4785,8 @@ const ReferralPage = ({ referralData, teamStats }) => {
         
       } catch (error) {
         console.error("Error fetching leg status:", error);
+      } finally {
+        isFetching = false;
       }
     };
     
@@ -4717,9 +4795,9 @@ const ReferralPage = ({ referralData, teamStats }) => {
     return () => {
       isMounted = false;
     };
-  }, []); // Empty dependency array - runs only once
+  }, [dataLoaded, preloadPopularLevels]);
 
-  // ========== LOAD LEVEL-WISE MEMBERS - WHEN teamStats CHANGES ==========
+  // ========== LOAD LEVEL-WISE MEMBERS ==========
   useEffect(() => {
     let isMounted = true;
     
@@ -4756,9 +4834,9 @@ const ReferralPage = ({ referralData, teamStats }) => {
     return () => {
       isMounted = false;
     };
-  }, [teamStats, dataLoaded]); // Runs when teamStats changes AND dataLoaded is true
+  }, [teamStats, dataLoaded]);
 
-  // ========== LOAD TODAY'S STATS - ONCE ==========
+  // ========== LOAD TODAY'S STATS ==========
   useEffect(() => {
     let isMounted = true;
     
@@ -4785,7 +4863,7 @@ const ReferralPage = ({ referralData, teamStats }) => {
     return () => {
       isMounted = false;
     };
-  }, []); // Empty dependency array - runs only once
+  }, []);
 
   // ========== FETCH MEMBER DETAILS ==========
   const fetchMemberDetails = async (memberId) => {
@@ -4802,16 +4880,6 @@ const ReferralPage = ({ referralData, teamStats }) => {
         setMemberDetails(prev => ({
           ...prev,
           [memberId]: response.data
-        }));
-      } else if (response && response.data) {
-        setMemberDetails(prev => ({
-          ...prev,
-          [memberId]: response.data
-        }));
-      } else if (response && response.userId) {
-        setMemberDetails(prev => ({
-          ...prev,
-          [memberId]: response
         }));
       } else {
         setMemberDetails(prev => ({
@@ -4856,7 +4924,6 @@ const ReferralPage = ({ referralData, teamStats }) => {
       
       await markMissedCommissionsAsRead(token, commissionIds);
       
-      // Refresh missed commissions
       const { getMissedCommissions, getFomoNotifications } = await import("../services/authService");
       const missed = await getMissedCommissions(token);
       setMissedCommissions(missed);
@@ -4874,8 +4941,8 @@ const ReferralPage = ({ referralData, teamStats }) => {
     toast.success('Referral code copied!', { duration: 2000 });
   };
 
-  // ========== COMMISSION RATES FOR ALL 21 LEVELS ==========
-  const levels = [
+  // ========== COMMISSION RATES ==========
+  const levels = useMemo(() => [
     { level: 1, rate: "30%", color: "from-yellow-500 to-orange-500" },
     { level: 2, rate: "15%", color: "from-blue-500 to-cyan-500" },
     { level: 3, rate: "10%", color: "from-green-500 to-emerald-500" },
@@ -4897,20 +4964,49 @@ const ReferralPage = ({ referralData, teamStats }) => {
     { level: 19, rate: "30%", color: "from-emerald-500 to-teal-500" },
     { level: 20, rate: "30%", color: "from-blue-500 to-indigo-500" },
     { level: 21, rate: "63%", color: "from-purple-500 to-pink-500" }
-  ];
+  ], []);
+
+  // ========== CALCULATE TOTAL TEAM MEMBERS ==========
+  const totalTeamMembersAllLegs = useMemo(() => {
+    if (!legBreakdown?.legs) return 0;
+    return legBreakdown.legs.reduce((total, leg) => {
+      return total + (leg.stats?.totalUsers || leg.totalUsers || 0);
+    }, 0);
+  }, [legBreakdown]);
+
+  // ========== LEG WISE MEMBERS COUNT ==========
+  const legWiseMembers = useMemo(() => {
+    if (!legBreakdown?.legs) return [];
+    return legBreakdown.legs.map(leg => ({
+      legNumber: leg.legNumber,
+      members: leg.stats?.totalUsers || leg.totalUsers || 0,
+      rootUser: leg.rootUser?.userId || leg.rootUser?.toString().slice(-6) || 'N/A',
+      isActive: leg.isActive !== false
+    }));
+  }, [legBreakdown]);
 
   // ========== CALCULATE TOTAL TEAM BUSINESS ==========
-  const totalTeamBusiness = teamStats 
-    ? Object.values(teamStats).reduce((sum, level) => {
-        if (level && typeof level === 'object' && level.teamCashback) {
-          return sum + (level.teamCashback || 0);
-        }
-        return sum;
-      }, 0) 
-    : 0;
+  const totalTeamBusiness = useMemo(() => {
+    return teamStats 
+      ? Object.values(teamStats).reduce((sum, level) => {
+          if (level && typeof level === 'object' && level.teamCashback) {
+            return sum + (level.teamCashback || 0);
+          }
+          return sum;
+        }, 0) 
+      : 0;
+  }, [teamStats]);
+
+  // ========== PAGINATED LEGS ==========
+  const paginatedLegs = useMemo(() => {
+    if (!legBreakdown?.legs) return [];
+    const start = 0;
+    const end = showAllLegs ? legBreakdown.legs.length : legsPerPage;
+    return legBreakdown.legs.slice(start, end);
+  }, [legBreakdown, showAllLegs, legsPerPage]);
 
   // ========== LEVEL MEMBERS LIST COMPONENT ==========
-  const LevelMembersList = ({ level, levelStats }) => {
+  const LevelMembersList = React.memo(({ level, levelStats }) => {
     if (!levelStats) {
       return (
         <div className="text-center py-4 bg-black/20 rounded-lg">
@@ -4953,12 +5049,10 @@ const ReferralPage = ({ referralData, teamStats }) => {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    {/* Avatar */}
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-black text-lg shadow-lg">
                       {member.userId?.charAt(0).toUpperCase() || '?'}
                     </div>
                     
-                    {/* Member Basic Info */}
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <p className="text-base font-bold text-white">{member.userId}</p>
@@ -4967,7 +5061,6 @@ const ReferralPage = ({ referralData, teamStats }) => {
                         </span>
                       </div>
                       
-                      {/* Quick Stats Preview */}
                       <div className="flex items-center gap-3 text-xs">
                         <span className="text-[#00F5A0]">
                           ₹{Number(member.earnings || 0).toFixed(2)} earned
@@ -4980,7 +5073,6 @@ const ReferralPage = ({ referralData, teamStats }) => {
                     </div>
                   </div>
                   
-                  {/* Expand/Collapse Button */}
                   <button className="text-[#00F5A0] p-2 hover:bg-white/5 rounded-lg transition-all">
                     {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                   </button>
@@ -4990,8 +5082,6 @@ const ReferralPage = ({ referralData, teamStats }) => {
               {/* Expanded Member Details */}
               {isExpanded && (
                 <div className="p-4 border-t border-white/10 bg-black/40">
-                  
-                  {/* Loading State */}
                   {loadingMember && !details && (
                     <div className="flex items-center justify-center py-6">
                       <Loader size={24} className="animate-spin text-[#00F5A0]" />
@@ -4999,11 +5089,8 @@ const ReferralPage = ({ referralData, teamStats }) => {
                     </div>
                   )}
 
-                  {/* Member Details */}
                   {details && (
                     <div className="space-y-4">
-                      
-                      {/* Stats Grid */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div className="bg-black/40 p-3 rounded-lg text-center">
                           <p className="text-[8px] text-gray-500 mb-1">Total Earnings</p>
@@ -5027,7 +5114,6 @@ const ReferralPage = ({ referralData, teamStats }) => {
                         </div>
                       </div>
 
-                      {/* Member's Own Downline Preview */}
                       {details.downlineCount && (
                         <div className="bg-black/40 p-3 rounded-lg">
                           <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
@@ -5050,7 +5136,6 @@ const ReferralPage = ({ referralData, teamStats }) => {
                         </div>
                       )}
 
-                      {/* Recent Activity */}
                       {details.recentActivity && details.recentActivity.length > 0 && (
                         <div className="bg-black/40 p-3 rounded-lg">
                           <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
@@ -5077,14 +5162,13 @@ const ReferralPage = ({ referralData, teamStats }) => {
         })}
       </div>
     );
-  };
+  });
 
-// ========== LEG CARD COMPONENT with Level-wise User Details ==========
-const LegCard = ({ leg }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+// ========== FINAL FIXED LEG CARD COMPONENT ==========
+const LegCard = React.memo(({ leg, expandedLeg, setExpandedLeg }) => {
   const [expandedLevel, setExpandedLevel] = useState(null);
-  const [levelUsers, setLevelUsers] = useState({}); // Store users for each level
-  const [loadingLevel, setLoadingLevel] = useState(false);
+  const [localLoading, setLocalLoading] = useState(false);
+  const clickInProgress = useRef(false);
   
   // Calculate leg statistics
   const totalUsersInLeg = leg.stats?.totalUsers || leg.totalUsers || 0;
@@ -5092,53 +5176,71 @@ const LegCard = ({ leg }) => {
   const totalEarningsInLeg = leg.stats?.totalEarnings || leg.totalEarnings || 0;
   const isActive = leg.isActive !== false;
   
-  // Fetch users for a specific level
-  const fetchLevelUsers = async (levelNum) => {
-    if (levelUsers[levelNum]) return; // Already fetched
-    
-    setLoadingLevel(true);
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${API_BASE}/auth/leg-users/${leg.legNumber}/${levelNum}`,
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setLevelUsers(prev => ({
-          ...prev,
-          [levelNum]: data.data.users || []
-        }));
-      }
-    } catch (error) {
-      console.error(`Error fetching level ${levelNum} users:`, error);
-    } finally {
-      setLoadingLevel(false);
-    }
+  const isExpanded = expandedLeg === leg.legNumber;
+
+  const handleHeaderClick = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setExpandedLeg(prev => prev === leg.legNumber ? null : leg.legNumber);
   };
   
-  // Handle level click
-  const handleLevelClick = (level) => {
+  // Handle level click - FIXED VERSION
+  const handleLevelClick = (e, level) => {
+    // Stop propagation immediately
+    e.stopPropagation();
+    e.preventDefault();
+    
+    // Prevent multiple rapid clicks
+    if (clickInProgress.current) return;
+    clickInProgress.current = true;
+    
+    // Toggle level expansion
     if (expandedLevel === level) {
       setExpandedLevel(null);
     } else {
       setExpandedLevel(level);
-      fetchLevelUsers(level);
+      setLocalLoading(true);
+      
+      // Fetch data in background
+      fetchLegLevelUsers(leg.legNumber, level)
+        .catch(error => console.error("Error fetching level users:", error))
+        .finally(() => {
+          setLocalLoading(false);
+        });
     }
+    
+    // Reset click flag after a short delay
+    setTimeout(() => {
+      clickInProgress.current = false;
+    }, 300);
+  };
+  
+  // Handle close button click
+  const handleCloseLevel = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setExpandedLevel(null);
+  };
+  
+  // Handle user selection
+  const handleSelectMember = (e, userId) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setExpandedMember(prev => prev === userId ? null : userId);
+    fetchMemberDetails(userId);
   };
   
   return (
-    <div className={`bg-black/30 border rounded-xl overflow-hidden ${
-      isActive ? 'border-[#00F5A0]/30' : 'border-white/10 opacity-70'
-    }`}>
+    <div 
+      className={`bg-black/30 border rounded-xl overflow-hidden ${
+        isActive ? 'border-[#00F5A0]/30' : 'border-white/10 opacity-70'
+      }`}
+      onClick={(e) => e.stopPropagation()} // Prevent any click from bubbling up
+    >
       {/* Leg Header */}
       <div 
-        className="p-4 cursor-pointer hover:bg-white/5 transition-all"
-        onClick={() => setIsExpanded(!isExpanded)}
+        className="p-4 cursor-pointer hover:bg-white/5 transition-all select-none"
+        onClick={handleHeaderClick}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -5178,24 +5280,29 @@ const LegCard = ({ leg }) => {
       
       {/* Expanded Leg Details */}
       {isExpanded && (
-        <div className="p-4 border-t border-white/10 bg-black/20">
-          {/* Level-wise Users Grid with Click to Expand */}
+        <div 
+          className="p-4 border-t border-white/10 bg-black/20"
+          onClick={(e) => e.stopPropagation()} // CRITICAL: Prevent any click inside from bubbling
+        >
           <h5 className="text-xs font-bold text-[#00F5A0] mb-3">
-            Level-wise Users in Leg {leg.legNumber} (Click on level to see users)
+            Level-wise Users in Leg {leg.legNumber}
           </h5>
           
-          {/* Level Grid - Shows user count for each level */}
-          <div className="grid grid-cols-7 gap-1 mb-4">
+          {/* Level Grid */}
+          <div className="grid grid-cols-7 gap-1 mb-4 max-h-40 overflow-y-auto p-1">
             {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
               const levelData = leg.levels?.[`level${level}`];
               const userCount = levelData?.users?.length || 0;
               const isUnlocked = levelData?.isUnlocked || level <= 3;
+              const cacheKey = `${leg.legNumber}-${level}`;
+              const isLoading = loadingLevels[cacheKey] || (localLoading && expandedLevel === level);
+              const hasCachedUsers = levelUsersCache[cacheKey]?.length > 0;
               
               let bgColor = 'bg-gray-800/50';
               let borderColor = 'border-gray-700';
               
               if (isUnlocked) {
-                if (userCount > 0) {
+                if (userCount > 0 || hasCachedUsers) {
                   bgColor = 'bg-[#00F5A0]/20';
                   borderColor = 'border-[#00F5A0]/30';
                 } else {
@@ -5209,90 +5316,45 @@ const LegCard = ({ leg }) => {
                   key={level}
                   className={`text-center p-2 rounded-lg ${bgColor} border ${borderColor} cursor-pointer hover:scale-105 transition-transform ${
                     expandedLevel === level ? 'ring-2 ring-[#00F5A0]' : ''
-                  }`}
-                  onClick={() => handleLevelClick(level)}
+                  } ${isLoading ? 'animate-pulse' : ''}`}
+                  onClick={(e) => handleLevelClick(e, level)}
                 >
                   <span className="text-[8px] text-gray-400 block">L{level}</span>
                   <span className={`text-xs font-bold ${
                     userCount > 0 ? 'text-[#00F5A0]' : 
+                    hasCachedUsers ? 'text-[#00F5A0]' :
                     isUnlocked ? 'text-blue-400' : 'text-gray-500'
                   }`}>
-                    {userCount > 0 ? userCount : (isUnlocked ? '0' : '🔒')}
+                    {isLoading ? (
+                      <Loader size={12} className="animate-spin mx-auto" />
+                    ) : (
+                      <>
+                        {userCount > 0 ? userCount : 
+                         hasCachedUsers ? levelUsersCache[cacheKey].length : 
+                         (isUnlocked ? '0' : '🔒')}
+                      </>
+                    )}
                   </span>
                 </div>
               );
             })}
           </div>
           
-          {/* Expanded Level Details - Shows Users in that Level with their IDs */}
+          {/* Expanded Level Details */}
           {expandedLevel && (
-            <div className="mt-4 p-3 bg-black/40 rounded-lg border border-[#00F5A0]/20">
-              <div className="flex items-center justify-between mb-2">
-                <h6 className="text-xs font-bold text-[#00F5A0]">
-                  Level {expandedLevel} Users in Leg {leg.legNumber}
-                  {loadingLevel && <Loader size={12} className="ml-2 animate-spin inline" />}
-                </h6>
-                <button 
-                  onClick={() => setExpandedLevel(null)}
-                  className="text-[10px] text-gray-400 hover:text-white"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-              
-              {/* User List for this Level */}
-              {loadingLevel ? (
-                <div className="text-center py-6">
-                  <Loader size={24} className="animate-spin text-[#00F5A0] mx-auto" />
-                  <p className="text-xs text-gray-400 mt-2">Loading users...</p>
-                </div>
-              ) : levelUsers[expandedLevel]?.length > 0 ? (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {levelUsers[expandedLevel].map((user, idx) => (
-                    <div 
-                      key={idx}
-                      className="flex items-center justify-between bg-black/60 p-3 rounded-lg hover:bg-black/80 cursor-pointer border border-white/5"
-                      onClick={() => {
-                        setExpandedMember(expandedMember === user._id ? null : user._id);
-                        fetchMemberDetails(user._id);
-                      }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs">
-                          {user.userId?.charAt(0).toUpperCase() || '?'}
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-white">
-                            UserID: {user.userId}
-                          </p>
-                          {/* <p className="text-[10px] text-gray-400 font-mono">
-                            {user.email || 'No email'}
-                          </p> */}
-                          <p className="text-[8px] text-[#00F5A0] mt-1">
-                            Earnings: ₹{user.totalEarnings?.toFixed(2) || '0'}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
-                        Level {expandedLevel}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 bg-black/60 rounded-lg">
-                  <p className="text-sm text-gray-500">No users in Level {expandedLevel}</p>
-                  <p className="text-[10px] text-gray-600 mt-1">
-                    This level has 0 users
-                  </p>
-                </div>
-              )}
-              
-              {/* Level Summary */}
-              <div className="mt-3 pt-2 border-t border-white/10 flex justify-between text-[8px] text-gray-500">
-                <span>Total Users: {levelUsers[expandedLevel]?.length || 0}</span>
-                <span>Status: {leg.levels?.[`level${expandedLevel}`]?.isUnlocked ? '✅ Unlocked' : '🔒 Locked'}</span>
-              </div>
+            <div 
+              className="mt-4"
+              onClick={(e) => e.stopPropagation()} // CRITICAL: Prevent any click from bubbling
+            >
+              <LevelUsersList
+                legNumber={leg.legNumber}
+                level={expandedLevel}
+                users={levelUsersCache[`${leg.legNumber}-${expandedLevel}`] || []}
+                isLoading={loadingLevels[`${leg.legNumber}-${expandedLevel}`] || (localLoading && expandedLevel === expandedLevel)}
+                onClose={handleCloseLevel}
+                onSelectMember={handleSelectMember}
+                legLevel={leg.levels?.[`level${expandedLevel}`]}
+              />
             </div>
           )}
           
@@ -5313,6 +5375,104 @@ const LegCard = ({ leg }) => {
           </div>
         </div>
       )}
+    </div>
+  );
+});
+
+// ========== LEVEL USERS LIST COMPONENT ==========
+const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectMember, legLevel }) => {
+  const handleClose = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onClose(e);
+  };
+
+  const handleUserClick = (e, userId) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onSelectMember(e, userId);
+  };
+  
+  // Add container click handler
+  const handleContainerClick = (e) => {
+    e.stopPropagation(); // CRITICAL: Stop any click from reaching parent
+  };
+  
+  if (isLoading) {
+    return (
+      <div 
+        className="mt-4 p-3 bg-black/40 rounded-lg border border-[#00F5A0]/20"
+        onClick={handleContainerClick}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <h6 className="text-xs font-bold text-[#00F5A0]">
+            Loading Level {level} Users...
+          </h6>
+          <button onClick={handleClose} className="text-gray-400 hover:text-white">
+            <X size={14} />
+          </button>
+        </div>
+        <div className="text-center py-6">
+          <Loader size={24} className="animate-spin text-[#00F5A0] mx-auto" />
+          <p className="text-xs text-gray-400 mt-2">Fetching users...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className="mt-4 p-3 bg-black/40 rounded-lg border border-[#00F5A0]/20"
+      onClick={handleContainerClick}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <h6 className="text-xs font-bold text-[#00F5A0]">
+          Level {level} Users in Leg {legNumber}
+          <span className="ml-2 text-[8px] bg-[#00F5A0]/20 px-2 py-0.5 rounded-full">
+            {users.length} users
+          </span>
+        </h6>
+        <button onClick={handleClose} className="text-gray-400 hover:text-white">
+          <X size={14} />
+        </button>
+      </div>
+      
+      {users.length > 0 ? (
+        <div className="space-y-2 max-h-60 overflow-y-auto">
+          {users.map((user, idx) => (
+            <div 
+              key={idx}
+              className="flex items-center justify-between bg-black/60 p-3 rounded-lg hover:bg-black/80 cursor-pointer border border-white/5"
+              onClick={(e) => handleUserClick(e, user._id)}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs">
+                  {user.userId?.charAt(0).toUpperCase() || '?'}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-white">{user.userId}</p>
+                  <p className="text-[8px] text-[#00F5A0] mt-1">
+                    Earnings: ₹{user.totalEarnings?.toFixed(2) || '0'}
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+                Level {level}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-6 bg-black/60 rounded-lg">
+          <p className="text-sm text-gray-500">No users in Level {level}</p>
+          <p className="text-[10px] text-gray-600 mt-1">This level has 0 users</p>
+        </div>
+      )}
+      
+      <div className="mt-3 pt-2 border-t border-white/10 flex justify-between text-[8px] text-gray-500">
+        <span>Total Users: {users.length}</span>
+        <span>Status: {legLevel?.isUnlocked ? '✅ Unlocked' : '🔒 Locked'}</span>
+      </div>
     </div>
   );
 };
@@ -5383,10 +5543,7 @@ const LegCard = ({ leg }) => {
                 </div>
                 
                 {notifications.map((notif, idx) => (
-                  <div 
-                    key={idx}
-                    className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-xl p-4 hover:border-red-500/30 transition-all"
-                  >
+                  <div key={idx} className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-xl p-4 hover:border-red-500/30 transition-all">
                     <div className="flex items-start gap-3">
                       <input
                         type="checkbox"
@@ -5491,7 +5648,6 @@ const LegCard = ({ leg }) => {
           Your Referral Network (Dynamic Legs)
         </h3>
         
-        {/* Stats Row */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="bg-black/40 p-3 rounded-lg text-center">
             <p className="text-[8px] text-gray-500">Direct Referrals</p>
@@ -5505,13 +5661,16 @@ const LegCard = ({ leg }) => {
             <p className="text-xl font-black text-green-400">
               {legStatus?.activeLegs || legBreakdown?.legs?.length || 0}
             </p>
-            <p className="text-[6px] text-gray-600">All legs active independently</p>
+            <p className="text-[6px] text-gray-600">Total legs: {legBreakdown?.legs?.length || 0}</p>
           </div>
           <div className="bg-black/40 p-3 rounded-lg text-center">
             <p className="text-[8px] text-gray-500">Total Team</p>
             <p className="text-xl font-black text-blue-400">
-              {statsFilter === 'today' ? todayStats.teamMembers : referralData.totalReferrals}
+              {statsFilter === 'today' 
+                ? todayStats.teamMembers 
+                : totalTeamMembersAllLegs || referralData.totalReferrals}
             </p>
+            <p className="text-[6px] text-gray-600">Across {legBreakdown?.legs?.length || 0} legs</p>
           </div>
           <div className="bg-black/40 p-3 rounded-lg text-center">
             <p className="text-[8px] text-gray-500">Team Business</p>
@@ -5535,17 +5694,14 @@ const LegCard = ({ leg }) => {
             </div>
             <p className="text-[10px] text-gray-400 mt-2">
               You have {missedCommissions.unreadCount} unread missed commission notifications.
-              <button 
-                onClick={() => setShowFomoModal(true)}
-                className="ml-2 text-[#00F5A0] underline"
-              >
+              <button onClick={() => setShowFomoModal(true)} className="ml-2 text-[#00F5A0] underline">
                 View
               </button>
             </p>
           </div>
         )}
 
-        {/* Next Level to Unlock with Horizontal/Vertical Requirements */}
+        {/* Next Level to Unlock */}
         {nextLevel?.nextLevelToUnlock && (
           <div className="mb-6 p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30">
             <div className="flex items-center gap-2 mb-2">
@@ -5569,23 +5725,17 @@ const LegCard = ({ leg }) => {
                 </div>
               </div>
               
-              {/* Vertical Progress Bar */}
               <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-[#00F5A0] to-green-500"
-                  style={{ 
-                    width: `${(nextLevel.nextLevelToUnlock.completedCount / nextLevel.nextLevelToUnlock.requiredLevels?.length) * 100}%` 
-                  }}
+                  style={{ width: `${(nextLevel.nextLevelToUnlock.completedCount / nextLevel.nextLevelToUnlock.requiredLevels?.length) * 100}%` }}
                 />
               </div>
               
-              {/* Horizontal Requirement */}
               <div className="flex justify-between items-center pt-2 border-t border-purple-500/20">
                 <span className="text-[10px] text-gray-400">Horizontal Requirement:</span>
                 <span className={`text-[10px] font-bold ${
-                  nextLevel.nextLevelToUnlock.horizontalProgress?.isComplete 
-                    ? 'text-green-400' 
-                    : 'text-yellow-400'
+                  nextLevel.nextLevelToUnlock.horizontalProgress?.isComplete ? 'text-green-400' : 'text-yellow-400'
                 }`}>
                   {nextLevel.nextLevelToUnlock.horizontalProgress?.current || 0}/
                   {nextLevel.nextLevelToUnlock.horizontalProgress?.required || 0} directs
@@ -5606,23 +5756,43 @@ const LegCard = ({ leg }) => {
         )}
       </div>
 
-      {/* ========== LEGS LIST with Complete Details ========== */}
+   
+
+      {/* ========== LEGS LIST with Pagination ========== */}
       {legBreakdown?.legs && legBreakdown.legs.length > 0 && (
         <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
           <h3 className="text-lg font-black italic mb-4 flex items-center gap-2">
             <Users size={20} className="text-[#00F5A0]" />
-            Leg-wise Detailed Breakdown ({legBreakdown.legs.length} Total Legs) - All Legs Active Independently
+            Leg-wise Detailed Breakdown ({legBreakdown.legs.length} Total Legs)
+            {legBreakdown.legs.length > 20 && (
+              <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-2 py-1 rounded-full">
+                Large Network: {legBreakdown.legs.length} legs
+              </span>
+            )}
           </h3>
           
-          <div className="space-y-4">
-            {legBreakdown.legs.map((leg, index) => (
-              <LegCard key={index} leg={leg} />
-            ))}
+          <div className="space-y-4 max-h-[600px] overflow-y-auto p-2">
+            {paginatedLegs.map((leg, index) => (
+<LegCard 
+  key={leg.legNumber}
+  leg={leg}
+  expandedLeg={expandedLeg}
+  setExpandedLeg={setExpandedLeg}
+/>            ))}
+            
+            {legBreakdown.legs.length > legsPerPage && (
+              <button
+                onClick={() => setShowAllLegs(!showAllLegs)}
+                className="w-full py-2 text-xs bg-white/5 hover:bg-white/10 rounded-lg transition-all font-bold"
+              >
+                {showAllLegs ? `Show Less (${legsPerPage} legs)` : `Show All ${legBreakdown.legs.length} Legs`}
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      {/* ========== LEVEL ACCESSIBILITY MAP with Horizontal Requirements ========== */}
+      {/* ========== LEVEL ACCESSIBILITY MAP ========== */}
       {legStatus?.levelAccessibility && (
         <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
           <h3 className="text-lg font-black italic mb-4 flex items-center gap-2">
@@ -5673,23 +5843,145 @@ const LegCard = ({ leg }) => {
           </div>
           
           <div className="flex justify-between text-[8px] text-gray-500 px-2">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-[#00F5A0]/20 rounded-full border border-[#00F5A0]/30"></span> Has Users
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-blue-500/10 rounded-full border border-blue-500/20"></span> Accessible (Empty)
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-yellow-500/10 rounded-full border border-yellow-500/20"></span> Needs Directs
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 bg-gray-800 rounded-full border border-gray-700"></span> Locked
-            </span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-[#00F5A0]/20 rounded-full border border-[#00F5A0]/30"></span> Has Users</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-500/10 rounded-full border border-blue-500/20"></span> Accessible (Empty)</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-yellow-500/10 rounded-full border border-yellow-500/20"></span> Needs Directs</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-gray-800 rounded-full border border-gray-700"></span> Locked</span>
           </div>
         </div>
       )}
 
+      {/* ========== LEVEL-WISE MEMBERS LIST ========== */}
+      <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-black italic flex items-center gap-2">
+            <Users size={20} className="text-[#00F5A0]" />
+            Level-wise Team Members
+          </h3>
+          <span className="text-[10px] text-gray-500">Click on level to expand</span>
+        </div>
 
+        <div className="grid grid-cols-7 gap-1 mb-6">
+          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
+            const levelData = teamStats?.[`level${level}`];
+            const hasMembers = levelData?.users > 0;
+            const isAccessible = legStatus?.levelAccessibility?.[`level${level}`]?.isAccessible || level <= 3;
+            const requiredDirects = getHorizontalRequirement(level);
+            const meetsHorizontal = legStatus?.directReferrals >= requiredDirects;
+            
+            return (
+              <button
+                key={level}
+                onClick={() => hasMembers && setExpandedLevel(expandedLevel === level ? null : level)}
+                className={`text-[8px] py-2 rounded-lg font-bold transition-all relative ${
+                  expandedLevel === level 
+                    ? 'bg-[#00F5A0] text-black' 
+                    : hasMembers
+                      ? isAccessible
+                        ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 cursor-pointer'
+                        : meetsHorizontal
+                          ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 cursor-pointer'
+                          : 'bg-gray-500/20 text-gray-400 cursor-not-allowed opacity-50'
+                      : 'bg-white/5 text-gray-500 cursor-not-allowed opacity-50'
+                }`}
+                disabled={!hasMembers}
+              >
+                L{level}
+                {hasMembers && (
+                  <span className="ml-1 text-[6px] bg-blue-500 text-white px-1 rounded-full">
+                    {levelData.users}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="space-y-4">
+          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
+            const levelStats = teamStats?.[`level${level}`];
+            const isExpanded = expandedLevel === level;
+            const isAccessible = legStatus?.levelAccessibility?.[`level${level}`]?.isAccessible || level <= 3;
+            const requiredDirects = getHorizontalRequirement(level);
+            const meetsHorizontal = legStatus?.directReferrals >= requiredDirects;
+            
+            if (!levelStats || levelStats.users === 0) return null;
+            
+            return (
+              <div key={level} className="border border-white/10 rounded-xl overflow-hidden">
+                <div 
+                  className={`p-4 cursor-pointer hover:bg-white/10 transition-all ${
+                    isAccessible ? 'bg-gradient-to-r from-[#00F5A0]/5 to-transparent' : 
+                    meetsHorizontal ? 'bg-gradient-to-r from-yellow-500/5 to-transparent' : 'bg-gray-800/20'
+                  }`}
+                  onClick={() => setExpandedLevel(isExpanded ? null : level)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${
+                        levels.find(l => l.level === level)?.color || 'from-gray-500 to-gray-600'
+                      } flex items-center justify-center text-white font-black`}>
+                        {level}
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-sm font-bold">Level {level}</h4>
+                        <p className="text-[10px] text-gray-400">
+                          Rate: {levels.find(l => l.level === level)?.rate} | 
+                          Members: {levelStats.users} | 
+                          Team Cashback: ₹{Number(levelStats.teamCashback || 0).toFixed(2)}
+                        </p>
+                        {!isAccessible && (
+                          <p className="text-[8px] text-yellow-500 mt-1">
+                            {meetsHorizontal 
+                              ? '⏳ Need to complete previous levels in at least one leg'
+                              : `🔒 Need ${requiredDirects} direct referrals (have ${legStatus?.directReferrals || 0})`}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className="text-xs text-gray-400">Your Commission</p>
+                        <p className="text-sm font-bold text-orange-400">
+                          ₹{Number(levelStats.yourCommission || 0).toFixed(2)}
+                        </p>
+                      </div>
+                      {isExpanded ? <ChevronUp size={20} className="text-[#00F5A0]" /> : <ChevronDown size={20} className="text-[#00F5A0]" />}
+                    </div>
+                  </div>
+                </div>
+
+                {isExpanded && (
+                  <div className="p-4 border-t border-white/10 bg-black/20">
+                    <h5 className="text-xs font-bold text-[#00F5A0] mb-3 flex items-center gap-2">
+                      <Users size={14} />
+                      Members in Level {level} ({levelStats.users} total)
+                      {!isAccessible && (
+                        <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded-full">
+                          {meetsHorizontal ? 'Vertical Locked' : 'Horizontal Locked'}
+                        </span>
+                      )}
+                    </h5>
+                    <LevelMembersList level={level} levelStats={levelStats} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].every(
+            level => !teamStats?.[`level${level}`] || teamStats[`level${level}`].users === 0
+          ) && (
+            <div className="text-center py-10">
+              <Users size={40} className="mx-auto mb-3 text-gray-600" />
+              <p className="text-gray-500 font-bold">No team members yet</p>
+              <p className="text-[10px] text-gray-600 mt-2">Share your referral code to build your team</p>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* ========== STATS GRID ========== */}
       <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
@@ -5699,9 +5991,7 @@ const LegCard = ({ leg }) => {
             <button
               onClick={() => setStatsFilter('today')}
               className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-                statsFilter === 'today' 
-                  ? 'bg-[#00F5A0] text-black' 
-                  : 'text-gray-400 hover:text-white'
+                statsFilter === 'today' ? 'bg-[#00F5A0] text-black' : 'text-gray-400 hover:text-white'
               }`}
             >
               Today
@@ -5709,9 +5999,7 @@ const LegCard = ({ leg }) => {
             <button
               onClick={() => setStatsFilter('total')}
               className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-                statsFilter === 'total' 
-                  ? 'bg-[#00F5A0] text-black' 
-                  : 'text-gray-400 hover:text-white'
+                statsFilter === 'total' ? 'bg-[#00F5A0] text-black' : 'text-gray-400 hover:text-white'
               }`}
             >
               Total
@@ -5720,7 +6008,6 @@ const LegCard = ({ leg }) => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Team Members Card */}
           <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-[#00F5A0]/20 transition-all">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-[#00F5A0]/10 flex items-center justify-center">
@@ -5729,16 +6016,18 @@ const LegCard = ({ leg }) => {
               <div>
                 <p className="text-xs text-gray-400">Total Team</p>
                 <p className="text-2xl font-black text-white">
-                  {statsFilter === 'today' ? todayStats.teamMembers : referralData.totalReferrals}
+                  {statsFilter === 'today' 
+                    ? todayStats.teamMembers 
+                    : totalTeamMembersAllLegs || referralData.totalReferrals || 0}
                 </p>
               </div>
             </div>
-            <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">
-              {statsFilter === 'today' ? 'Active today' : 'Across 21 levels'}
-            </p>
+            <div className="flex justify-between text-[10px] text-gray-500 border-t border-white/5 pt-2">
+              <span>{statsFilter === 'today' ? 'Active today' : 'All legs combined'}</span>
+              <span className="text-[#00F5A0]">{legBreakdown?.legs?.length || 0} legs</span>
+            </div>
           </div>
 
-          {/* Team Business Card */}
           <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-[#00F5A0]/20 transition-all">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-[#00F5A0]/10 flex items-center justify-center">
@@ -5747,18 +6036,13 @@ const LegCard = ({ leg }) => {
               <div>
                 <p className="text-xs text-gray-400">Team Business</p>
                 <p className="text-2xl font-black text-[#00F5A0]">
-                  ₹{statsFilter === 'today' 
-                    ? todayStats.teamBusiness.toFixed(2) 
-                    : totalTeamBusiness.toFixed(2)}
+                  ₹{statsFilter === 'today' ? todayStats.teamBusiness.toFixed(2) : totalTeamBusiness.toFixed(2)}
                 </p>
               </div>
             </div>
-            <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">
-              Total cashback earned by team
-            </p>
+            <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">Total cashback earned by team</p>
           </div>
 
-          {/* Your Commission Card */}
           <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-orange-400/20 transition-all">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
@@ -5773,15 +6057,14 @@ const LegCard = ({ leg }) => {
                 </p>
               </div>
             </div>
-            <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">
-              Commission from team
-            </p>
+            <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">Commission from team</p>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
 // WalletCard Component
 const WalletCard = ({ label, val, sub, highlight, showRedeem, onRedeem }) => (
   <div className={`p-6 md:p-8 rounded-[2rem] border ${highlight ? "bg-[#00F5A0] text-black shadow-[0_10px_30px_rgba(0,245,160,0.2)]" : "bg-[#0A1F1A] border-white/10"}`}>
