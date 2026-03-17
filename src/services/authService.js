@@ -1257,11 +1257,7 @@ export const getTodayTeamStats = async (token) => {
   }
 };
 
-// ========== NEW FUNCTIONS FROM UPDATED CONTROLLER ==========
-
-/**
- * Get Leg Details for a specific leg
- */
+// ========== SIMPLIFIED: LEG DETAILS ==========
 export const getLegDetails = async (token, legNumber) => {
   try {
     const res = await fetch(`${API_BASE}/auth/leg/${legNumber}`, {
@@ -1275,9 +1271,7 @@ export const getLegDetails = async (token, legNumber) => {
   }
 };
 
-/**
- * Get Notifications
- */
+// ========== SIMPLIFIED: GET NOTIFICATIONS ==========
 export const getNotifications = async (token, limit = 20) => {
   try {
     const res = await fetch(`${API_BASE}/auth/notifications?limit=${limit}`, {
@@ -1291,9 +1285,7 @@ export const getNotifications = async (token, limit = 20) => {
   }
 };
 
-/**
- * Mark Notification as Read
- */
+// ========== SIMPLIFIED: MARK NOTIFICATION AS READ ==========
 export const markNotificationRead = async (token, notificationId) => {
   try {
     const res = await fetch(`${API_BASE}/auth/notifications/${notificationId}/read`, {
@@ -1308,83 +1300,32 @@ export const markNotificationRead = async (token, notificationId) => {
   }
 };
 
-/**
- * Get Unlock Status for all levels
- */
+// ========== SIMPLIFIED: GET UNLOCK STATUS ==========
 export const getUnlockStatus = async (token) => {
   try {
-    const res = await fetch(`${API_BASE}/auth/unlock-status`, {
+    const res = await fetch(`${API_BASE}/auth/unlock-status-simple`, {
       headers: { "Authorization": `Bearer ${token}` }
     });
     const data = await res.json();
     return data;
   } catch (error) {
     console.error("Error fetching unlock status:", error);
-    return { success: false, unlockStatus: [] };
+    return { 
+      success: false, 
+      data: {
+        currentDirects: 0,
+        totalLegs: 0,
+        unlockedLevelsInEachLeg: 0,
+        isFullyUnlocked: false,
+        nextLevelToUnlock: null,
+        progress: '0%',
+        legs: []
+      }
+    };
   }
 };
 
-// ========== HELPER FUNCTIONS FOR LEVEL REQUIREMENTS ==========
-
-/**
- * Get horizontal requirement for a level (min direct referrals needed)
- */
-export const getHorizontalRequirement = (level) => {
-  if (level <= 3) return 1;
-  if (level <= 6) return 2;
-  if (level <= 9) return 3;
-  if (level <= 12) return 4;
-  if (level <= 15) return 5;
-  if (level <= 18) return 6;
-  return 7;
-};
-
-/**
- * Get required previous levels for a given level
- */
-export const getRequiredLevels = (level) => {
-  const requirements = {
-    4: [1, 2, 3],
-    5: [2, 3, 4],
-    6: [3, 4, 5],
-    7: [4, 5, 6],
-    8: [5, 6, 7],
-    9: [6, 7, 8],
-    10: [7, 8, 9],
-    11: [8, 9, 10],
-    12: [9, 10, 11],
-    13: [10, 11, 12],
-    14: [11, 12, 13],
-    15: [12, 13, 14],
-    16: [13, 14, 15],
-    17: [14, 15, 16],
-    18: [15, 16, 17],
-    19: [16, 17, 18],
-    20: [17, 18, 19],
-    21: [18, 19, 20]
-  };
-  return requirements[level] || [];
-};
-
-/**
- * Get commission rate for a level
- */
-export const getCommissionRate = (level) => {
-  const rates = {
-    1: 0.30, 2: 0.15, 3: 0.10, 4: 0.05, 5: 0.30,
-    6: 0.03, 7: 0.04, 8: 0.03, 9: 0.03, 10: 0.30,
-    11: 0.03, 12: 0.03, 13: 0.03, 14: 0.03, 15: 0.03,
-    16: 0.05, 17: 0.10, 18: 0.15, 19: 0.30, 20: 0.30,
-    21: 0.63
-  };
-  return rates[level] || 0;
-};
-
-// ========== COMPLETE UPDATED DYNAMIC LEGS FUNCTIONS ==========
-
-/**
- * Get Leg Unlocking Status with Horizontal & Vertical Requirements
- */
+// ========== SIMPLIFIED: GET LEG UNLOCKING STATUS ==========
 export const getLegUnlockingStatus = async (token) => {
   try {
     const res = await fetch(`${API_BASE}/auth/leg-status`, {
@@ -1406,21 +1347,17 @@ export const getLegUnlockingStatus = async (token) => {
         userId: 'Unknown',
         directReferrals: 0,
         totalLegs: 0,
-        activeLegs: 0,
+        unlockedLevelsInEachLeg: 0,
         levelAccessibility: {},
         legDetails: {},
         nextLevelToUnlock: null,
-        missedCommissions: { totalMissed: 0, unreadCount: 0, recent: [] },
-        fomoNotifications: [],
         summary: 'Unable to fetch leg status'
       }
     };
   }
 };
 
-/**
- * Get Next Level Requirement with Progress Tracking
- */
+// ========== SIMPLIFIED: GET NEXT LEVEL REQUIREMENT ==========
 export const getNextLevelRequirement = async (token) => {
   try {
     const res = await fetch(`${API_BASE}/auth/next-level-requirement`, {
@@ -1439,105 +1376,20 @@ export const getNextLevelRequirement = async (token) => {
     return {
       success: false,
       data: {
-        userId: 'Unknown',
-        directReferrals: 0,
+        currentDirects: 0,
+        nextLevel: 1,
+        requiredDirects: 1,
+        remainingDirects: 1,
         totalLegs: 0,
-        activeLegs: 0,
-        nextLevelToUnlock: null,
-        fomoNotifications: [],
-        summary: 'Unable to fetch next level requirement'
+        levelsToUnlock: [1],
+        message: 'Add 1 direct referral to unlock Level 1',
+        isUnlockable: true
       }
     };
   }
 };
 
-/**
- * Get Missed Commissions
- */
-export const getMissedCommissions = async (token) => {
-  try {
-    const res = await fetch(`${API_BASE}/auth/missed-commissions`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-    
-    if (!res.ok) throw new Error("Failed to fetch missed commissions");
-    const data = await res.json();
-    
-    return data.data || data;
-  } catch (error) {
-    console.error("Error fetching missed commissions:", error);
-    return {
-      success: false,
-      data: {
-        totalMissed: 0,
-        unreadCount: 0,
-        recent: []
-      }
-    };
-  }
-};
-
-/**
- * Mark Missed Commissions as Read
- */
-export const markMissedCommissionsAsRead = async (token, commissionIds = []) => {
-  try {
-    const res = await fetch(`${API_BASE}/auth/missed-commissions/read`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ commissionIds })
-    });
-    
-    if (!res.ok) throw new Error("Failed to mark commissions as read");
-    const data = await res.json();
-    
-    return data;
-  } catch (error) {
-    console.error("Error marking commissions as read:", error);
-    return {
-      success: false,
-      message: error.message
-    };
-  }
-};
-
-/**
- * Get FOMO Notifications
- */
-export const getFomoNotifications = async (token) => {
-  try {
-    const res = await fetch(`${API_BASE}/auth/fomo-notifications`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-    
-    if (!res.ok) throw new Error("Failed to fetch FOMO notifications");
-    const data = await res.json();
-    
-    return data.data || data;
-  } catch (error) {
-    console.error("Error fetching FOMO notifications:", error);
-    return {
-      success: false,
-      data: {
-        total: 0,
-        notifications: []
-      }
-    };
-  }
-};
-
-/**
- * Get Member Details with Complete Information
- */
+// ========== SIMPLIFIED: GET MEMBER DETAILS ==========
 export const getMemberDetails = async (memberId, token) => {
   try {
     const id = String(memberId);
@@ -1561,12 +1413,11 @@ export const getMemberDetails = async (memberId, token) => {
           directReferrals: 0,
           totalTeam: 0,
           totalLegs: 0,
-          activeLegs: 0,
+          unlockedLevelsInEachLeg: 0,
           levelAccessibility: {},
           levelEarnings: {},
           downlineCount: {},
           legsStatus: {},
-          missedCommissions: { totalMissed: 0, unreadCount: 0, recent: [] },
           recentActivity: []
         }
       };
@@ -1584,21 +1435,18 @@ export const getMemberDetails = async (memberId, token) => {
         directReferrals: 0,
         totalTeam: 0,
         totalLegs: 0,
-        activeLegs: 0,
+        unlockedLevelsInEachLeg: 0,
         levelAccessibility: {},
         levelEarnings: {},
         downlineCount: {},
         legsStatus: {},
-        missedCommissions: { totalMissed: 0, unreadCount: 0, recent: [] },
         recentActivity: []
       }
     };
   }
 };
 
-/**
- * Get Team Summary with Missed Commissions
- */
+// ========== SIMPLIFIED: GET TEAM SUMMARY ==========
 export const getTeamSummary = async (token) => {
   try {
     const res = await fetch(`${API_BASE}/auth/team-summary`, {
@@ -1619,19 +1467,19 @@ export const getTeamSummary = async (token) => {
       data: {
         totalLegs: 0,
         directReferrals: 0,
+        unlockedLevelsInEachLeg: 0,
         totalTeam: 0,
+        totalEarnings: 0,
+        levelWiseUsers: {},
         earningsByLevel: {},
-        levels: {},
-        missedCommissions: { totalMissed: 0, unreadCount: 0, recent: [] },
-        fomoNotifications: []
+        isFullyUnlocked: false,
+        nextLevel: null
       }
     };
   }
 };
 
-/**
- * Get Leg Breakdown with Active Status
- */
+// ========== SIMPLIFIED: GET LEG BREAKDOWN ==========
 export const getLegBreakdown = async (token) => {
   try {
     const res = await fetch(`${API_BASE}/auth/leg-breakdown`, {
@@ -1652,15 +1500,14 @@ export const getLegBreakdown = async (token) => {
       data: {
         totalLegs: 0,
         directReferrals: 0,
+        unlockedLevelsInEachLeg: 0,
         legs: []
       }
     };
   }
 };
 
-/**
- * Get Users at Specific Level
- */
+// ========== SIMPLIFIED: GET USERS AT SPECIFIC LEVEL ==========
 export const getLevelUsers = async (level, token) => {
   try {
     const res = await fetch(`${API_BASE}/auth/level-users/${level}`, {
@@ -1681,19 +1528,16 @@ export const getLevelUsers = async (level, token) => {
       data: {
         level: level,
         isAccessible: false,
-        requiredDirects: 0,
+        requiredDirects: level,
         currentDirects: 0,
         totalUsers: 0,
-        pendingLegs: [],
         users: []
       }
     };
   }
 };
 
-/**
- * Get Leg-wise Users with Details
- */
+// ========== SIMPLIFIED: GET LEG-WISE USERS ==========
 export const getLegUsers = async (legNumber, level, token) => {
   try {
     const res = await fetch(`${API_BASE}/auth/leg-users/${legNumber}/${level}`, {
@@ -1716,7 +1560,6 @@ export const getLegUsers = async (legNumber, level, token) => {
         level,
         totalUsers: 0,
         isUnlocked: false,
-        pendingUnlock: false,
         earnings: 0,
         teamCashback: 0,
         users: []
@@ -1725,76 +1568,19 @@ export const getLegUsers = async (legNumber, level, token) => {
   }
 };
 
-/**
- * Get Pending Unlocks
- */
-export const getPendingUnlocks = async (token) => {
-  try {
-    const res = await fetch(`${API_BASE}/auth/pending-unlocks`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-    
-    if (!res.ok) throw new Error("Failed to fetch pending unlocks");
-    const data = await res.json();
-    
-    return data.data || data;
-  } catch (error) {
-    console.error("Error fetching pending unlocks:", error);
-    return {
-      success: false,
-      data: {
-        total: 0,
-        pendingUnlocks: []
-      }
-    };
-  }
+// ========== SIMPLIFIED: COMMISSION RATES ==========
+export const getCommissionRate = (level) => {
+  const rates = {
+    1: 0.30, 2: 0.15, 3: 0.10, 4: 0.05, 5: 0.30,
+    6: 0.03, 7: 0.04, 8: 0.03, 9: 0.03, 10: 0.30,
+    11: 0.03, 12: 0.03, 13: 0.03, 14: 0.03, 15: 0.03,
+    16: 0.05, 17: 0.10, 18: 0.15, 19: 0.30, 20: 0.30,
+    21: 0.63
+  };
+  return rates[level] || 0;
 };
 
-// ========== HELPER FUNCTIONS ==========
-
-/**
- * Calculate Level Progress with Horizontal Requirements
- */
-export const calculateLevelProgress = (levelAccessibility, targetLevel, directReferrals = 0) => {
-  const requiredVertical = getRequiredLevels(targetLevel);
-  const requiredHorizontal = getHorizontalRequirement(targetLevel);
-  
-  // Check vertical progress
-  let completedVertical = 0;
-  for (const level of requiredVertical) {
-    if (levelAccessibility[`level${level}`]?.usersCount > 0) {
-      completedVertical++;
-    }
-  }
-  
-  // Check horizontal progress
-  const horizontalProgress = {
-    required: requiredHorizontal,
-    current: directReferrals,
-    remaining: Math.max(0, requiredHorizontal - directReferrals),
-    isComplete: directReferrals >= requiredHorizontal
-  };
-  
-  return {
-    level: targetLevel,
-    vertical: {
-      required: requiredVertical,
-      completed: completedVertical,
-      remaining: requiredVertical.length - completedVertical,
-      percentage: requiredVertical.length > 0 ? (completedVertical / requiredVertical.length) * 100 : 100,
-      isComplete: completedVertical === requiredVertical.length
-    },
-    horizontal: horizontalProgress,
-    isCompletelyUnlockable: (completedVertical === requiredVertical.length) && (directReferrals >= requiredHorizontal)
-  };
-};
-
-/**
- * Format Leg Data with Active Status
- */
+// ========== SIMPLIFIED: FORMAT LEG DATA ==========
 export const formatLegData = (legStatus) => {
   if (!legStatus) return null;
   
@@ -1802,11 +1588,9 @@ export const formatLegData = (legStatus) => {
     userId: legStatus.userId,
     directReferrals: legStatus.directReferrals || 0,
     totalLegs: legStatus.totalLegs || 0,
-    activeLegs: legStatus.activeLegs || 0,
+    unlockedLevelsInEachLeg: legStatus.unlockedLevelsInEachLeg || 0,
     summary: legStatus.summary || '',
     nextLevelToUnlock: legStatus.nextLevelToUnlock,
-    missedCommissions: legStatus.missedCommissions || { totalMissed: 0, unreadCount: 0, recent: [] },
-    fomoNotifications: legStatus.fomoNotifications || [],
     legs: [],
     levels: []
   };
@@ -1814,19 +1598,13 @@ export const formatLegData = (legStatus) => {
   // Format legs for display
   if (legStatus.legDetails) {
     formatted.legs = Object.entries(legStatus.legDetails).map(([legKey, leg]) => {
-      const levelsUnlocked = Object.values(leg.levels || {}).filter(l => l.isUnlocked).length;
-      const levelsPending = Object.values(leg.levels || {}).filter(l => l.pendingUnlock).length;
-      
       return {
         legNumber: leg.legNumber,
         legKey: legKey,
-        isActive: leg.isActive !== false,
         totalUsers: leg.totalUsers || 0,
         totalEarnings: leg.totalEarnings || 0,
-        levelsUnlocked,
-        levelsPending,
-        isFullyUnlocked: levelsUnlocked === 21,
-        pendingUnlocks: leg.pendingUnlocks || [],
+        unlockedLevels: leg.unlockedLevels || 0,
+        isFullyUnlocked: leg.isFullyUnlocked || false,
         levels: leg.levels || {}
       };
     }).sort((a, b) => a.legNumber - b.legNumber);
@@ -1837,22 +1615,14 @@ export const formatLegData = (legStatus) => {
     for (let level = 1; level <= 21; level++) {
       const levelKey = `level${level}`;
       const levelData = legStatus.levelAccessibility[levelKey] || {};
-      const requiredLevels = getRequiredLevels(level);
-      const requiredDirects = getHorizontalRequirement(level);
       const commissionRate = getCommissionRate(level);
       
       formatted.levels.push({
         level: level,
         isAccessible: levelData.isAccessible || false,
         usersCount: levelData.usersCount || 0,
-        requiredLevels: requiredLevels,
-        minDirectsNeeded: requiredDirects,
-        currentDirects: levelData.currentDirects || 0,
-        meetsHorizontal: levelData.meetsHorizontal || false,
-        unlockedLegs: levelData.unlockedLegs || 0,
-        pendingLegs: levelData.pendingLegs || 0,
         commissionRate: commissionRate * 100,
-        legWiseUsers: levelData.legWiseUsers || {}
+        isUnlocked: levelData.isUnlocked || false
       });
     }
   }
@@ -1860,58 +1630,22 @@ export const formatLegData = (legStatus) => {
   return formatted;
 };
 
-/**
- * Format FOMO Notifications
- */
-export const formatFomoNotifications = (notifications) => {
-  if (!notifications || !notifications.notifications) return [];
+// ========== SIMPLIFIED: CALCULATE LEVEL PROGRESS ==========
+export const calculateLevelProgress = (directReferrals, targetLevel) => {
+  const isAccessible = targetLevel <= directReferrals;
   
-  return notifications.notifications.map(notif => ({
-    id: notif.id,
-    title: notif.title,
-    message: notif.message,
-    amount: notif.amount,
-    level: notif.level,
-    legNumber: notif.legNumber,
-    reason: notif.reason,
-    date: new Date(notif.date).toLocaleString(),
-    read: notif.read
-  }));
+  return {
+    level: targetLevel,
+    isAccessible,
+    currentDirects: directReferrals,
+    requiredDirects: targetLevel,
+    remainingDirects: isAccessible ? 0 : targetLevel - directReferrals,
+    progress: Math.min(100, (directReferrals / targetLevel) * 100),
+    canUnlockWithOneMore: !isAccessible && (directReferrals + 1 === targetLevel)
+  };
 };
 
-/**
- * Get Level Requirements Summary
- */
-export const getLevelRequirementsSummary = () => {
-  const summary = [];
-  
-  for (let level = 1; level <= 21; level++) {
-    const requiredDirects = getHorizontalRequirement(level);
-    const requiredLevels = getRequiredLevels(level);
-    const commissionRate = getCommissionRate(level) * 100;
-    
-    let description = "";
-    if (level <= 3) {
-      description = "Always unlocked";
-    } else {
-      description = `Need ${requiredDirects} direct referrals and levels ${requiredLevels.join(', ')}`;
-    }
-    
-    summary.push({
-      level,
-      requiredDirects,
-      requiredLevels,
-      commissionRate,
-      description
-    });
-  }
-  
-  return summary;
-};
-
-/**
- * Get Leg-wise Level Status
- */
+// ========== SIMPLIFIED: GET LEG-WISE LEVEL STATUS ==========
 export const getLegWiseLevelStatus = (legStatus, legNumber) => {
   if (!legStatus || !legStatus.legDetails || !legStatus.legDetails[`leg${legNumber}`]) {
     return [];
@@ -1922,59 +1656,22 @@ export const getLegWiseLevelStatus = (legStatus, legNumber) => {
   
   for (let level = 1; level <= 21; level++) {
     const levelData = leg.levels?.[`level${level}`] || {};
-    const requiredDirects = getHorizontalRequirement(level);
-    const requiredLevels = getRequiredLevels(level);
     const commissionRate = getCommissionRate(level);
     
     status.push({
       level,
       users: levelData.users || 0,
-      isUnlocked: levelData.isUnlocked || level <= 3,
-      pendingUnlock: levelData.pendingUnlock || false,
+      isUnlocked: levelData.isUnlocked || level <= legStatus.directReferrals,
       earnings: levelData.earnings || 0,
       teamCashback: levelData.teamCashback || 0,
-      requiredDirects,
-      requiredLevels,
-      commissionRate: commissionRate * 100,
-      meetsHorizontal: legStatus.directReferrals >= requiredDirects
+      commissionRate: commissionRate * 100
     });
   }
   
   return status;
 };
 
-/**
- * Check if level is pending in any leg
- */
-export const isLevelPending = (legStatus, level) => {
-  if (!legStatus || !legStatus.legDetails) return false;
-  
-  for (const leg of Object.values(legStatus.legDetails)) {
-    if (leg.levels?.[`level${level}`]?.pendingUnlock) {
-      return true;
-    }
-  }
-  return false;
-};
-
-/**
- * Get legs where level is pending
- */
-export const getPendingLegsForLevel = (legStatus, level) => {
-  if (!legStatus || !legStatus.legDetails) return [];
-  
-  const pendingLegs = [];
-  for (const leg of Object.values(legStatus.legDetails)) {
-    if (leg.levels?.[`level${level}`]?.pendingUnlock) {
-      pendingLegs.push(leg.legNumber);
-    }
-  }
-  return pendingLegs;
-};
-
-/**
- * Calculate potential earnings
- */
+// ========== SIMPLIFIED: CALCULATE POTENTIAL EARNINGS ==========
 export const calculatePotentialEarnings = (amount, level) => {
   const rate = getCommissionRate(level);
   return {
@@ -1982,6 +1679,40 @@ export const calculatePotentialEarnings = (amount, level) => {
     rate: rate * 100,
     commission: amount * rate,
     level
+  };
+};
+
+// ========== SIMPLIFIED: GET ALL COMMISSION RATES ==========
+export const getAllCommissionRates = () => {
+  const rates = [];
+  for (let level = 1; level <= 21; level++) {
+    rates.push({
+      level,
+      rate: getCommissionRate(level) * 100
+    });
+  }
+  return rates;
+};
+
+// ========== SIMPLIFIED: CHECK IF LEVEL IS UNLOCKED ==========
+export const isLevelUnlocked = (directReferrals, level) => {
+  return level <= directReferrals;
+};
+
+// ========== SIMPLIFIED: GET NEXT LEVEL TO UNLOCK ==========
+export const getNextLevelToUnlock = (directReferrals) => {
+  if (directReferrals >= 21) return null;
+  return directReferrals + 1;
+};
+
+// ========== SIMPLIFIED: GET UNLOCK PROGRESS ==========
+export const getUnlockProgress = (directReferrals) => {
+  return {
+    current: directReferrals,
+    total: 21,
+    percentage: Math.round((directReferrals / 21) * 100),
+    remaining: 21 - directReferrals,
+    isFullyUnlocked: directReferrals === 21
   };
 };
 
@@ -2000,24 +1731,18 @@ export default {
   getUnlockStatus,
   getLegUnlockingStatus,
   getNextLevelRequirement,
-  getMissedCommissions,
-  markMissedCommissionsAsRead,
-  getFomoNotifications,
   getMemberDetails,
   getTeamSummary,
   getLegBreakdown,
   getLevelUsers,
   getLegUsers,
-  getPendingUnlocks,
-  getHorizontalRequirement,
-  getRequiredLevels,
   getCommissionRate,
-  calculateLevelProgress,
   formatLegData,
-  formatFomoNotifications,
-  getLevelRequirementsSummary,
+  calculateLevelProgress,
   getLegWiseLevelStatus,
-  isLevelPending,
-  getPendingLegsForLevel,
-  calculatePotentialEarnings
+  calculatePotentialEarnings,
+  getAllCommissionRates,
+  isLevelUnlocked,
+  getNextLevelToUnlock,
+  getUnlockProgress
 };

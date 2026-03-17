@@ -31,7 +31,7 @@ import jsQR from "jsqr";
 import { QRCodeCanvas } from "qrcode.react";
 import { DepositScreenshotModal } from "./DepositScreenshotModal";
 // At the top of your UserDashboard.jsx, after imports:
-console.log('Imported component:', DepositScreenshotModal);
+// console.log('Imported component:', DepositScreenshotModal);
 
 export default function UserDashboard() {
   const navigate = useNavigate();
@@ -4449,18 +4449,25 @@ const HistoryPage = ({ transactions }) => (
 
 
 
-const ReferralPage = ({ referralData, teamStats }) => {
+const ReferralPage = ({ referralData: propReferralData, teamStats: propTeamStats }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [showTeamCashback, setShowTeamCashback] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [expandedMember, setExpandedMember] = useState(null);
   const [expandedLevel, setExpandedLevel] = useState(null);
-  const [expandedLeg, setExpandedLeg] = useState(null); // Track which leg is expanded
+  const [expandedLeg, setExpandedLeg] = useState(null);
   const [expandedLegDetails, setExpandedLegDetails] = useState({});
   const [statsFilter, setStatsFilter] = useState('total');
-  const [showAllLegs, setShowAllLegs] = useState(false); // For pagination
+  const [showAllLegs, setShowAllLegs] = useState(false);
   
-  // ========== STATE FOR DYNAMIC LEGS ==========
+  // ========== LOCAL STATE FOR REFERRAL DATA ==========
+  const [localReferralData, setLocalReferralData] = useState({
+    referralCode: '',
+    directReferrals: 0,
+    totalReferrals: 0,
+    referralEarnings: { total: 0 }
+  });
+  
   const [legStatus, setLegStatus] = useState(null);
   const [nextLevel, setNextLevel] = useState(null);
   const [memberDetails, setMemberDetails] = useState({});
@@ -4472,21 +4479,71 @@ const ReferralPage = ({ referralData, teamStats }) => {
   const [fomoNotifications, setFomoNotifications] = useState([]);
   const [showFomoModal, setShowFomoModal] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
-  
-  // ========== OPTIMIZATION STATES FOR 50+ LEGS ==========
-  const [levelUsersCache, setLevelUsersCache] = useState({}); // Cache for leg-level users
-  const [loadingLevels, setLoadingLevels] = useState({}); // Track loading states
-  const [pendingRequests, setPendingRequests] = useState({}); // Prevent duplicate requests
-  const legsPerPage = 20; // Show 20 legs per page
-  
   const [todayStats, setTodayStats] = useState({
     teamBusiness: 0,
     yourCommission: 0,
     teamMembers: 0
   });
+  // Add these with your other useState declarations (around line where other states are declared)
+const [levelUsersCache, setLevelUsersCache] = useState({});
+const [loadingLevels, setLoadingLevels] = useState({});
+const [pendingRequests, setPendingRequests] = useState({});
+const [legsPerPage, setLegsPerPage] = useState(20); // Add this too if missing
+  
+  // ========== USE PROP DATA IF PROVIDED, OTHERWISE USE LOCAL ==========
+// ========== USE PROP DATA IF PROVIDED, OTHERWISE USE LOCAL ==========
+const referralData = propReferralData || { ...localReferralData }; // Spread operator वापरा
+const teamStats = propTeamStats || { ...teamStatsLocal }; // जर teamStatsLocal असेल तर  const teamStats = propTeamStats || {};
 
   // API Base URL
   const API_BASE = 'https://cpay-link-backend.onrender.com/api';
+  // const API_BASE = "http://localhost:5000/api";
+
+// ========== FETCH REFERRAL STATS - CLEAN VERSION ==========
+useEffect(() => {
+  let isMounted = true;
+  
+  const fetchReferralStats = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      // console.log("Fetching referral stats with token:", token ? "exists" : "missing");
+      
+      const response = await fetch(`${API_BASE}/auth/referral`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const data = await response.json();
+      // console.log("Referral API response:", data);
+      
+      if (data?.success && data?.data && isMounted) {
+        // console.log("Setting referral data:", data.data.referralCode);
+        setLocalReferralData({
+          referralCode: data.data.referralCode || 'N/A',
+          directReferrals: data.data.directReferrals || 0,
+          totalReferrals: data.data.totalTeam || 0,
+          referralEarnings: { total: data.data.totalEarnings || 0 }
+        });
+      }
+    } catch (error) {
+      // console.error("Error fetching referral stats:", error);
+      if (isMounted) {
+        setLocalReferralData(prev => ({
+          ...prev,
+          referralCode: 'Error loading'
+        }));
+      }
+    }
+  };
+
+  fetchReferralStats();
+  
+  return () => {
+    isMounted = false;
+  };
+}, []); // Empty dependency array - run only once
 
   // ========== HELPER FUNCTIONS ==========
   const getHorizontalRequirement = (level) => {
@@ -4587,62 +4644,61 @@ const ReferralPage = ({ referralData, teamStats }) => {
     }
   }, [levelUsersCache, pendingRequests, fetchLegLevelUsers]);
 
-  // ========== LOAD LEG STATUS - ONCE ==========
-  useEffect(() => {
-    let isMounted = true;
-    let isFetching = false;
+// ========== LOAD LEG STATUS - SIMPLIFIED VERSION (NO MISSED COMMISSIONS) ==========
+useEffect(() => {
+  let isMounted = true;
+  let isFetching = false;
+  
+  const fetchLegStatus = async () => {
+    if (isFetching || dataLoaded) return;
+    isFetching = true;
     
-    const fetchLegStatus = async () => {
-      if (isFetching || dataLoaded) return;
-      isFetching = true;
+    try {
+      const token = localStorage.getItem("token");
+      const { 
+        getLegUnlockingStatus, 
+        getNextLevelRequirement,
+        getLegBreakdown
+      } = await import("../services/authService");
       
-      try {
-        const token = localStorage.getItem("token");
-        const { 
-          getLegUnlockingStatus, 
-          getNextLevelRequirement,
-          getLegBreakdown,
-          getMissedCommissions,
-          getFomoNotifications
-        } = await import("../services/authService");
-        
-        const status = await getLegUnlockingStatus(token);
-        if (isMounted) setLegStatus(status);
-        
-        const next = await getNextLevelRequirement(token);
-        if (isMounted && next?.success) {
-          setNextLevel(next.data);
-        }
-        
-        const breakdown = await getLegBreakdown(token);
-        if (isMounted) {
-          setLegBreakdown(breakdown);
-          if (breakdown?.legs) {
-            preloadPopularLevels(breakdown.legs).catch(console.error);
-          }
-        }
-        
-        const missed = await getMissedCommissions(token);
-        if (isMounted) setMissedCommissions(missed);
-        
-        const fomo = await getFomoNotifications(token);
-        if (isMounted) setFomoNotifications(fomo.notifications || []);
-        
-        if (isMounted) setDataLoaded(true);
-        
-      } catch (error) {
-        console.error("Error fetching leg status:", error);
-      } finally {
-        isFetching = false;
+      // Get leg status
+      const status = await getLegUnlockingStatus(token);
+      if (isMounted) setLegStatus(status);
+      
+      // Get next level requirement
+      const next = await getNextLevelRequirement(token);
+      if (isMounted && next?.success) {
+        setNextLevel(next.data);
       }
-    };
-    
-    fetchLegStatus();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [dataLoaded, preloadPopularLevels]);
+      
+      // Get leg breakdown
+      const breakdown = await getLegBreakdown(token);
+      if (isMounted) {
+        setLegBreakdown(breakdown);
+        if (breakdown?.legs) {
+          preloadPopularLevels(breakdown.legs).catch(console.error);
+        }
+      }
+      
+      // MISSED COMMISSIONS AND FOMO ARE REMOVED - they don't exist in new logic
+      // setMissedCommissions(null);
+      // setFomoNotifications([]);
+      
+      if (isMounted) setDataLoaded(true);
+      
+    } catch (error) {
+      console.error("Error fetching leg status:", error);
+    } finally {
+      isFetching = false;
+    }
+  };
+  
+  fetchLegStatus();
+  
+  return () => {
+    isMounted = false;
+  };
+}, [dataLoaded, preloadPopularLevels]);
 
   // ========== LOAD LEVEL-WISE MEMBERS ==========
   useEffect(() => {
@@ -5011,8 +5067,19 @@ const ReferralPage = ({ referralData, teamStats }) => {
     );
   });
 
-// ========== FINAL FIXED LEG CARD COMPONENT ==========
-const LegCard = React.memo(({ leg, expandedLeg, setExpandedLeg }) => {
+// ========== UPDATED LEG CARD COMPONENT ==========
+const LegCard = React.memo(({ 
+  leg, 
+  expandedLeg, 
+  setExpandedLeg,
+  // Add these new props
+  levelUsersCache,
+  loadingLevels,
+  pendingRequests,
+  fetchLegLevelUsers,
+  setExpandedMember,
+  fetchMemberDetails
+}) => {
   const [expandedLevel, setExpandedLevel] = useState(null);
   const [localLoading, setLocalLoading] = useState(false);
   const clickInProgress = useRef(false);
@@ -5031,24 +5098,20 @@ const LegCard = React.memo(({ leg, expandedLeg, setExpandedLeg }) => {
     setExpandedLeg(prev => prev === leg.legNumber ? null : leg.legNumber);
   };
   
-  // Handle level click - FIXED VERSION
+  // Handle level click
   const handleLevelClick = (e, level) => {
-    // Stop propagation immediately
     e.stopPropagation();
     e.preventDefault();
     
-    // Prevent multiple rapid clicks
     if (clickInProgress.current) return;
     clickInProgress.current = true;
     
-    // Toggle level expansion
     if (expandedLevel === level) {
       setExpandedLevel(null);
     } else {
       setExpandedLevel(level);
       setLocalLoading(true);
       
-      // Fetch data in background
       fetchLegLevelUsers(leg.legNumber, level)
         .catch(error => console.error("Error fetching level users:", error))
         .finally(() => {
@@ -5056,20 +5119,17 @@ const LegCard = React.memo(({ leg, expandedLeg, setExpandedLeg }) => {
         });
     }
     
-    // Reset click flag after a short delay
     setTimeout(() => {
       clickInProgress.current = false;
     }, 300);
   };
   
-  // Handle close button click
   const handleCloseLevel = (e) => {
     e.stopPropagation();
     e.preventDefault();
     setExpandedLevel(null);
   };
   
-  // Handle user selection
   const handleSelectMember = (e, userId) => {
     e.stopPropagation();
     e.preventDefault();
@@ -5082,9 +5142,9 @@ const LegCard = React.memo(({ leg, expandedLeg, setExpandedLeg }) => {
       className={`bg-black/30 border rounded-xl overflow-hidden ${
         isActive ? 'border-[#00F5A0]/30' : 'border-white/10 opacity-70'
       }`}
-      onClick={(e) => e.stopPropagation()} // Prevent any click from bubbling up
+      onClick={(e) => e.stopPropagation()}
     >
-      {/* Leg Header */}
+      {/* Leg Header - same as before */}
       <div 
         className="p-4 cursor-pointer hover:bg-white/5 transition-all select-none"
         onClick={handleHeaderClick}
@@ -5129,7 +5189,7 @@ const LegCard = React.memo(({ leg, expandedLeg, setExpandedLeg }) => {
       {isExpanded && (
         <div 
           className="p-4 border-t border-white/10 bg-black/20"
-          onClick={(e) => e.stopPropagation()} // CRITICAL: Prevent any click inside from bubbling
+          onClick={(e) => e.stopPropagation()}
         >
           <h5 className="text-xs font-bold text-[#00F5A0] mb-3">
             Level-wise Users in Leg {leg.legNumber}
@@ -5191,7 +5251,7 @@ const LegCard = React.memo(({ leg, expandedLeg, setExpandedLeg }) => {
           {expandedLevel && (
             <div 
               className="mt-4"
-              onClick={(e) => e.stopPropagation()} // CRITICAL: Prevent any click from bubbling
+              onClick={(e) => e.stopPropagation()}
             >
               <LevelUsersList
                 legNumber={leg.legNumber}
@@ -5464,29 +5524,29 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
         />
       )}
       
-      {/* Referral Code Card */}
-      <div className="bg-gradient-to-br from-[#00F5A0] to-[#00d88c] p-8 rounded-[2.5rem] text-[#051510] shadow-2xl">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-black italic">Your Referral Code</h2>
-          <Gift size={28} className="opacity-60" />
-        </div>
-        
-        <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl backdrop-blur-sm">
-          <span className="text-3xl font-black tracking-widest">
-            {referralData.referralCode}
-          </span>
-          <button
-            onClick={copyReferralCode}
-            className="bg-black text-[#00F5A0] p-3 rounded-xl hover:bg-black/80 transition-all"
-          >
-            <Copy size={20} />
-          </button>
-        </div>
-        
-        <p className="text-sm font-bold mt-4 opacity-70">
-          Share this code & earn commissions on 21 levels!
-        </p>
-      </div>
+  {/* Referral Code Card */}
+<div className="bg-gradient-to-br from-[#00F5A0] to-[#00d88c] p-8 rounded-[2.5rem] text-[#051510] shadow-2xl">
+  <div className="flex items-center justify-between mb-6">
+    <h2 className="text-2xl font-black italic">Your Referral Code</h2>
+    <Gift size={28} className="opacity-60" />
+  </div>
+  
+  <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl backdrop-blur-sm">
+    <span className="text-3xl font-black tracking-widest">
+      {localReferralData.referralCode} {/* थेट localReferralData वापरा */}
+    </span>
+    <button
+      onClick={copyReferralCode}
+      className="bg-black text-[#00F5A0] p-3 rounded-xl hover:bg-black/80 transition-all"
+    >
+      <Copy size={20} />
+    </button>
+  </div>
+  
+  <p className="text-sm font-bold mt-4 opacity-70">
+    Share this code & earn commissions on 21 levels!
+  </p>
+</div>
 
       {/* ========== DYNAMIC LEGS STATUS CARD ========== */}
       <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
@@ -5619,13 +5679,22 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
           </h3>
           
           <div className="space-y-4 max-h-[600px] overflow-y-auto p-2">
-            {paginatedLegs.map((leg, index) => (
-<LegCard 
-  key={leg.legNumber}
-  leg={leg}
-  expandedLeg={expandedLeg}
-  setExpandedLeg={setExpandedLeg}
-/>            ))}
+         {/* In your LEGS LIST section, update the LegCard rendering */}
+{paginatedLegs.map((leg, index) => (
+  <LegCard 
+    key={leg.legNumber}
+    leg={leg}
+    expandedLeg={expandedLeg}
+    setExpandedLeg={setExpandedLeg}
+    // Add these new props
+    levelUsersCache={levelUsersCache}
+    loadingLevels={loadingLevels}
+    pendingRequests={pendingRequests}
+    fetchLegLevelUsers={fetchLegLevelUsers}
+    setExpandedMember={setExpandedMember}
+    fetchMemberDetails={fetchMemberDetails}
+  />
+))}
             
             {legBreakdown.legs.length > legsPerPage && (
               <button
