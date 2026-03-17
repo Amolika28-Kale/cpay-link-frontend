@@ -5,7 +5,7 @@ import {
   Zap, Clock, Search, ScanLine, Eye, ListOrdered, TrendingUp, Award,
   ChevronDown, ChevronUp, User, Copy, DollarSign, PieChart, BarChart3,
   Users2, GitBranch, Network, Wallet, Coins, History, Download,
-  Filter, ChevronLeft, ChevronRight, AlertCircle, Info,CheckCircle
+  Filter, ChevronLeft, ChevronRight, AlertCircle, Info, CheckCircle
 } from "lucide-react";
 import { 
   getAllUsers, getAllDeposits, updateDepositStatus, 
@@ -221,7 +221,7 @@ export default function AdminDashboard() {
           />
         )}
 
-        {/* USERS TAB - COMPLETE DETAILS */}
+        {/* USERS TAB - COMPLETE DETAILS WITH LEGS */}
         {activeTab === "Users" && (
           <UsersView 
             users={users}
@@ -350,7 +350,7 @@ const DashboardView = ({
   );
 };
 
-// ================= USERS VIEW - COMPLETE WITH ALL DATA =================
+// ================= USERS VIEW - WITH LEGS AND LEVELS =================
 const UsersView = ({ 
   users, searchTerm, setSearchTerm, setSelectedUser, 
   expandedUser, setExpandedUser, expandedLevel, setExpandedLevel,
@@ -362,6 +362,11 @@ const UsersView = ({
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [memberDetails, setMemberDetails] = useState({});
   const [loadingMember, setLoadingMember] = useState(false);
+  const [selectedLeg, setSelectedLeg] = useState(null);
+  const [legDetails, setLegDetails] = useState({});
+  const [loadingLegs, setLoadingLegs] = useState(false);
+  const [expandedLeg, setExpandedLeg] = useState(null);
+  const [legUsersCache, setLegUsersCache] = useState({});
   
   const API_BASE = 'https://cpay-link-backend.onrender.com';
   // const API_BASE = 'http://localhost:5000';
@@ -379,6 +384,53 @@ const UsersView = ({
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  // Fetch leg details for a user
+  const fetchLegDetails = async (userId) => {
+    if (legDetails[userId]) return legDetails[userId];
+    
+    setLoadingLegs(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_BASE}/api/auth/leg-breakdown`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setLegDetails(prev => ({ ...prev, [userId]: data.data }));
+        return data.data;
+      }
+    } catch (error) {
+      console.error("Error fetching leg details:", error);
+    } finally {
+      setLoadingLegs(false);
+    }
+    return null;
+  };
+
+  // Fetch leg level users
+  const fetchLegLevelUsers = async (legNumber, level, userId) => {
+    const cacheKey = `${userId}-${legNumber}-${level}`;
+    if (legUsersCache[cacheKey]) return legUsersCache[cacheKey];
+    
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${API_BASE}/api/auth/leg-users/${legNumber}/${level}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await response.json();
+      
+      if (data.success) {
+        setLegUsersCache(prev => ({ ...prev, [cacheKey]: data.data.users || [] }));
+        return data.data.users;
+      }
+    } catch (error) {
+      console.error("Error fetching leg level users:", error);
+    }
+    return [];
+  };
 
   // Fetch member details
   const fetchMemberDetails = async (memberId) => {
@@ -404,33 +456,58 @@ const UsersView = ({
     return null;
   };
 
-  // Calculate team count (Level 1-21)
-  const calculateTeamCount = (user) => {
-    let count = 0;
-    if (user?.referralTree) {
-      for (let i = 1; i <= 21; i++) {
-        count += user.referralTree[`level${i}`]?.length || 0;
-      }
-    }
-    return count;
-  };
+ 
+  // Calculate team count from legs
+const calculateTeamCount = (user) => {
+  if (!user?.legs) return 0;
+  return user.legs.reduce((total, leg) => {
+    return total + (leg.stats?.totalUsers || 0);
+  }, 0);
+};
 
-  // Calculate total team cashback
-  const calculateTotalTeamCashback = (user) => {
-    return Object.values(user?.teamCashback || {}).reduce((sum, level) => sum + (level.total || 0), 0);
-  };
+// Calculate total earnings from legs
+const calculateTotalEarnings = (user) => {
+  if (!user?.legs) return 0;
+  return user.legs.reduce((total, leg) => {
+    return total + (leg.stats?.totalEarnings || 0);
+  }, 0);
+};
 
-  // Get level-wise member counts
-  const getLevelWiseCounts = (user) => {
-    const counts = {};
-    for (let i = 1; i <= 21; i++) {
-      const count = user?.referralTree?.[`level${i}`]?.length || 0;
-      if (count > 0) {
-        counts[`level${i}`] = count;
-      }
+// Calculate total team cashback from legs
+const calculateTotalTeamCashback = (user) => {
+  if (!user?.legs) return 0;
+  return user.legs.reduce((total, leg) => {
+    return total + (leg.stats?.totalTeamCashback || 0);
+  }, 0);
+};
+
+// Get direct referrals count (legs length)
+const getDirectCount = (user) => {
+  return user?.legs?.length || 0;
+};
+
+// Get level-wise counts from all legs
+const getLevelWiseCounts = (user) => {
+  const counts = {};
+  if (!user?.legs) return counts;
+  
+  for (let level = 1; level <= 21; level++) {
+    let totalUsers = 0;
+    for (const leg of user.legs) {
+      const levelData = leg.levels?.[`level${level}`];
+      totalUsers += levelData?.users?.length || 0;
     }
-    return counts;
-  };
+    if (totalUsers > 0) {
+      counts[`level${level}`] = totalUsers;
+    }
+  }
+  return counts;
+};
+
+// Get unlocked legs count
+const getUnlockedLegsCount = (user) => {
+  return user.legs?.filter(leg => leg.isActive).length || 0;
+};
 
   useEffect(() => {
     const handleResize = () => {
@@ -535,98 +612,121 @@ const UsersView = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {paginatedUsers.map(u => {
-                const teamCount = calculateTeamCount(u);
-                const directCount = u.referralTree?.level1?.length || 0;
-                const totalEarnings = u.referralEarnings?.total || 0;
-                const teamCashbackTotal = calculateTotalTeamCashback(u);
-                const levelCounts = getLevelWiseCounts(u);
-                const levelSummary = Object.entries(levelCounts).slice(0, 3).map(([lvl, cnt]) => `${lvl}:${cnt}`).join(', ');
-                const remainingLevels = Object.keys(levelCounts).length - 3;
-                
-                // Pay request stats
-                const totalPayRequests = u.totalPayRequests || 0;
-                const totalAccepted = u.totalAcceptedRequests || 0;
-                
-                // Legs unlocked
-                const legsUnlocked = u.legsUnlocked ? Object.values(u.legsUnlocked).filter(v => v === true).length : 0;
-                
-                return (
-                  <React.Fragment key={u._id}>
-                    <tr className="hover:bg-white/[0.02] cursor-pointer" onClick={() => setExpandedUser(expandedUser === u._id ? null : u._id)}>
-                      <td className="px-2 lg:px-3 py-2 lg:py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#00F5A0] to-green-600 flex items-center justify-center text-black font-bold text-xs">
-                            {u.email?.charAt(0)?.toUpperCase() || u.userId?.charAt(0) || 'U'}
-                          </div>
-                          <div>
-                            <p className="font-bold text-xs">{u.email || u.userId}</p>
-                            <p className="text-[6px] text-gray-500">Ref: {u.referralCode}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-2 lg:px-3 py-2 lg:py-3">
-                        <span className="text-xs lg:text-sm font-bold text-blue-400">{directCount}</span>
-                      </td>
-                      <td className="px-2 lg:px-3 py-2 lg:py-3">
-                        <span className="text-xs lg:text-sm font-bold text-[#00F5A0]">{teamCount}</span>
-                      </td>
-                      <td className="px-2 lg:px-3 py-2 lg:py-3">
-                        <div className="text-[8px]">
-                          {levelSummary}
-                          {remainingLevels > 0 && (
-                            <span className="text-gray-500 ml-1">+{remainingLevels}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-2 lg:px-3 py-2 lg:py-3">
-                        <p className="text-xs lg:text-sm font-bold text-orange-400">₹{totalEarnings.toFixed(2)}</p>
-                      </td>
-                      <td className="px-2 lg:px-3 py-2 lg:py-3">
-                        <p className="text-xs lg:text-sm font-bold text-green-400">₹{teamCashbackTotal.toFixed(2)}</p>
-                      </td>
-                      <td className="px-2 lg:px-3 py-2 lg:py-3">
-                        <span className={`text-[8px] px-1.5 py-0.5 rounded-full ${legsUnlocked >= 4 ? 'bg-green-500/20 text-green-400' : 'bg-orange-500/20 text-orange-400'}`}>
-                          {legsUnlocked}/7
-                        </span>
-                      </td>
-                      <td className="px-2 lg:px-3 py-2 lg:py-3">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">
-                            C:{totalPayRequests}
-                          </span>
-                          <span className="text-[8px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">
-                            A:{totalAccepted}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-2 lg:px-3 py-2 lg:py-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button onClick={(e) => { e.stopPropagation(); setSelectedUser(u); }} className="bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-1 rounded-lg text-[8px] font-bold">Details</button>
-                          <button onClick={(e) => { e.stopPropagation(); setExpandedUser(expandedUser === u._id ? null : u._id); }} className="text-gray-500 p-1">
-                            {expandedUser === u._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    {expandedUser === u._id && (
-                      <tr className="bg-black/40">
-                        <td colSpan="9" className="px-3 lg:px-4 py-3 lg:py-4">
-                          <UserExpandedDetails 
-                            user={u} 
-                            copyToClipboard={copyToClipboard} 
-                            expandedLevel={expandedLevel} 
-                            setExpandedLevel={setExpandedLevel}
-                            fetchMemberDetails={fetchMemberDetails}
-                            memberDetails={memberDetails}
-                            loadingMember={loadingMember}
-                          />
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
+              {/* Table body मध्ये */}
+{paginatedUsers.map(u => {
+  const teamCount = calculateTeamCount(u);
+  const directCount = getDirectCount(u);
+  const totalEarnings = calculateTotalEarnings(u);
+  const teamCashbackTotal = calculateTotalTeamCashback(u);
+  const levelCounts = getLevelWiseCounts(u);
+  const levelSummary = Object.entries(levelCounts).slice(0, 3).map(([lvl, cnt]) => `${lvl}:${cnt}`).join(', ');
+  const remainingLevels = Object.keys(levelCounts).length - 3;
+  const unlockedLegs = getUnlockedLegsCount(u);
+  
+  // Pay request stats
+  const totalPayRequests = u.totalPayRequests || 0;
+  const totalAccepted = u.totalAcceptedRequests || 0;
+  
+  // Legs
+  const legs = u.legs || [];
+  
+  return (
+    <React.Fragment key={u._id}>
+      <tr className="hover:bg-white/[0.02] cursor-pointer" onClick={() => setExpandedUser(expandedUser === u._id ? null : u._id)}>
+        <td className="px-2 lg:px-3 py-2 lg:py-3">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#00F5A0] to-green-600 flex items-center justify-center text-black font-bold text-xs">
+              {u.email?.charAt(0)?.toUpperCase() || u.userId?.charAt(0) || 'U'}
+            </div>
+            <div>
+              <p className="font-bold text-xs">{u.email || u.userId}</p>
+              <p className="text-[6px] text-gray-500">Ref: {u.referralCode}</p>
+            </div>
+          </div>
+        </td>
+        <td className="px-2 lg:px-3 py-2 lg:py-3">
+          <span className="text-xs lg:text-sm font-bold text-blue-400">{directCount}</span>
+        </td>
+        <td className="px-2 lg:px-3 py-2 lg:py-3">
+          <span className="text-xs lg:text-sm font-bold text-[#00F5A0]">{teamCount}</span>
+        </td>
+        <td className="px-2 lg:px-3 py-2 lg:py-3">
+          <div className="text-[8px]">
+            {levelSummary}
+            {remainingLevels > 0 && (
+              <span className="text-gray-500 ml-1">+{remainingLevels}</span>
+            )}
+          </div>
+        </td>
+        <td className="px-2 lg:px-3 py-2 lg:py-3">
+          <p className="text-xs lg:text-sm font-bold text-orange-400">₹{totalEarnings.toFixed(2)}</p>
+        </td>
+        <td className="px-2 lg:px-3 py-2 lg:py-3">
+          <p className="text-xs lg:text-sm font-bold text-green-400">₹{teamCashbackTotal.toFixed(2)}</p>
+        </td>
+        <td className="px-2 lg:px-3 py-2 lg:py-3">
+          <div className="flex flex-wrap gap-1">
+            {legs.length > 0 ? (
+              legs.map(leg => (
+                <button
+                  key={leg.legNumber}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedLeg({ user: u, leg });
+                  }}
+                  className={`text-[8px] px-2 py-0.5 rounded-full font-bold transition-all ${
+                    leg.isActive 
+                      ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' 
+                      : 'bg-gray-500/20 text-gray-400'
+                  }`}
+                  title={`Leg ${leg.legNumber}: ${leg.stats?.totalUsers || 0} users, ₹${leg.stats?.totalEarnings || 0} earned`}
+                >
+                  L{leg.legNumber}
+                </button>
+              ))
+            ) : (
+              <span className="text-[8px] text-gray-600">No legs</span>
+            )}
+          </div>
+        </td>
+        <td className="px-2 lg:px-3 py-2 lg:py-3">
+          <div className="flex items-center gap-1">
+            <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">
+              C:{totalPayRequests}
+            </span>
+            <span className="text-[8px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">
+              A:{totalAccepted}
+            </span>
+          </div>
+        </td>
+        <td className="px-2 lg:px-3 py-2 lg:py-3 text-right">
+          <div className="flex items-center justify-end gap-1">
+            <button onClick={(e) => { e.stopPropagation(); setSelectedUser(u); }} className="bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-1 rounded-lg text-[8px] font-bold">Details</button>
+            <button onClick={(e) => { e.stopPropagation(); setExpandedUser(expandedUser === u._id ? null : u._id); }} className="text-gray-500 p-1">
+              {expandedUser === u._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+          </div>
+        </td>
+      </tr>
+      {expandedUser === u._id && (
+        <tr className="bg-black/40">
+          <td colSpan="9" className="px-3 lg:px-4 py-3 lg:py-4">
+            <UserExpandedDetails 
+              user={u} 
+              copyToClipboard={copyToClipboard} 
+              expandedLevel={expandedLevel} 
+              setExpandedLevel={setExpandedLevel}
+              fetchMemberDetails={fetchMemberDetails}
+              memberDetails={memberDetails}
+              loadingMember={loadingMember}
+              setSelectedLeg={setSelectedLeg}
+            />
+          </td>
+        </tr>
+      )}
+    </React.Fragment>
+  );
+})}
             </tbody>
           </table>
         </div>
@@ -648,6 +748,7 @@ const UsersView = ({
               fetchMemberDetails={fetchMemberDetails}
               memberDetails={memberDetails}
               loadingMember={loadingMember}
+              setSelectedLeg={setSelectedLeg}
             />
           ))}
         </div>
@@ -661,12 +762,23 @@ const UsersView = ({
           <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold ${currentPage === totalPages ? 'bg-white/5 text-gray-600 cursor-not-allowed' : 'bg-[#00F5A0] text-black'}`}>Next</button>
         </div>
       )}
+
+      {/* Leg Details Modal */}
+      {selectedLeg && (
+        <LegDetailsModal
+          user={selectedLeg.user}
+          leg={selectedLeg.leg}
+          onClose={() => setSelectedLeg(null)}
+          fetchLegLevelUsers={fetchLegLevelUsers}
+          legUsersCache={legUsersCache}
+        />
+      )}
     </div>
   );
 };
 
 /* ================= MOBILE USER CARD ================= */
-const MobileUserCard = ({ user, expandedUser, setExpandedUser, setSelectedUser, copyToClipboard, expandedLevel, setExpandedLevel }) => {
+const MobileUserCard = ({ user, expandedUser, setExpandedUser, setSelectedUser, copyToClipboard, expandedLevel, setExpandedLevel, fetchMemberDetails, memberDetails, loadingMember, setSelectedLeg }) => {
   const isExpanded = expandedUser === user._id;
   const teamCount = calculateTeamCount(user);
   const directCount = user.referralTree?.level1?.length || 0;
@@ -696,67 +808,92 @@ const MobileUserCard = ({ user, expandedUser, setExpandedUser, setSelectedUser, 
       <div className="px-3 pb-2 flex gap-1">
         <button onClick={(e) => { e.stopPropagation(); copyToClipboard(user.referralCode); }} className="bg-white/5 text-gray-400 px-2 py-1 rounded-lg text-[8px] font-bold flex items-center gap-1"><Copy size={8} /> Copy Ref</button>
       </div>
+      
+      {/* Legs in Mobile View */}
+      {user.legs && user.legs.length > 0 && (
+        <div className="px-3 pb-2 pt-0">
+          <p className="text-[6px] text-gray-500 mb-1">Legs:</p>
+          <div className="flex flex-wrap gap-1">
+            {user.legs.map(leg => (
+              <button
+                key={leg.legNumber}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedLeg({ user, leg });
+                }}
+                className={`text-[6px] px-2 py-0.5 rounded-full ${
+                  leg.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                }`}
+              >
+                Leg {leg.legNumber}: {leg.stats?.totalUsers || 0}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      
       {isExpanded && (
         <div className="px-3 pb-3 pt-1 border-t border-white/5">
-          <UserExpandedDetails user={user} copyToClipboard={copyToClipboard} expandedLevel={expandedLevel} setExpandedLevel={setExpandedLevel} mobileView={true} />
+          <UserExpandedDetails 
+            user={user} 
+            copyToClipboard={copyToClipboard} 
+            expandedLevel={expandedLevel} 
+            setExpandedLevel={setExpandedLevel}
+            fetchMemberDetails={fetchMemberDetails}
+            memberDetails={memberDetails}
+            loadingMember={loadingMember}
+            mobileView={true}
+            setSelectedLeg={setSelectedLeg}
+          />
         </div>
       )}
     </div>
   );
 };
 
-// ================= USER EXPANDED DETAILS - COMPLETE WITH ALL DATA =================
-const UserExpandedDetails = ({ user, copyToClipboard, expandedLevel, setExpandedLevel, fetchMemberDetails, memberDetails, loadingMember }) => {
+const UserExpandedDetails = ({ user, copyToClipboard, expandedLevel, setExpandedLevel, fetchMemberDetails, memberDetails, loadingMember, setSelectedLeg }) => {
   const [showCreatedList, setShowCreatedList] = useState(false);
   const [showAcceptedList, setShowAcceptedList] = useState(false);
   const [showLevelMembers, setShowLevelMembers] = useState({});
+  const [expandedLeg, setExpandedLeg] = useState(null);
   
-  // Calculate team stats
-  const teamLevels = [];
-  for (let i = 1; i <= 21; i++) {
-    const levelMembers = user.referralTree?.[`level${i}`] || [];
-    if (levelMembers.length > 0) {
-      teamLevels.push({ level: i, count: levelMembers.length, members: levelMembers });
+  // Legs data
+  const legs = user.legs || [];
+  
+  // Calculate totals from legs
+  const totalTeam = legs.reduce((sum, leg) => sum + (leg.stats?.totalUsers || 0), 0);
+  const totalEarnings = legs.reduce((sum, leg) => sum + (leg.stats?.totalEarnings || 0), 0);
+  const totalTeamCashback = legs.reduce((sum, leg) => sum + (leg.stats?.totalTeamCashback || 0), 0);
+  const activeLegs = legs.filter(leg => leg.isActive).length;
+  
+  // Get level-wise data from all legs
+  const levelData = {};
+  for (let level = 1; level <= 21; level++) {
+    levelData[`level${level}`] = {
+      users: 0,
+      earnings: 0,
+      teamCashback: 0
+    };
+    
+    for (const leg of legs) {
+      const levelInfo = leg.levels?.[`level${level}`];
+      if (levelInfo) {
+        levelData[`level${level}`].users += levelInfo.users?.length || 0;
+        levelData[`level${level}`].earnings += levelInfo.earnings || 0;
+        levelData[`level${level}`].teamCashback += levelInfo.teamCashback || 0;
+      }
     }
   }
 
-  // Scanner stats
-  const createdScanners = user.scanners?.created || [];
-  const acceptedScanners = user.scanners?.accepted || [];
-  const referralEarnings = user.referralEarnings || {};
-  const teamCashback = user.teamCashback || {};
+  // Missed commissions
+  const missedCommissions = user.missedCommissions || [];
+  const totalMissedAmount = missedCommissions.reduce((sum, mc) => sum + (mc.amount || 0), 0);
 
-  // Pay Request Statistics
-  const totalPayRequests = user.totalPayRequests || 0;
-  const totalAcceptedRequests = user.totalAcceptedRequests || 0;
-  const pendingPayRequests = totalPayRequests - totalAcceptedRequests;
-
-  // Legs unlocked
-  const legsUnlocked = user.legsUnlocked || {};
-  const legRequirements = [
-    { leg: "Leg 1", required: 1, levels: "1-3" },
-    { leg: "Leg 2", required: 2, levels: "4-6" },
-    { leg: "Leg 3", required: 3, levels: "7-9" },
-    { leg: "Leg 4", required: 4, levels: "10-12" },
-    { leg: "Leg 5", required: 5, levels: "13-15" },
-    { leg: "Leg 6", required: 6, levels: "16-18" },
-    { leg: "Leg 7", required: 7, levels: "19-21" }
-  ];
-
-  // Toggle level members
-  const toggleLevelMembers = (level) => {
-    setShowLevelMembers(prev => ({
-      ...prev,
-      [level]: !prev[level]
-    }));
-    
-    // Fetch member details if not already fetched
-    if (!showLevelMembers[level]) {
-      const members = teamLevels.find(l => l.level === level)?.members || [];
-      members.forEach(memberId => {
-        fetchMemberDetails(memberId);
-      });
-    }
+  // Wallet balances (from user object or default)
+  const wallets = {
+    USDT: user.wallets?.USDT || 0,
+    INR: user.wallets?.INR || 0,
+    CASHBACK: user.wallets?.CASHBACK || 0
   };
 
   return (
@@ -775,40 +912,153 @@ const UserExpandedDetails = ({ user, copyToClipboard, expandedLevel, setExpanded
         <div className="grid grid-cols-3 gap-2">
           <div>
             <p className="text-[6px] text-gray-500">USDT</p>
-            <p className="text-sm font-bold text-blue-400">{user.wallets?.USDT?.toFixed(2) || 0}</p>
+            <p className="text-sm font-bold text-blue-400">{wallets.USDT.toFixed(2)}</p>
           </div>
           <div>
             <p className="text-[6px] text-gray-500">INR</p>
-            <p className="text-sm font-bold text-[#00F5A0]">₹{user.wallets?.INR?.toFixed(2) || 0}</p>
+            <p className="text-sm font-bold text-[#00F5A0]">₹{wallets.INR.toFixed(2)}</p>
           </div>
           <div>
             <p className="text-[6px] text-gray-500">CASHBACK</p>
-            <p className="text-sm font-bold text-orange-400">₹{user.wallets?.CASHBACK?.toFixed(2) || 0}</p>
+            <p className="text-sm font-bold text-orange-400">₹{wallets.CASHBACK.toFixed(2)}</p>
           </div>
         </div>
       </div>
 
       {/* Referral Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <SummaryCard label="Direct" value={user.referralTree?.level1?.length || 0} color="blue" />
-        <SummaryCard label="Total Team" value={teamLevels.reduce((sum, l) => sum + l.count, 0)} color="purple" />
-        <SummaryCard label="Earnings" value={`₹${referralEarnings.total?.toFixed(2) || 0}`} color="orange" />
-        <SummaryCard label="Team Cashback" value={`₹${Object.values(teamCashback).reduce((sum, l) => sum + (l.total || 0), 0).toFixed(2)}`} color="green" />
+        <SummaryCard label="Direct" value={legs.length} color="blue" />
+        <SummaryCard label="Total Team" value={totalTeam} color="purple" />
+        <SummaryCard label="Earnings" value={`₹${totalEarnings.toFixed(2)}`} color="orange" />
+        <SummaryCard label="Team Cashback" value={`₹${totalTeamCashback.toFixed(2)}`} color="green" />
       </div>
 
-      {/* Legs Unlocked */}
+      {/* Missed Commissions */}
+      {missedCommissions.length > 0 && (
+        <div className="bg-red-500/10 border border-red-500/20 p-3 rounded-lg">
+          <h4 className="text-[10px] font-bold mb-2 text-red-400 flex items-center gap-2">
+            <AlertCircle size={12} /> Missed Commissions ({missedCommissions.length})
+          </h4>
+          <p className="text-xs font-bold text-red-400">Total Missed: ₹{totalMissedAmount.toFixed(2)}</p>
+          <div className="mt-2 space-y-1 max-h-20 overflow-y-auto">
+            {missedCommissions.slice(0, 3).map((mc, idx) => (
+              <div key={idx} className="text-[8px] text-gray-400 flex justify-between">
+                <span>Leg {mc.legNumber} L{mc.level}</span>
+                <span className="text-red-400">₹{mc.amount}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Legs Overview */}
+      {legs.length > 0 && (
+        <div className="bg-black/40 p-3 rounded-lg">
+          <h4 className="text-[10px] font-bold mb-2 text-[#00F5A0] flex items-center gap-2">
+            <GitBranch size={12} /> Legs Overview ({activeLegs}/{legs.length} Active)
+          </h4>
+          
+          <div className="space-y-2">
+            {legs.map(leg => {
+              const unlockedLevels = Object.values(leg.levels || {}).filter(l => l.isUnlocked).length;
+              const totalUsersInLeg = leg.stats?.totalUsers || 0;
+              const totalEarningsInLeg = leg.stats?.totalEarnings || 0;
+              
+              return (
+                <div key={leg.legNumber} className="border border-white/10 rounded-lg overflow-hidden">
+                  <div 
+                    onClick={() => setExpandedLeg(expandedLeg === leg.legNumber ? null : leg.legNumber)}
+                    className="w-full flex justify-between items-center p-2 bg-black/30 hover:bg-black/50 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full ${
+                        leg.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        Leg {leg.legNumber}
+                      </span>
+                      <span className="text-[6px] text-gray-400">
+                        {totalUsersInLeg} users • {unlockedLevels}/21 levels
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedLeg({ user, leg });
+                        }}
+                        className="text-[8px] bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-0.5 rounded hover:bg-[#00F5A0]/20 cursor-pointer"
+                      >
+                        View
+                      </div>
+                      {expandedLeg === leg.legNumber ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                    </div>
+                  </div>
+                  
+                  {expandedLeg === leg.legNumber && (
+                    <div className="p-2 bg-black/20">
+                      {/* Level Grid - First 7 levels preview */}
+                      <div className="grid grid-cols-7 gap-1 mb-2">
+                        {[1,2,3,4,5,6,7].map(level => {
+                          const levelData = leg.levels?.[`level${level}`];
+                          const userCount = levelData?.users?.length || 0;
+                          
+                          return (
+                            <div key={level} className={`text-center p-1 rounded ${
+                              levelData?.isUnlocked 
+                                ? userCount > 0 
+                                  ? 'bg-[#00F5A0]/20' 
+                                  : 'bg-blue-500/10'
+                                : 'bg-gray-800/50'
+                            }`}>
+                              <span className="text-[5px] text-gray-400 block">L{level}</span>
+                              <span className={`text-[8px] font-bold ${
+                                userCount > 0 ? 'text-[#00F5A0]' : 
+                                levelData?.isUnlocked ? 'text-blue-400' : 'text-gray-500'
+                              }`}>
+                                {userCount}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Leg Stats */}
+                      <div className="grid grid-cols-3 gap-1 text-[6px]">
+                        <div className="bg-black/40 p-1 rounded text-center">
+                          <span className="text-gray-500">Earnings:</span>
+                          <span className="ml-1 text-[#00F5A0]">₹{totalEarningsInLeg}</span>
+                        </div>
+                        <div className="bg-black/40 p-1 rounded text-center">
+                          <span className="text-gray-500">Cashback:</span>
+                          <span className="ml-1 text-orange-400">₹{leg.stats?.totalTeamCashback || 0}</span>
+                        </div>
+                        <div className="bg-black/40 p-1 rounded text-center">
+                          <span className="text-gray-500">Unlocked:</span>
+                          <span className="ml-1 text-green-400">{unlockedLevels}/21</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Level-wise Summary */}
       <div className="bg-black/40 p-3 rounded-lg">
-        <h4 className="text-[10px] font-bold mb-2 text-[#00F5A0]">Legs Unlocked ({Object.values(legsUnlocked).filter(v => v).length}/7)</h4>
-        <div className="grid grid-cols-7 gap-1">
-          {legRequirements.map((item, index) => {
-            const legKey = `leg${index + 1}`;
-            const unlocked = legsUnlocked[legKey] || false;
+        <h4 className="text-[10px] font-bold mb-2 text-[#00F5A0]">Level-wise Summary</h4>
+        <div className="grid grid-cols-4 gap-1 max-h-40 overflow-y-auto">
+          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
+            const data = levelData[`level${level}`];
+            if (data.users === 0) return null;
+            
             return (
-              <div key={legKey} className={`text-center p-1 rounded ${unlocked ? 'bg-green-500/20' : 'bg-gray-700/50'}`}>
-                <span className="text-[6px] font-bold block">{item.leg}</span>
-                <span className={`text-[8px] font-bold ${unlocked ? 'text-green-400' : 'text-gray-500'}`}>
-                  {unlocked ? '✓' : `${item.required}`}
-                </span>
+              <div key={level} className="bg-black/30 p-1 rounded text-center">
+                <span className="text-[6px] text-gray-400 block">L{level}</span>
+                <span className="text-[8px] font-bold text-[#00F5A0]">{data.users}</span>
+                <span className="text-[5px] text-gray-500 block">₹{data.earnings}</span>
               </div>
             );
           })}
@@ -824,167 +1074,211 @@ const UserExpandedDetails = ({ user, copyToClipboard, expandedLevel, setExpanded
         <div className="grid grid-cols-3 gap-2 mb-2">
           <div className="bg-black/40 p-2 rounded text-center">
             <p className="text-[6px] text-gray-500">Created</p>
-            <p className="text-sm font-bold text-[#00F5A0]">{totalPayRequests}</p>
+            <p className="text-sm font-bold text-[#00F5A0]">{user.totalPayRequests || 0}</p>
           </div>
           <div className="bg-black/40 p-2 rounded text-center">
             <p className="text-[6px] text-gray-500">Accepted</p>
-            <p className="text-sm font-bold text-green-400">{totalAcceptedRequests}</p>
+            <p className="text-sm font-bold text-green-400">{user.totalAcceptedRequests || 0}</p>
           </div>
           <div className="bg-black/40 p-2 rounded text-center">
             <p className="text-[6px] text-gray-500">Pending</p>
-            <p className="text-sm font-bold text-orange-400">{pendingPayRequests}</p>
+            <p className="text-sm font-bold text-orange-400">{(user.totalPayRequests || 0) - (user.totalAcceptedRequests || 0)}</p>
           </div>
         </div>
       </div>
 
-      {/* Created Scanners */}
-      {createdScanners.length > 0 && (
-        <div className="bg-black/40 p-3 rounded-lg">
-          <h4 className="text-[10px] font-bold mb-2 text-blue-400 flex items-center gap-2">
-            <ScanLine size={12} /> Created Scanners ({createdScanners.length})
-          </h4>
-          
-          <button
-            onClick={() => setShowCreatedList(!showCreatedList)}
-            className="w-full flex items-center justify-between text-[8px] text-gray-400 mt-1"
-          >
-            <span>View Recent Scanners</span>
-            {showCreatedList ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-          </button>
-
-          {showCreatedList && (
-            <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
-              {createdScanners.slice(0, 5).map(s => (
-                <div key={s._id} className="bg-black/60 p-2 rounded text-[8px]">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">₹{s.amount}</span>
-                    <StatusBadge label={s.status} count={1} color={s.status} mini />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* Activation Status */}
+      {user.walletActivated && (
+        <div className="bg-green-500/10 border border-green-500/20 p-3 rounded-lg">
+          <h4 className="text-[10px] font-bold mb-1 text-green-400">Wallet Activated</h4>
+          <p className="text-[8px] text-gray-400">
+            Daily Limit: ₹{user.dailyAcceptLimit} • Expires: {new Date(user.activationExpiryDate).toLocaleDateString()}
+          </p>
         </div>
       )}
+    </div>
+  );
+};
+const LegDetailsModal = ({ user, leg, onClose }) => {
+  const [expandedLevel, setExpandedLevel] = useState(null);
+  const [levelUsers, setLevelUsers] = useState({});
+  const [loadingLevel, setLoadingLevel] = useState(false);
 
-      {/* Accepted Scanners */}
-      {acceptedScanners.length > 0 && (
-        <div className="bg-black/40 p-3 rounded-lg">
-          <h4 className="text-[10px] font-bold mb-2 text-green-400 flex items-center gap-2">
-            <CheckCircle size={12} /> Accepted Scanners ({acceptedScanners.length})
-          </h4>
-          
-          <button
-            onClick={() => setShowAcceptedList(!showAcceptedList)}
-            className="w-full flex items-center justify-between text-[8px] text-gray-400 mt-1"
-          >
-            <span>View Recent Accepted</span>
-            {showAcceptedList ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+  const fetchLevelUsers = async (level) => {
+    setLoadingLevel(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `https://cpay-link-backend.onrender.com/api/auth/leg-users/${leg.legNumber}/${level}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await response.json();
+      if (data.success) {
+        setLevelUsers(prev => ({ ...prev, [level]: data.data.users || [] }));
+      }
+    } catch (error) {
+      console.error("Error fetching level users:", error);
+    } finally {
+      setLoadingLevel(false);
+    }
+  };
+
+  const handleLevelClick = (level) => {
+    if (expandedLevel === level) {
+      setExpandedLevel(null);
+    } else {
+      setExpandedLevel(level);
+      if (!levelUsers[level]) {
+        fetchLevelUsers(level);
+      }
+    }
+  };
+
+  // Calculate leg statistics
+  const totalUsers = leg.stats?.totalUsers || 0;
+  const unlockedLevels = Object.values(leg.levels || {}).filter(l => l.isUnlocked).length;
+  const totalEarnings = leg.stats?.totalEarnings || 0;
+
+  return (
+    <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[1100] p-4">
+      <div className="bg-[#0A1F1A] border border-white/10 rounded-[2rem] w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-[#0A1F1A] p-6 border-b border-white/10 flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-black italic flex items-center gap-2">
+              Leg {leg.legNumber} Details
+              <span className={`text-[10px] px-2 py-1 rounded-full ${
+                leg.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+              }`}>
+                {leg.isActive ? 'Active' : 'Inactive'}
+              </span>
+            </h2>
+            <p className="text-xs text-gray-400 mt-1">
+              Root User: {leg.rootUser?.userId || leg.rootUser?.toString().slice(-6) || 'N/A'}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg">
+            <X size={20} />
           </button>
-
-          {showAcceptedList && (
-            <div className="mt-2 space-y-1 max-h-32 overflow-y-auto">
-              {acceptedScanners.slice(0, 5).map(s => (
-                <div key={s._id} className="bg-black/60 p-2 rounded text-[8px]">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">₹{s.amount}</span>
-                    <StatusBadge label={s.status} count={1} color={s.status} mini />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
-      )}
 
-      {/* Level-wise Team Structure */}
-      {teamLevels.length > 0 && (
-        <div className="bg-black/40 p-3 rounded-lg">
-          <h4 className="text-[10px] font-bold mb-2 text-[#00F5A0] flex items-center gap-2">
-            <Users size={12} /> Level-wise Team Structure
-          </h4>
-          
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {teamLevels.map(level => (
-              <div key={level.level} className="border border-white/10 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => toggleLevelMembers(level.level)}
-                  className="w-full flex justify-between items-center p-2 bg-black/30 hover:bg-black/50"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-[8px] font-bold bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-0.5 rounded-full">
-                      Level {level.level}
+        <div className="p-6 space-y-6">
+          {/* Leg Statistics */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-black/40 p-4 rounded-xl text-center">
+              <p className="text-[8px] text-gray-500">Total Users</p>
+              <p className="text-2xl font-bold text-[#00F5A0]">{totalUsers}</p>
+            </div>
+            <div className="bg-black/40 p-4 rounded-xl text-center">
+              <p className="text-[8px] text-gray-500">Unlocked Levels</p>
+              <p className="text-2xl font-bold text-green-400">{unlockedLevels}/21</p>
+            </div>
+            <div className="bg-black/40 p-4 rounded-xl text-center">
+              <p className="text-[8px] text-gray-500">Leg Earnings</p>
+              <p className="text-2xl font-bold text-orange-400">₹{totalEarnings}</p>
+            </div>
+          </div>
+
+          {/* Level Grid */}
+          <div className="bg-black/40 p-4 rounded-xl">
+            <h3 className="text-sm font-bold mb-4 text-[#00F5A0]">Level-wise Users</h3>
+            <div className="grid grid-cols-7 gap-1">
+              {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
+                const levelData = leg.levels?.[`level${level}`] || {};
+                const userCount = levelData.users?.length || 0;
+                const isUnlocked = levelData.isUnlocked || level <= 3;
+                const isPending = levelData.pendingUnlock || false;
+
+                return (
+                  <button
+                    key={level}
+                    onClick={() => handleLevelClick(level)}
+                    className={`text-center p-2 rounded-lg cursor-pointer hover:scale-105 transition-all ${
+                      expandedLevel === level ? 'ring-2 ring-[#00F5A0]' : ''
+                    } ${
+                      isUnlocked 
+                        ? userCount > 0 
+                          ? 'bg-[#00F5A0]/20 border border-[#00F5A0]/30' 
+                          : 'bg-blue-500/10 border border-blue-500/20'
+                        : isPending
+                          ? 'bg-yellow-500/10 border border-yellow-500/20'
+                          : 'bg-gray-800/50 border border-gray-700'
+                    }`}
+                    title={`Level ${level}: ${userCount} users, Earnings: ₹${levelData.earnings || 0}`}
+                  >
+                    <span className="text-[6px] text-gray-400 block">L{level}</span>
+                    <span className={`text-xs font-bold ${
+                      userCount > 0 ? 'text-[#00F5A0]' : 
+                      isUnlocked ? 'text-blue-400' :
+                      isPending ? 'text-yellow-400' : 'text-gray-500'
+                    }`}>
+                      {userCount}
                     </span>
-                    <span className="text-[6px] text-gray-400">{level.count} members</span>
-                  </div>
-                  {showLevelMembers[level.level] ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Expanded Level Users */}
+          {expandedLevel && (
+            <div className="bg-black/40 p-4 rounded-xl">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-bold text-[#00F5A0]">
+                  Level {expandedLevel} Users
+                </h3>
+                <button onClick={() => setExpandedLevel(null)} className="text-gray-400 hover:text-white">
+                  <X size={14} />
                 </button>
-                
-                {showLevelMembers[level.level] && (
-                  <div className="p-2 bg-black/20 space-y-1">
-                    {level.members.map(memberId => {
-                      const memberDetail = memberDetails[memberId];
-                      return (
-                        <div key={memberId} className="bg-black/40 p-2 rounded-lg flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-[6px] font-bold">
-                              {memberDetail?.userId?.charAt(0) || memberId?.charAt(0)}
-                            </div>
-                            <div>
-                              <p className="text-[8px] font-bold">
-                                {memberDetail?.userId || memberId.slice(-8)}
-                              </p>
-                              {memberDetail && (
-                                <p className="text-[5px] text-gray-500">
-                                  Earn: ₹{memberDetail.referralEarnings?.total || 0}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          {loadingMember && !memberDetail && (
-                            <Loader2 size={8} className="animate-spin text-[#00F5A0]" />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* Commission by Level */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div className="bg-black/40 p-2 rounded-lg">
-          <h4 className="text-[8px] font-bold mb-1 text-orange-400">Commission by Level</h4>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {Object.entries(referralEarnings).map(([level, amount]) => {
-              if (level === 'total' || amount === 0) return null;
-              return (
-                <div key={level} className="flex justify-between text-[6px] py-0.5 border-b border-white/5">
-                  <span className="text-gray-400">{level}:</span>
-                  <span className="font-bold text-orange-400">₹{amount}</span>
+              {loadingLevel ? (
+                <div className="text-center py-4">
+                  <Loader2 size={20} className="animate-spin text-[#00F5A0] mx-auto" />
                 </div>
-              );
-            })}
-          </div>
-        </div>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {levelUsers[expandedLevel]?.length > 0 ? (
+                    levelUsers[expandedLevel].map((member, idx) => (
+                      <div key={idx} className="bg-black/60 p-3 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs">
+                            {member.userId?.charAt(0) || '?'}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">{member.userId}</p>
+                            <p className="text-[8px] text-[#00F5A0]">
+                              Earnings: ₹{member.totalEarnings || 0}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center text-gray-500 py-4">No users in this level</p>
+                  )}
+                </div>
+              )}
 
-        <div className="bg-black/40 p-2 rounded-lg">
-          <h4 className="text-[8px] font-bold mb-1 text-green-400">Team Cashback</h4>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {Object.entries(teamCashback).map(([level, data]) => {
-              if (data.total === 0) return null;
-              return (
-                <div key={level} className="flex justify-between text-[6px] py-0.5 border-b border-white/5">
-                  <span className="text-gray-400">{level}:</span>
-                  <span className="font-bold text-green-400">₹{data.total} ({data.count})</span>
+              {/* Level Statistics */}
+              {leg.levels?.[`level${expandedLevel}`] && (
+                <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-2 gap-2 text-[10px]">
+                  <div className="text-center">
+                    <span className="text-gray-500">Level Earnings:</span>
+                    <span className="ml-1 text-[#00F5A0] font-bold">
+                      ₹{leg.levels[`level${expandedLevel}`].earnings || 0}
+                    </span>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-gray-500">Team Cashback:</span>
+                    <span className="ml-1 text-orange-400 font-bold">
+                      ₹{leg.levels[`level${expandedLevel}`].teamCashback || 0}
+                    </span>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -2960,7 +3254,6 @@ const UserDetailsModal = ({ user, onClose }) => {
             active={activeTab === 'overview'} 
             onClick={() => setActiveTab('overview')} 
           />
-          
           <TabButton 
             label="Earnings" 
             active={activeTab === 'earnings'} 
