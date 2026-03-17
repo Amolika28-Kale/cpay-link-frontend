@@ -28,6 +28,10 @@ import HelpPage from "../components/HelpPage";
 import ChatBot from "../components/ChatBot";
 import jsQR from "jsqr";
 
+import { QRCodeCanvas } from "qrcode.react";
+import { DepositScreenshotModal } from "./DepositScreenshotModal";
+// At the top of your UserDashboard.jsx, after imports:
+console.log('Imported component:', DepositScreenshotModal);
 
 export default function UserDashboard() {
   const navigate = useNavigate();
@@ -1251,13 +1255,13 @@ const confirmActivation = async () => {
     }
     
   } else {
-    // ✅ FOR FIRST ACTIVATION: Need $50 minimum
+    // ✅ FOR FIRST ACTIVATION: Need $10 minimum
     requiredAmount = calculateActivationAmount(localInputLimit);
     limitToSet = localInputLimit;
     
     // ✅ CHECK MINIMUM ONLY FOR FIRST TIME
-    if (requiredAmount < 50) {
-      toast.error("Minimum deposit for first activation is $50 USDT");
+    if (requiredAmount < 10) {
+      toast.error("Minimum deposit for first activation is $10 USDT");
       setLocalInputLimit("");
       return;
     }
@@ -2062,7 +2066,7 @@ const confirmActivation = async () => {
               <div className="mt-3 p-2 bg-red-500/20 border border-red-500/30 rounded-lg">
                 <p className="text-[10px] text-red-400 font-bold flex items-center gap-1">
                   <AlertCircle size={12} />
-                  Minimum deposit for first activation is $50 USDT
+                  Minimum deposit for first activation is $10 USDT
                 </p>
                 <p className="text-[8px] text-red-400/70 mt-1">
                   Current: ${calculateActivationAmount(localInputLimit)} USDT
@@ -2118,7 +2122,7 @@ const confirmActivation = async () => {
         {/* ✅ Show different messages for first time vs increase */}
         {!walletActivated && (
           <p className="text-[8px] text-yellow-500/70 mt-1">
-            ⚡ First activation requires minimum $50 USDT deposit
+            ⚡ First activation requires minimum $10 USDT deposit
           </p>
         )}
         {walletActivated && (
@@ -2144,8 +2148,8 @@ const confirmActivation = async () => {
             !localInputLimit || 
             localInputLimit <= 0 || 
             (walletActivated && localInputLimit <= Number(dailyAcceptLimit || activationStatus.dailyLimit || 0)) ||
-            // ✅ Disable only for first time if amount < $50
-            (!walletActivated && calculateActivationAmount(localInputLimit) < 50)
+            // ✅ Disable only for first time if amount < $10
+            (!walletActivated && calculateActivationAmount(localInputLimit) < 10)
           }
           className={`flex-1 py-4 rounded-2xl font-black transition-all ${
             !localInputLimit || 
@@ -2170,164 +2174,7 @@ const confirmActivation = async () => {
   );
 }
 
-// ==================== ADD THIS COMPONENT BEFORE THE MAIN RETURN (around line 600) ====================
 
-// Deposit Screenshot Management Modal
-const DepositScreenshotModal = ({ deposit, onClose, onUpdate, uploading, updateReason, setUpdateReason }) => {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const fileInputRef = useRef(null);
-
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File too large! Max 5MB");
-      return;
-    }
-
-    if (!file.type.startsWith('image/')) {
-      toast.error("Please select an image file");
-      return;
-    }
-
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    
-    setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
-  };
-
-  const handleUpdate = async () => {
-    if (!selectedFile) {
-      toast.error("Please select a new screenshot");
-      return;
-    }
-
-    const success = await onUpdate(deposit._id, selectedFile, updateReason);
-    if (success) {
-      setSelectedFile(null);
-      setPreviewUrl(null);
-      setUpdateReason("");
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[500] p-4 backdrop-blur-sm">
-      <div className="bg-[#0A1F1A] border border-white/10 rounded-[2rem] w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-[#0A1F1A] p-6 border-b border-white/10 flex justify-between items-center">
-          <h3 className="text-xl font-black text-[#00F5A0]">Update Deposit Screenshot</h3>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg">
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-6">
-          {/* Current Screenshots Gallery */}
-          {deposit?.paymentScreenshots && deposit.paymentScreenshots.length > 0 && (
-            <div>
-              <h4 className="text-sm font-bold mb-3">Uploaded Screenshots</h4>
-              <div className="grid grid-cols-3 gap-3">
-                {deposit.paymentScreenshots.filter(s => s.isActive).map((ss, idx) => (
-                  <div 
-                    key={idx}
-                    className="relative rounded-xl overflow-hidden border-2 border-white/10 cursor-pointer hover:border-[#00F5A0] transition-all"
-                    onClick={() => window.open(`https://cpay-link-backend.onrender.com${ss.url}`)}
-                  >
-                    <img 
-                      src={`https://cpay-link-backend.onrender.com${ss.url}`}
-                      alt={`screenshot-${idx}`}
-                      className="w-full h-24 object-cover"
-                    />
-                    <div className="absolute top-1 right-1 bg-black/60 text-[8px] px-1 rounded">
-                      {new Date(ss.uploadedAt).toLocaleTimeString()}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Update Form */}
-          <div className="border-t border-white/10 pt-6">
-            <h4 className="text-sm font-bold mb-3">Upload New Screenshot</h4>
-            
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-
-            {!previewUrl ? (
-              <button
-                onClick={() => fileInputRef.current.click()}
-                className="w-full border-2 border-dashed border-white/10 rounded-xl py-8 text-center hover:border-[#00F5A0]/30 transition-all group"
-              >
-                <Camera size={32} className="mx-auto mb-2 text-gray-500 group-hover:text-[#00F5A0]" />
-                <p className="text-sm text-gray-400">Click to select new screenshot</p>
-                <p className="text-[8px] text-gray-600 mt-1">Max 5MB (JPEG, PNG)</p>
-              </button>
-            ) : (
-              <div className="space-y-4">
-                <div className="relative">
-                  <img
-                    src={previewUrl}
-                    alt="preview"
-                    className="w-full h-48 object-contain bg-black/40 rounded-xl border border-[#00F5A0]"
-                  />
-                  <button
-                    onClick={() => {
-                      setSelectedFile(null);
-                      setPreviewUrl(null);
-                      if (fileInputRef.current) fileInputRef.current.value = "";
-                    }}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <input
-                  type="text"
-                  placeholder="Reason for update (optional)"
-                  value={updateReason}
-                  onChange={(e) => setUpdateReason(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-[#00F5A0]"
-                />
-
-                <button
-                  onClick={handleUpdate}
-                  disabled={uploading}
-                  className="w-full bg-[#00F5A0] text-black py-3 rounded-xl font-black text-sm hover:bg-[#00d88c] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {uploading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <Loader size={16} className="animate-spin" />
-                      UPDATING...
-                    </span>
-                  ) : (
-                    "UPDATE SCREENSHOT"
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Status Info */}
-          <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-xl">
-            <p className="text-yellow-400 text-xs font-bold mb-2">⚠️ Deposit Status: {deposit?.status}</p>
-            <p className="text-[10px] text-gray-400">
-              You can update screenshots while deposit is pending. After admin approval, screenshots cannot be changed.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 // SidebarLink Component
 const SidebarLink = ({ icon, label, active, onClick, badge, highlight }) => (
@@ -3155,7 +3002,8 @@ const ScreenshotModal = ({ scanner, screenshots, onClose, onUpdate, uploading, u
   );
 };
 
-// ==================== UPDATE DepositPage COMPONENT - Add handleSubmit function ====================
+
+// ==================== FIXED DepositPage COMPONENT ====================
 
 const DepositPage = ({ 
   paymentMethods, 
@@ -3180,7 +3028,7 @@ const DepositPage = ({
 }) => {
   const usdtMethods = paymentMethods.filter(m => m.method?.includes("USDT"));
   
-  // ==================== ADD THESE STATES INSIDE DepositPage ====================
+  // ==================== Define these states inside DepositPage ====================
   const [myDeposits, setMyDeposits] = useState([]);
   const [selectedDeposit, setSelectedDeposit] = useState(null);
   const [showDepositScreenshotModal, setShowDepositScreenshotModal] = useState(false);
@@ -3198,35 +3046,43 @@ const DepositPage = ({
   
   const fileInputRef = useRef(null);
   
- // ==================== FIX: loadMyDeposits function ====================
-const loadMyDeposits = async () => {
-  try {
-    const { getMyDeposits } = await import("../services/apiService");
-    const deposits = await getMyDeposits();
-    setMyDeposits(Array.isArray(deposits) ? deposits : []);
-  } catch (error) {
-    // console.error("Error loading deposits:", error);
-    setMyDeposits([]);
-  }
-};
+  // ==================== loadMyDeposits function ====================
+  const loadMyDeposits = async () => {
+    try {
+      // Dynamically import getMyDeposits
+      const apiModule = await import("../services/apiService");
+      const { getMyDeposits } = apiModule;
+      
+      const deposits = await getMyDeposits();
+      setMyDeposits(Array.isArray(deposits) ? deposits : []);
+    } catch (error) {
+      console.error("Error loading deposits:", error);
+      setMyDeposits([]);
+    }
+  };
   
-  // ==================== ADD THIS USEFFECT TO LOAD DEPOSITS ON MOUNT ====================
+  // ==================== Load deposits on mount ====================
   useEffect(() => {
     loadMyDeposits();
   }, []);
   
-  // ==================== ADD SCREENSHOT UPDATE HANDLER ====================
+  // ==================== screenshot update handler ====================
   const handleUpdateDepositScreenshot = async (depositId, file, reason) => {
     try {
-      const { updateDepositScreenshot } = await import("../services/apiService");
+      // Dynamically import updateDepositScreenshot
+      const apiModule = await import("../services/apiService");
+      const { updateDepositScreenshot } = apiModule;
+      
       const res = await updateDepositScreenshot(depositId, file, reason);
-      if (res.message) {
+      if (res && res.message) {
         toast.success("Screenshot updated successfully!");
         loadMyDeposits();
         setShowDepositScreenshotModal(false);
         return true;
       }
+      return false;
     } catch (error) {
+      console.error("Error updating screenshot:", error);
       toast.error("Failed to update screenshot");
       return false;
     }
@@ -3242,7 +3098,7 @@ const loadMyDeposits = async () => {
           if (prev <= 1) {
             clearInterval(timerInterval);
             setIsVerifying(false);
-            setShowPendingMessage(true); // Show pending message after timer expires
+            setShowPendingMessage(true);
             return 0;
           }
           return prev - 1;
@@ -3314,7 +3170,7 @@ const loadMyDeposits = async () => {
     });
   };
 
-  // ==================== ADD THIS MISSING handleSubmit FUNCTION ====================
+  // ==================== handleSubmit function ====================
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -3351,7 +3207,7 @@ const loadMyDeposits = async () => {
     
     if (success) {
       setShowTimer(true);
-      setTimeLeft(300); // Reset to 5 minutes
+      setTimeLeft(300);
       setIsVerifying(true);
       setShowPendingMessage(false);
       setDepositSubmitted(true);
@@ -3376,8 +3232,6 @@ const loadMyDeposits = async () => {
 
   return (
     <div className="space-y-6">
-
-
       {/* DEPOSIT FORM */}
       <form onSubmit={handleSubmit} className="max-w-xl mx-auto bg-[#0A1F1A] border border-white/10 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem]">
         <h2 className="text-xl font-black italic text-[#00F5A0] mb-8 uppercase tracking-widest">Add Funds</h2>
@@ -3414,26 +3268,25 @@ const loadMyDeposits = async () => {
         {selectedMethod && selectedMethod.method.includes("USDT") && (
           <div className="p-4 bg-white/5 rounded-xl mb-6 border border-white/5">
             <p className="text-[#00F5A0] font-black mb-3 uppercase text-xs">Payment Details:</p>
-             {/* ✅ Add Minimum Deposit Info at top */}
-    <div className="mb-4 p-2 bg-orange-500/10 rounded-lg border border-orange-500/20">
-      <p className="text-[10px] text-orange-400 font-bold flex items-center gap-1">
-        <AlertCircle size={12} />
-        Minimum Deposit: $50 USDT
-      </p>
-    </div>
-            
-            {/* QR Code */}
-            <div className="flex justify-center mb-4">
-              <div className="bg-white p-3 rounded-xl">
-                <QRCode 
-                  value={selectedMethod.details.address}
-                  size={150}
-                  bgColor="#ffffff"
-                  fgColor="#000000"
-                  level="H"
-                />
-              </div>
+            <div className="mb-4 p-2 bg-orange-500/10 rounded-lg border border-orange-500/20">
+              <p className="text-[10px] text-orange-400 font-bold flex items-center gap-1">
+                <AlertCircle size={12} />
+                Minimum Deposit: $10 USDT
+              </p>
             </div>
+            
+          {/* QR Code */}
+<div className="flex justify-center mb-4">
+  <div className="bg-white p-3 rounded-xl">
+    <QRCodeCanvas
+  value={selectedMethod.details.address}
+  size={150}
+  bgColor="#ffffff"
+  fgColor="#000000"
+  level="H"
+/>
+  </div>
+</div>
             
             {/* Address with Copy */}
             <div className="mb-3">
@@ -3516,12 +3369,9 @@ const loadMyDeposits = async () => {
                 <div className="w-full h-2.5 bg-white/10 rounded-full overflow-hidden mb-2">
                   <div 
                     className="h-full bg-gradient-to-r from-yellow-500 to-orange-500 transition-all duration-1000 ease-linear"
-                    style={{ 
-                      width: `${progressPercentage}%`,
-                    }}
+                    style={{ width: `${progressPercentage}%` }}
                   />
                 </div>
-                
                 <p className="text-[10px] text-gray-500 mt-2 text-center">
                   ⏱️ Admin will verify within {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')} minutes
                 </p>
@@ -3543,60 +3393,55 @@ const loadMyDeposits = async () => {
           </div>
         )}
 
- {/* Amount Input */}
-<div className="mb-3">
-  <label className="text-xs text-gray-500 mb-1 block">Amount (USDT) *</label>
-  <input 
-    type="number" 
-    value={depositData.amount} 
-    onChange={e => {
-      const value = e.target.value;
-      setDepositData({ ...depositData, amount: value });
-      
-      // Optional: Show warning if below minimum
-      if (value && Number(value) < 50) {
-        toast.error("Minimum deposit is $50 USDT", {
-          duration: 2000,
-          icon: '⚠️'
-        });
-      }
-    }} 
-    placeholder="Enter amount in USDT" 
-    className="w-full bg-black/40 border border-white/10 rounded-xl p-4 font-bold text-lg outline-none focus:border-[#00F5A0] transition-all" 
-    disabled={showTimer}
-    min="50"
-    step="0.01"
-    required
-  />
-  
-  {/* ✅ Min/Max Indicator - Add this */}
-  <div className="flex justify-between items-center mt-2 px-2">
-    <span className="text-[10px] text-orange-400 font-bold flex items-center gap-1">
-      <AlertCircle size={10} />
-      Minimum: $50 USDT
-    </span>
-  </div>
-  
-  {/* ✅ Info about INR conversion */}
-  {depositData.amount && Number(depositData.amount) >= 50 && (
-    <div className="mt-2 p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
-      <p className="text-[10px] text-blue-400 flex items-center gap-1">
-        <Zap size={10} />
-        You will receive: ₹{(Number(depositData.amount) * 95).toLocaleString()} INR
-      </p>
-    </div>
-  )}
-  
-  {/* ✅ Warning for below minimum */}
-  {depositData.amount && Number(depositData.amount) < 50 && (
-    <div className="mt-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
-      <p className="text-[10px] text-red-400 flex items-center gap-1">
-        <AlertCircle size={10} />
-        Minimum deposit amount is $50 USDT
-      </p>
-    </div>
-  )}
-</div>
+        {/* Amount Input */}
+        <div className="mb-3">
+          <label className="text-xs text-gray-500 mb-1 block">Amount (USDT) *</label>
+          <input 
+            type="number" 
+            value={depositData.amount} 
+            onChange={e => {
+              const value = e.target.value;
+              setDepositData({ ...depositData, amount: value });
+              if (value && Number(value) < 50) {
+                toast.error("Minimum deposit is $10 USDT", {
+                  duration: 2000,
+                  icon: '⚠️'
+                });
+              }
+            }} 
+            placeholder="Enter amount in USDT" 
+            className="w-full bg-black/40 border border-white/10 rounded-xl p-4 font-bold text-lg outline-none focus:border-[#00F5A0] transition-all" 
+            disabled={showTimer}
+            min="50"
+            step="0.01"
+            required
+          />
+          
+          <div className="flex justify-between items-center mt-2 px-2">
+            <span className="text-[10px] text-orange-400 font-bold flex items-center gap-1">
+              <AlertCircle size={10} />
+              Minimum: $10 USDT
+            </span>
+          </div>
+          
+          {depositData.amount && Number(depositData.amount) >= 50 && (
+            <div className="mt-2 p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
+              <p className="text-[10px] text-blue-400 flex items-center gap-1">
+                <Zap size={10} />
+                You will receive: ₹{(Number(depositData.amount) * 95).toLocaleString()} INR
+              </p>
+            </div>
+          )}
+          
+          {depositData.amount && Number(depositData.amount) < 50 && (
+            <div className="mt-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
+              <p className="text-[10px] text-red-400 flex items-center gap-1">
+                <AlertCircle size={10} />
+                Minimum deposit amount is $10 USDT
+              </p>
+            </div>
+          )}
+        </div>
         
         {/* Transaction Hash Input */}
         <div className="mb-4">
@@ -3695,12 +3540,12 @@ const loadMyDeposits = async () => {
           )}
         </button>
         
-        {/* Info Message */}
         <p className="text-[10px] text-gray-500 text-center mt-4">
           ⏱️ Deposits are manually verified by admin within 5 minutes
         </p>
       </form>
-            {/* MY DEPOSITS LIST SECTION */}
+      
+      {/* MY DEPOSITS LIST SECTION */}
       {myDeposits.length > 0 && (
         <div className="bg-[#0A1F1A] border border-white/10 rounded-[2rem] p-6">
           <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
@@ -3767,24 +3612,26 @@ const loadMyDeposits = async () => {
         </div>
       )}
 
-      {/* DEPOSIT SCREENSHOT MODAL */}
-      {showDepositScreenshotModal && selectedDeposit && (
-        <DepositScreenshotModal
-          deposit={selectedDeposit}
-          onClose={() => {
-            setShowDepositScreenshotModal(false);
-            setSelectedDeposit(null);
-            setDepositUpdateReason("");
-          }}
-          onUpdate={handleUpdateDepositScreenshot}
-          uploading={actionLoading}
-          updateReason={depositUpdateReason}
-          setUpdateReason={setDepositUpdateReason}
-        />
-      )}
+      {/* DEPOSIT SCREENSHOT MODAL - Now using the component defined above */}
+     {showDepositScreenshotModal && selectedDeposit && (
+  <DepositScreenshotModal
+    deposit={selectedDeposit}
+    onClose={() => {
+      setShowDepositScreenshotModal(false);
+      setSelectedDeposit(null);
+      setDepositUpdateReason("");
+    }}
+    onUpdate={handleUpdateDepositScreenshot}
+    uploading={actionLoading}
+    updateReason={depositUpdateReason}
+    setUpdateReason={setDepositUpdateReason}
+  />
+)}
     </div>
   );
 };
+
+
 
 // HistoryPage Component - FIXED with proper currency symbols
 const HistoryPage = ({ transactions }) => (

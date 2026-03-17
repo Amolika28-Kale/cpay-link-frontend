@@ -350,7 +350,7 @@ const DashboardView = ({
   );
 };
 
-/* ================= USERS VIEW ================= */
+// ================= USERS VIEW - COMPLETE WITH ALL DATA =================
 const UsersView = ({ 
   users, searchTerm, setSearchTerm, setSelectedUser, 
   expandedUser, setExpandedUser, expandedLevel, setExpandedLevel,
@@ -360,7 +360,13 @@ const UsersView = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [memberDetails, setMemberDetails] = useState({});
+  const [loadingMember, setLoadingMember] = useState(false);
   
+  const API_BASE = 'https://cpay-link-backend.onrender.com';
+  // const API_BASE = 'http://localhost:5000';
+
+  // Filter users based on search
   const filteredUsers = users.filter(u => 
     u.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.userId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -374,6 +380,58 @@ const UsersView = ({
     currentPage * itemsPerPage
   );
 
+  // Fetch member details
+  const fetchMemberDetails = async (memberId) => {
+    if (memberDetails[memberId]) return memberDetails[memberId];
+    
+    setLoadingMember(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_BASE}/api/admin/user/${memberId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setMemberDetails(prev => ({ ...prev, [memberId]: data.user }));
+        return data.user;
+      }
+    } catch (error) {
+      console.error("Error fetching member details:", error);
+    } finally {
+      setLoadingMember(false);
+    }
+    return null;
+  };
+
+  // Calculate team count (Level 1-21)
+  const calculateTeamCount = (user) => {
+    let count = 0;
+    if (user?.referralTree) {
+      for (let i = 1; i <= 21; i++) {
+        count += user.referralTree[`level${i}`]?.length || 0;
+      }
+    }
+    return count;
+  };
+
+  // Calculate total team cashback
+  const calculateTotalTeamCashback = (user) => {
+    return Object.values(user?.teamCashback || {}).reduce((sum, level) => sum + (level.total || 0), 0);
+  };
+
+  // Get level-wise member counts
+  const getLevelWiseCounts = (user) => {
+    const counts = {};
+    for (let i = 1; i <= 21; i++) {
+      const count = user?.referralTree?.[`level${i}`]?.length || 0;
+      if (count > 0) {
+        counts[`level${i}`] = count;
+      }
+    }
+    return counts;
+  };
+
   useEffect(() => {
     const handleResize = () => {
       setViewMode(window.innerWidth >= 768 ? 'table' : 'cards');
@@ -385,11 +443,12 @@ const UsersView = ({
 
   return (
     <div className="bg-[#0A1F1A] border border-white/10 rounded-xl md:rounded-2xl lg:rounded-[2rem] overflow-hidden">
+      {/* Header with Search and Filters */}
       <div className="p-3 sm:p-4 md:p-5 lg:p-6 border-b border-white/5">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
           <h3 className="text-sm sm:text-base md:text-lg lg:text-xl font-bold italic flex items-center gap-2">
             <Users size={16} className="text-[#00F5A0]" />
-            <span>Users - Referral Details</span>
+            <span>Users - Complete Details</span>
             <span className="bg-[#00F5A0]/10 text-[#00F5A0] text-[8px] sm:text-[10px] px-2 py-0.5 rounded-full">
               {filteredUsers.length}
             </span>
@@ -402,7 +461,13 @@ const UsersView = ({
             </div>
             <div className="relative flex-1 sm:flex-initial sm:w-48 md:w-64">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500" size={12} />
-              <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} className="bg-black/40 border border-white/10 rounded-lg pl-7 pr-2 py-1.5 text-[10px] sm:text-xs w-full outline-none focus:border-[#00F5A0]" />
+              <input 
+                type="text" 
+                placeholder="Search users..." 
+                value={searchTerm} 
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} 
+                className="bg-black/40 border border-white/10 rounded-lg pl-7 pr-2 py-1.5 text-[10px] sm:text-xs w-full outline-none focus:border-[#00F5A0]" 
+              />
             </div>
           </div>
         </div>
@@ -464,6 +529,8 @@ const UsersView = ({
                 <th className="px-2 lg:px-3 py-2 lg:py-3">Levels</th>
                 <th className="px-2 lg:px-3 py-2 lg:py-3">Earnings</th>
                 <th className="px-2 lg:px-3 py-2 lg:py-3">Team Cashback</th>
+                <th className="px-2 lg:px-3 py-2 lg:py-3">Legs</th>
+                <th className="px-2 lg:px-3 py-2 lg:py-3">Requests</th>
                 <th className="px-2 lg:px-3 py-2 lg:py-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -472,34 +539,88 @@ const UsersView = ({
                 const teamCount = calculateTeamCount(u);
                 const directCount = u.referralTree?.level1?.length || 0;
                 const totalEarnings = u.referralEarnings?.total || 0;
-                const teamCashback = Object.values(u.teamCashback || {}).reduce((sum, l) => sum + (l.total || 0), 0);
-                const level1 = u.referralTree?.level1?.length || 0;
-                const level2 = u.referralTree?.level2?.length || 0;
-                const level3 = u.referralTree?.level3?.length || 0;
+                const teamCashbackTotal = calculateTotalTeamCashback(u);
+                const levelCounts = getLevelWiseCounts(u);
+                const levelSummary = Object.entries(levelCounts).slice(0, 3).map(([lvl, cnt]) => `${lvl}:${cnt}`).join(', ');
+                const remainingLevels = Object.keys(levelCounts).length - 3;
+                
+                // Pay request stats
+                const totalPayRequests = u.totalPayRequests || 0;
+                const totalAccepted = u.totalAcceptedRequests || 0;
+                
+                // Legs unlocked
+                const legsUnlocked = u.legsUnlocked ? Object.values(u.legsUnlocked).filter(v => v === true).length : 0;
                 
                 return (
                   <React.Fragment key={u._id}>
                     <tr className="hover:bg-white/[0.02] cursor-pointer" onClick={() => setExpandedUser(expandedUser === u._id ? null : u._id)}>
-                      <td className="px-2 lg:px-3 py-2 lg:py-3"><UserTableCell user={u} /></td>
-                      <td className="px-2 lg:px-3 py-2 lg:py-3"><span className="text-xs lg:text-sm font-bold text-blue-400">{directCount}</span></td>
-                      <td className="px-2 lg:px-3 py-2 lg:py-3"><span className="text-xs lg:text-sm font-bold text-[#00F5A0]">{teamCount}</span></td>
                       <td className="px-2 lg:px-3 py-2 lg:py-3">
-                        <div className="flex gap-1">
-                          <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1 py-0.5 rounded">L1:{level1}</span>
-                          <span className="text-[8px] bg-green-500/20 text-green-400 px-1 py-0.5 rounded">L2:{level2}</span>
-                          <span className="text-[8px] bg-orange-500/20 text-orange-400 px-1 py-0.5 rounded">L3:{level3}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#00F5A0] to-green-600 flex items-center justify-center text-black font-bold text-xs">
+                            {u.email?.charAt(0)?.toUpperCase() || u.userId?.charAt(0) || 'U'}
+                          </div>
+                          <div>
+                            <p className="font-bold text-xs">{u.email || u.userId}</p>
+                            <p className="text-[6px] text-gray-500">Ref: {u.referralCode}</p>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-2 lg:px-3 py-2 lg:py-3"><p className="text-xs lg:text-sm font-bold text-orange-400">₹{totalEarnings.toFixed(2)}</p></td>
-                      <td className="px-2 lg:px-3 py-2 lg:py-3"><p className="text-xs lg:text-sm font-bold text-green-400">₹{teamCashback.toFixed(2)}</p></td>
+                      <td className="px-2 lg:px-3 py-2 lg:py-3">
+                        <span className="text-xs lg:text-sm font-bold text-blue-400">{directCount}</span>
+                      </td>
+                      <td className="px-2 lg:px-3 py-2 lg:py-3">
+                        <span className="text-xs lg:text-sm font-bold text-[#00F5A0]">{teamCount}</span>
+                      </td>
+                      <td className="px-2 lg:px-3 py-2 lg:py-3">
+                        <div className="text-[8px]">
+                          {levelSummary}
+                          {remainingLevels > 0 && (
+                            <span className="text-gray-500 ml-1">+{remainingLevels}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-2 lg:px-3 py-2 lg:py-3">
+                        <p className="text-xs lg:text-sm font-bold text-orange-400">₹{totalEarnings.toFixed(2)}</p>
+                      </td>
+                      <td className="px-2 lg:px-3 py-2 lg:py-3">
+                        <p className="text-xs lg:text-sm font-bold text-green-400">₹{teamCashbackTotal.toFixed(2)}</p>
+                      </td>
+                      <td className="px-2 lg:px-3 py-2 lg:py-3">
+                        <span className={`text-[8px] px-1.5 py-0.5 rounded-full ${legsUnlocked >= 4 ? 'bg-green-500/20 text-green-400' : 'bg-orange-500/20 text-orange-400'}`}>
+                          {legsUnlocked}/7
+                        </span>
+                      </td>
+                      <td className="px-2 lg:px-3 py-2 lg:py-3">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">
+                            C:{totalPayRequests}
+                          </span>
+                          <span className="text-[8px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">
+                            A:{totalAccepted}
+                          </span>
+                        </div>
+                      </td>
                       <td className="px-2 lg:px-3 py-2 lg:py-3 text-right">
-                        <ActionButtons user={u} expandedUser={expandedUser} setExpandedUser={setExpandedUser} setSelectedUser={setSelectedUser} />
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={(e) => { e.stopPropagation(); setSelectedUser(u); }} className="bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-1 rounded-lg text-[8px] font-bold">Details</button>
+                          <button onClick={(e) => { e.stopPropagation(); setExpandedUser(expandedUser === u._id ? null : u._id); }} className="text-gray-500 p-1">
+                            {expandedUser === u._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     {expandedUser === u._id && (
                       <tr className="bg-black/40">
-                        <td colSpan="7" className="px-3 lg:px-4 py-3 lg:py-4">
-                          <UserExpandedDetails user={u} copyToClipboard={copyToClipboard} expandedLevel={expandedLevel} setExpandedLevel={setExpandedLevel} />
+                        <td colSpan="9" className="px-3 lg:px-4 py-3 lg:py-4">
+                          <UserExpandedDetails 
+                            user={u} 
+                            copyToClipboard={copyToClipboard} 
+                            expandedLevel={expandedLevel} 
+                            setExpandedLevel={setExpandedLevel}
+                            fetchMemberDetails={fetchMemberDetails}
+                            memberDetails={memberDetails}
+                            loadingMember={loadingMember}
+                          />
                         </td>
                       </tr>
                     )}
@@ -515,14 +636,26 @@ const UsersView = ({
       {(viewMode === 'cards' || window.innerWidth < 768) && (
         <div className="md:hidden space-y-2 p-3">
           {paginatedUsers.map(u => (
-            <MobileUserCard key={u._id} user={u} expandedUser={expandedUser} setExpandedUser={setExpandedUser} setSelectedUser={setSelectedUser} copyToClipboard={copyToClipboard} expandedLevel={expandedLevel} setExpandedLevel={setExpandedLevel} />
+            <MobileUserCard 
+              key={u._id} 
+              user={u} 
+              expandedUser={expandedUser} 
+              setExpandedUser={setExpandedUser} 
+              setSelectedUser={setSelectedUser} 
+              copyToClipboard={copyToClipboard} 
+              expandedLevel={expandedLevel} 
+              setExpandedLevel={setExpandedLevel}
+              fetchMemberDetails={fetchMemberDetails}
+              memberDetails={memberDetails}
+              loadingMember={loadingMember}
+            />
           ))}
         </div>
       )}
 
       {/* Pagination */}
       {filteredUsers.length > itemsPerPage && (
-        <div className="flex items-center justify-between p-3 border-t border-white/5">
+        <div className="flex items-center justify-between p-3 border-t border-white-5">
           <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold ${currentPage === 1 ? 'bg-white/5 text-gray-600 cursor-not-allowed' : 'bg-[#00F5A0] text-black'}`}>Previous</button>
           <span className="text-[10px] text-gray-500">Page {currentPage} of {totalPages}</span>
           <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold ${currentPage === totalPages ? 'bg-white/5 text-gray-600 cursor-not-allowed' : 'bg-[#00F5A0] text-black'}`}>Next</button>
@@ -572,11 +705,13 @@ const MobileUserCard = ({ user, expandedUser, setExpandedUser, setSelectedUser, 
   );
 };
 
-/* ================= USER EXPANDED DETAILS - WITH PAY REQUEST STATS ================= */
-const UserExpandedDetails = ({ user, copyToClipboard, expandedLevel, setExpandedLevel, mobileView = false }) => {
-  // Add these state variables at the beginning of UserExpandedDetails component
-const [showCreatedList, setShowCreatedList] = useState(false);
-const [showAcceptedList, setShowAcceptedList] = useState(false);
+// ================= USER EXPANDED DETAILS - COMPLETE WITH ALL DATA =================
+const UserExpandedDetails = ({ user, copyToClipboard, expandedLevel, setExpandedLevel, fetchMemberDetails, memberDetails, loadingMember }) => {
+  const [showCreatedList, setShowCreatedList] = useState(false);
+  const [showAcceptedList, setShowAcceptedList] = useState(false);
+  const [showLevelMembers, setShowLevelMembers] = useState({});
+  
+  // Calculate team stats
   const teamLevels = [];
   for (let i = 1; i <= 21; i++) {
     const levelMembers = user.referralTree?.[`level${i}`] || [];
@@ -585,40 +720,48 @@ const [showAcceptedList, setShowAcceptedList] = useState(false);
     }
   }
 
+  // Scanner stats
   const createdScanners = user.scanners?.created || [];
   const acceptedScanners = user.scanners?.accepted || [];
   const referralEarnings = user.referralEarnings || {};
   const teamCashback = user.teamCashback || {};
 
-  // ✅ Pay Request Statistics
+  // Pay Request Statistics
   const totalPayRequests = user.totalPayRequests || 0;
   const totalAcceptedRequests = user.totalAcceptedRequests || 0;
   const pendingPayRequests = totalPayRequests - totalAcceptedRequests;
 
-  // ✅ Scanner Statistics with Details
-  const createdScannersTotal = createdScanners.reduce((sum, s) => sum + (s.amount || 0), 0);
-  const acceptedScannersTotal = acceptedScanners.reduce((sum, s) => sum + (s.amount || 0), 0);
-  
-  // ✅ Group scanners by status
-  const createdByStatus = {
-    ACTIVE: createdScanners.filter(s => s.status === 'ACTIVE').length,
-    ACCEPTED: createdScanners.filter(s => s.status === 'ACCEPTED').length,
-    PAYMENT_SUBMITTED: createdScanners.filter(s => s.status === 'PAYMENT_SUBMITTED').length,
-    COMPLETED: createdScanners.filter(s => s.status === 'COMPLETED').length,
-    EXPIRED: createdScanners.filter(s => s.status === 'EXPIRED').length
-  };
+  // Legs unlocked
+  const legsUnlocked = user.legsUnlocked || {};
+  const legRequirements = [
+    { leg: "Leg 1", required: 1, levels: "1-3" },
+    { leg: "Leg 2", required: 2, levels: "4-6" },
+    { leg: "Leg 3", required: 3, levels: "7-9" },
+    { leg: "Leg 4", required: 4, levels: "10-12" },
+    { leg: "Leg 5", required: 5, levels: "13-15" },
+    { leg: "Leg 6", required: 6, levels: "16-18" },
+    { leg: "Leg 7", required: 7, levels: "19-21" }
+  ];
 
-  const acceptedByStatus = {
-    ACTIVE: acceptedScanners.filter(s => s.status === 'ACTIVE').length,
-    ACCEPTED: acceptedScanners.filter(s => s.status === 'ACCEPTED').length,
-    PAYMENT_SUBMITTED: acceptedScanners.filter(s => s.status === 'PAYMENT_SUBMITTED').length,
-    COMPLETED: acceptedScanners.filter(s => s.status === 'COMPLETED').length,
-    EXPIRED: acceptedScanners.filter(s => s.status === 'EXPIRED').length
+  // Toggle level members
+  const toggleLevelMembers = (level) => {
+    setShowLevelMembers(prev => ({
+      ...prev,
+      [level]: !prev[level]
+    }));
+    
+    // Fetch member details if not already fetched
+    if (!showLevelMembers[level]) {
+      const members = teamLevels.find(l => l.level === level)?.members || [];
+      members.forEach(memberId => {
+        fetchMemberDetails(memberId);
+      });
+    }
   };
 
   return (
     <div className="space-y-3 md:space-y-4">
-      {/* Quick Stats */}
+      {/* Quick Stats Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <QuickStatCard label="User ID" value={user.userId} />
         <QuickStatCard label="Referral Code" value={user.referralCode} copyable onCopy={() => copyToClipboard(user.referralCode)} />
@@ -626,15 +769,24 @@ const [showAcceptedList, setShowAcceptedList] = useState(false);
         <QuickStatCard label="Referred By" value={user.referredBy?.userId || 'None'} />
       </div>
 
-      {/* Wallets - Commented as per your code */}
-      {/* <div className="bg-black/40 p-3 rounded-lg">
+      {/* Wallets */}
+      <div className="bg-black/40 p-3 rounded-lg">
         <h4 className="text-[10px] font-bold mb-2 text-[#00F5A0]">Wallet Balances</h4>
         <div className="grid grid-cols-3 gap-2">
-          <WalletBalanceCard label="USDT" value={user.wallets?.USDT?.toFixed(2) || 0} color="blue" />
-          <WalletBalanceCard label="INR" value={`₹${user.wallets?.INR?.toFixed(2) || 0}`} color="green" />
-          <WalletBalanceCard label="CASHBACK" value={`₹${user.wallets?.CASHBACK?.toFixed(2) || 0}`} color="orange" />
+          <div>
+            <p className="text-[6px] text-gray-500">USDT</p>
+            <p className="text-sm font-bold text-blue-400">{user.wallets?.USDT?.toFixed(2) || 0}</p>
+          </div>
+          <div>
+            <p className="text-[6px] text-gray-500">INR</p>
+            <p className="text-sm font-bold text-[#00F5A0]">₹{user.wallets?.INR?.toFixed(2) || 0}</p>
+          </div>
+          <div>
+            <p className="text-[6px] text-gray-500">CASHBACK</p>
+            <p className="text-sm font-bold text-orange-400">₹{user.wallets?.CASHBACK?.toFixed(2) || 0}</p>
+          </div>
         </div>
-      </div> */}
+      </div>
 
       {/* Referral Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -644,7 +796,26 @@ const [showAcceptedList, setShowAcceptedList] = useState(false);
         <SummaryCard label="Team Cashback" value={`₹${Object.values(teamCashback).reduce((sum, l) => sum + (l.total || 0), 0).toFixed(2)}`} color="green" />
       </div>
 
-      {/* ✅ PAY REQUEST STATISTICS - NEW SECTION */}
+      {/* Legs Unlocked */}
+      <div className="bg-black/40 p-3 rounded-lg">
+        <h4 className="text-[10px] font-bold mb-2 text-[#00F5A0]">Legs Unlocked ({Object.values(legsUnlocked).filter(v => v).length}/7)</h4>
+        <div className="grid grid-cols-7 gap-1">
+          {legRequirements.map((item, index) => {
+            const legKey = `leg${index + 1}`;
+            const unlocked = legsUnlocked[legKey] || false;
+            return (
+              <div key={legKey} className={`text-center p-1 rounded ${unlocked ? 'bg-green-500/20' : 'bg-gray-700/50'}`}>
+                <span className="text-[6px] font-bold block">{item.leg}</span>
+                <span className={`text-[8px] font-bold ${unlocked ? 'text-green-400' : 'text-gray-500'}`}>
+                  {unlocked ? '✓' : `${item.required}`}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Pay Request Statistics */}
       <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 p-3 rounded-lg">
         <h4 className="text-[10px] font-bold mb-2 text-blue-400 flex items-center gap-2">
           <CreditCard size={12} /> Pay Request Statistics
@@ -652,11 +823,11 @@ const [showAcceptedList, setShowAcceptedList] = useState(false);
         
         <div className="grid grid-cols-3 gap-2 mb-2">
           <div className="bg-black/40 p-2 rounded text-center">
-            <p className="text-[6px] text-gray-500">Total Created</p>
+            <p className="text-[6px] text-gray-500">Created</p>
             <p className="text-sm font-bold text-[#00F5A0]">{totalPayRequests}</p>
           </div>
           <div className="bg-black/40 p-2 rounded text-center">
-            <p className="text-[6px] text-gray-500">Total Accepted</p>
+            <p className="text-[6px] text-gray-500">Accepted</p>
             <p className="text-sm font-bold text-green-400">{totalAcceptedRequests}</p>
           </div>
           <div className="bg-black/40 p-2 rounded text-center">
@@ -664,27 +835,15 @@ const [showAcceptedList, setShowAcceptedList] = useState(false);
             <p className="text-sm font-bold text-orange-400">{pendingPayRequests}</p>
           </div>
         </div>
-
-        
       </div>
 
-      {/* ✅ CREATED SCANNERS DETAILS */}
+      {/* Created Scanners */}
       {createdScanners.length > 0 && (
         <div className="bg-black/40 p-3 rounded-lg">
           <h4 className="text-[10px] font-bold mb-2 text-blue-400 flex items-center gap-2">
             <ScanLine size={12} /> Created Scanners ({createdScanners.length})
           </h4>
           
-          {/* Status Distribution */}
-          <div className="grid grid-cols-5 gap-1 mb-2">
-            <StatusBadge label="Active" count={createdByStatus.ACTIVE} color="green" />
-            <StatusBadge label="Accepted" count={createdByStatus.ACCEPTED} color="blue" />
-            <StatusBadge label="Payment" count={createdByStatus.PAYMENT_SUBMITTED} color="yellow" />
-            <StatusBadge label="Completed" count={createdByStatus.COMPLETED} color="purple" />
-            <StatusBadge label="Expired" count={createdByStatus.EXPIRED} color="gray" />
-          </div>
-
-          {/* Recent Scanners List */}
           <button
             onClick={() => setShowCreatedList(!showCreatedList)}
             className="w-full flex items-center justify-between text-[8px] text-gray-400 mt-1"
@@ -701,10 +860,6 @@ const [showAcceptedList, setShowAcceptedList] = useState(false);
                     <span className="text-gray-400">₹{s.amount}</span>
                     <StatusBadge label={s.status} count={1} color={s.status} mini />
                   </div>
-                  <div className="flex justify-between text-[6px] text-gray-500">
-                    <span>{new Date(s.createdAt).toLocaleDateString()}</span>
-                    {s.acceptedBy && <span>Accepted by: {s.acceptedBy.userId}</span>}
-                  </div>
                 </div>
               ))}
             </div>
@@ -712,23 +867,13 @@ const [showAcceptedList, setShowAcceptedList] = useState(false);
         </div>
       )}
 
-      {/* ✅ ACCEPTED SCANNERS DETAILS */}
+      {/* Accepted Scanners */}
       {acceptedScanners.length > 0 && (
         <div className="bg-black/40 p-3 rounded-lg">
           <h4 className="text-[10px] font-bold mb-2 text-green-400 flex items-center gap-2">
             <CheckCircle size={12} /> Accepted Scanners ({acceptedScanners.length})
           </h4>
           
-          {/* Status Distribution */}
-          <div className="grid grid-cols-5 gap-1 mb-2">
-            <StatusBadge label="Active" count={acceptedByStatus.ACTIVE} color="green" />
-            <StatusBadge label="Accepted" count={acceptedByStatus.ACCEPTED} color="blue" />
-            <StatusBadge label="Payment" count={acceptedByStatus.PAYMENT_SUBMITTED} color="yellow" />
-            <StatusBadge label="Completed" count={acceptedByStatus.COMPLETED} color="purple" />
-            <StatusBadge label="Expired" count={acceptedByStatus.EXPIRED} color="gray" />
-          </div>
-
-          {/* Recent Accepted List */}
           <button
             onClick={() => setShowAcceptedList(!showAcceptedList)}
             className="w-full flex items-center justify-between text-[8px] text-gray-400 mt-1"
@@ -745,10 +890,6 @@ const [showAcceptedList, setShowAcceptedList] = useState(false);
                     <span className="text-gray-400">₹{s.amount}</span>
                     <StatusBadge label={s.status} count={1} color={s.status} mini />
                   </div>
-                  <div className="flex justify-between text-[6px] text-gray-500">
-                    <span>Created by: {s.user?.userId}</span>
-                    <span>{new Date(s.acceptedAt).toLocaleDateString()}</span>
-                  </div>
                 </div>
               ))}
             </div>
@@ -756,16 +897,95 @@ const [showAcceptedList, setShowAcceptedList] = useState(false);
         </div>
       )}
 
-      {/* Legs Unlocked */}
-      <LegsUnlockedView user={user} />
+      {/* Level-wise Team Structure */}
+      {teamLevels.length > 0 && (
+        <div className="bg-black/40 p-3 rounded-lg">
+          <h4 className="text-[10px] font-bold mb-2 text-[#00F5A0] flex items-center gap-2">
+            <Users size={12} /> Level-wise Team Structure
+          </h4>
+          
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {teamLevels.map(level => (
+              <div key={level.level} className="border border-white/10 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleLevelMembers(level.level)}
+                  className="w-full flex justify-between items-center p-2 bg-black/30 hover:bg-black/50"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-[8px] font-bold bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-0.5 rounded-full">
+                      Level {level.level}
+                    </span>
+                    <span className="text-[6px] text-gray-400">{level.count} members</span>
+                  </div>
+                  {showLevelMembers[level.level] ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                </button>
+                
+                {showLevelMembers[level.level] && (
+                  <div className="p-2 bg-black/20 space-y-1">
+                    {level.members.map(memberId => {
+                      const memberDetail = memberDetails[memberId];
+                      return (
+                        <div key={memberId} className="bg-black/40 p-2 rounded-lg flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-[6px] font-bold">
+                              {memberDetail?.userId?.charAt(0) || memberId?.charAt(0)}
+                            </div>
+                            <div>
+                              <p className="text-[8px] font-bold">
+                                {memberDetail?.userId || memberId.slice(-8)}
+                              </p>
+                              {memberDetail && (
+                                <p className="text-[5px] text-gray-500">
+                                  Earn: ₹{memberDetail.referralEarnings?.total || 0}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {loadingMember && !memberDetail && (
+                            <Loader2 size={8} className="animate-spin text-[#00F5A0]" />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-      {/* Leg-wise Team Structure */}
-      <LegWiseTeamStructure user={user} teamLevels={teamLevels} expandedLevel={expandedLevel} setExpandedLevel={setExpandedLevel} />
-
-      {/* Earnings */}
+      {/* Commission by Level */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <CommissionByLevel earnings={referralEarnings} />
-        <TeamCashbackByLevel teamCashback={teamCashback} />
+        <div className="bg-black/40 p-2 rounded-lg">
+          <h4 className="text-[8px] font-bold mb-1 text-orange-400">Commission by Level</h4>
+          <div className="space-y-1 max-h-32 overflow-y-auto">
+            {Object.entries(referralEarnings).map(([level, amount]) => {
+              if (level === 'total' || amount === 0) return null;
+              return (
+                <div key={level} className="flex justify-between text-[6px] py-0.5 border-b border-white/5">
+                  <span className="text-gray-400">{level}:</span>
+                  <span className="font-bold text-orange-400">₹{amount}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bg-black/40 p-2 rounded-lg">
+          <h4 className="text-[8px] font-bold mb-1 text-green-400">Team Cashback</h4>
+          <div className="space-y-1 max-h-32 overflow-y-auto">
+            {Object.entries(teamCashback).map(([level, data]) => {
+              if (data.total === 0) return null;
+              return (
+                <div key={level} className="flex justify-between text-[6px] py-0.5 border-b border-white/5">
+                  <span className="text-gray-400">{level}:</span>
+                  <span className="font-bold text-green-400">₹{data.total} ({data.count})</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
