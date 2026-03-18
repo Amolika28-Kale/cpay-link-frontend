@@ -71,7 +71,7 @@ const [referralData, setReferralData] = useState({
 });
 
   const [teamStats, setTeamStats] = useState(null);
-  const [activeTab, setActiveTab] = useState("Overview");
+  const [activeTab, setActiveTab] = useState("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Data State
@@ -1382,9 +1382,9 @@ const confirmActivation = async () => {
         <nav className="flex-1 space-y-2">
           <SidebarLink 
             icon={<LayoutGrid size={20} />} 
-            label="Overview" 
-            active={activeTab === "Overview"} 
-            onClick={() => { setActiveTab("Overview"); setIsSidebarOpen(false); }} 
+            label="Dashboard" 
+            active={activeTab === "Dashboard"} 
+            onClick={() => { setActiveTab("Dashboard"); setIsSidebarOpen(false); }} 
           />
           <SidebarLink 
             icon={<ScanLine size={20} />} 
@@ -1454,7 +1454,7 @@ const confirmActivation = async () => {
           </div>
         </header>
 
-        {activeTab === "Overview" && (
+        {activeTab === "Dashboard" && (
           <OverviewPage 
             wallets={wallets} 
             transactions={transactions} 

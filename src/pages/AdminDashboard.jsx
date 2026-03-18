@@ -1108,7 +1108,7 @@ const LegDetailsModal = ({ user, leg, onClose }) => {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `https://cpay-link-backend.onrender.com/api/auth/leg-users/${leg.legNumber}/${level}`,
+        `https://cpay-link-backend.onrender.com/api/admin/leg-users/${leg.legNumber}/${level}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await response.json();
