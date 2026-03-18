@@ -73,19 +73,19 @@ export default function Landing() {
           <div className="text-left">
             <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-[#00F5A0] px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-8">
               <span className="h-2 w-2 rounded-full bg-[#00F5A0] animate-pulse"></span>
-              21 Level Referral • 7 Legs • 7-Day Wallet
+              21 Level Referral • 7-Day Wallet
             </div>
             <h1 className="text-6xl md:text-8xl font-bold leading-[1.1] mb-8 tracking-tight">
               Activate, Pay & <br />
-              Earn on <span className="text-[#00F5A0]">21 Levels</span>
+              Earn Cashback Instantly
             </h1>
             <p className="text-lg text-gray-400 mb-10 max-w-lg leading-relaxed">
-              Activate your wallet for 7 days, make UPI payments, earn instant cashbacks, and build a team to earn commissions on 21 levels with 7 legs system.
+              Activate your wallet for 7 days, make UPI payments, earn instant cashbacks, and build a team to earn commissions on 21 levels with Unlimited Direct Referral system.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link to="/auth">
                 <button className="bg-[#00F5A0] text-[#051510] px-8 py-4 rounded-xl font-bold text-lg flex items-center gap-2 hover:scale-105 transition-transform">
-                  Start Earning <ArrowRight size={20} />
+                  Cpaylink Wallet Login <ArrowRight size={20} />
                 </button>
               </Link>
             </div>
@@ -204,15 +204,15 @@ export default function Landing() {
       <section id="referral" className="py-24 px-6">
         <div className="max-w-7xl mx-auto text-center mb-16">
           <div className="inline-flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 text-purple-400 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest mb-4">
-            <Users size={14} /> 21 LEVELS • 7 LEGS
+            <Users size={14} /> 21 LEVELS
           </div>
           <h2 className="text-5xl md:text-7xl font-bold mb-4">Build Your Team</h2>
-          <p className="text-gray-500 max-w-2xl mx-auto">Earn commissions on 21 levels with our revolutionary 7-leg referral system.</p>
+          <p className="text-gray-500 max-w-2xl mx-auto">Earn commissions on 21 levels with our revolutionary  referral system.</p>
         </div>
 
         {/* 7 Legs Visualization */}
         <div className="max-w-6xl mx-auto mb-16">
-          <div className="grid grid-cols-7 gap-2 mb-8">
+          {/* <div className="grid grid-cols-7 gap-2 mb-8">
             {[1,2,3,4,5,6,7].map(leg => (
               <div key={leg} className="text-center">
                 <div className="bg-gradient-to-b from-[#00F5A0]/20 to-transparent p-3 rounded-t-2xl border border-[#00F5A0]/20">
@@ -221,7 +221,7 @@ export default function Landing() {
                 </div>
               </div>
             ))}
-          </div>
+          </div> */}
           
           {/* Commission Rates */}
           <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-8">

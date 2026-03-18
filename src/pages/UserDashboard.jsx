@@ -3757,6 +3757,7 @@ const ReferralPage = ({ referralData: propReferralData, teamStats: propTeamStats
   const [expandedLegDetails, setExpandedLegDetails] = useState({});
   const [statsFilter, setStatsFilter] = useState('total');
   const [showAllLegs, setShowAllLegs] = useState(false);
+  const [expandedLegLevel, setExpandedLegLevel] = useState({}); 
   
   // ========== LOCAL STATE FOR REFERRAL DATA ==========
   const [localReferralData, setLocalReferralData] = useState({
@@ -4369,7 +4370,8 @@ const LegCard = React.memo(({
   leg, 
   expandedLeg, 
   setExpandedLeg,
-  // Add these new props
+  expandedLevel,      // ← prop म्हणून घ्या
+  setExpandedLevel,   // ← prop म्हणून घ्या
   levelUsersCache,
   loadingLevels,
   pendingRequests,
@@ -4377,7 +4379,6 @@ const LegCard = React.memo(({
   setExpandedMember,
   fetchMemberDetails
 }) => {
-  const [expandedLevel, setExpandedLevel] = useState(null);
   const [localLoading, setLocalLoading] = useState(false);
   const clickInProgress = useRef(false);
   
@@ -4389,40 +4390,37 @@ const totalUsersInLeg = leg.totalUsers || leg.stats?.totalUsers || 0;
   
   const isExpanded = expandedLeg === leg.legNumber;
 
-// असं कर
 const handleHeaderClick = (e) => {
   e.stopPropagation();
   e.preventDefault();
-  // Level grid वरून आलेला click ignore कर
+  
+  // level-grid-item वरून आलेला click पूर्णपणे ignore कर
   if (e.target.closest('.level-grid-item')) return;
+  // expanded level panel वरून आलेला click पण ignore कर
+  if (e.target.closest('.level-users-panel')) return;
+  
   setExpandedLeg(prev => prev === leg.legNumber ? null : leg.legNumber);
 };
   
-  // Handle level click
-  const handleLevelClick = (e, level) => {
-    e.stopPropagation();
-    e.preventDefault();
-    
-    if (clickInProgress.current) return;
-    clickInProgress.current = true;
-    
-    if (expandedLevel === level) {
-      setExpandedLevel(null);
-    } else {
-      setExpandedLevel(level);
-      setLocalLoading(true);
-      
-      fetchLegLevelUsers(leg.legNumber, level)
-        .catch(error => console.error("Error fetching level users:", error))
-        .finally(() => {
-          setLocalLoading(false);
-        });
-    }
-    
-    setTimeout(() => {
-      clickInProgress.current = false;
-    }, 300);
-  };
+const handleLevelClick = (e, level) => {
+  e.stopPropagation();
+  e.preventDefault();
+  
+  if (clickInProgress.current) return;
+  clickInProgress.current = true;
+  
+  const newLevel = expandedLevel === level ? null : level;
+  setExpandedLevel(newLevel);  // parent state update
+  
+  if (newLevel !== null) {
+    setLocalLoading(true);
+    fetchLegLevelUsers(leg.legNumber, newLevel)
+      .catch(console.error)
+      .finally(() => setLocalLoading(false));
+  }
+  
+  setTimeout(() => { clickInProgress.current = false; }, 300);
+};
   
   const handleCloseLevel = (e) => {
     e.stopPropagation();
@@ -4608,7 +4606,7 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
   if (isLoading) {
     return (
       <div 
-        className="mt-4 p-3 bg-black/40 rounded-lg border border-[#00F5A0]/20"
+        className="mt-4 level-users-panel p-3 bg-black/40 rounded-lg border border-[#00F5A0]/20"
         onClick={handleContainerClick}
       >
         <div className="flex items-center justify-between mb-2">
@@ -4949,19 +4947,24 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
           <div className="space-y-4 max-h-[600px] overflow-y-auto p-2">
          {/* In your LEGS LIST section, update the LegCard rendering */}
 {paginatedLegs.map((leg, index) => (
-  <LegCard 
-    key={leg.legNumber}
-    leg={leg}
-    expandedLeg={expandedLeg}
-    setExpandedLeg={setExpandedLeg}
-    // Add these new props
-    levelUsersCache={levelUsersCache}
-    loadingLevels={loadingLevels}
-    pendingRequests={pendingRequests}
-    fetchLegLevelUsers={fetchLegLevelUsers}
-    setExpandedMember={setExpandedMember}
-    fetchMemberDetails={fetchMemberDetails}
-  />
+ <LegCard 
+  key={leg.legNumber}
+  leg={leg}
+  expandedLeg={expandedLeg}
+  setExpandedLeg={setExpandedLeg}
+  // नवीन props
+  expandedLevel={expandedLegLevel[leg.legNumber] || null}
+  setExpandedLevel={(level) => setExpandedLegLevel(prev => ({
+    ...prev,
+    [leg.legNumber]: level
+  }))}
+  levelUsersCache={levelUsersCache}
+  loadingLevels={loadingLevels}
+  pendingRequests={pendingRequests}
+  fetchLegLevelUsers={fetchLegLevelUsers}
+  setExpandedMember={setExpandedMember}
+  fetchMemberDetails={fetchMemberDetails}
+/>
 ))}
             
             {legBreakdown.legs.length > legsPerPage && (
