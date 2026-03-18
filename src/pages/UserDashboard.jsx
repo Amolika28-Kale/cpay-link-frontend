@@ -498,16 +498,16 @@ const loadAllData = async () => {
 
     setPaymentMethods(pm || []);
 
-    if (ref && !ref.message) {
-      setReferralData({
-        referralCode: ref.referralCode || "",
-        totalReferrals: ref.totalReferrals || 0,
-        referralEarnings: ref.referralEarnings || { total: 0 },
-        cashbackBalance: ref.cashbackBalance || 0,
-        referralTree: ref.referralTree || { level1: 0, level2: 0, level3: 0, level4: 0, level5: 0 },
-        earningsByLevel: ref.earningsByLevel || { level1: 0, level2: 0, level3: 0, level4: 0, level5: 0, total: 0 }
-      });
-    }
+   if (ref?.success && ref?.data) {
+  setReferralData({
+    referralCode: ref.data.referralCode || "",
+    totalReferrals: ref.data.totalTeam || 0,
+    referralEarnings: { total: ref.data.totalEarnings || 0 },
+    cashbackBalance: 0,
+    referralTree: {},
+    earningsByLevel: {}
+  });
+}
 
     setTeamStats(team);
 
@@ -3843,15 +3843,9 @@ useEffect(() => {
 }, []); // Empty dependency array - run only once
 
   // ========== HELPER FUNCTIONS ==========
-  const getHorizontalRequirement = (level) => {
-    if (level <= 3) return 1;
-    if (level <= 6) return 2;
-    if (level <= 9) return 3;
-    if (level <= 12) return 4;
-    if (level <= 15) return 5;
-    if (level <= 18) return 6;
-    return 7;
-  };
+const getHorizontalRequirement = (level) => {
+  return level; // Level N साठी N directs हवेत
+};
 
   const getRequiredLevels = (level) => {
     const requirements = {
@@ -4046,13 +4040,13 @@ useEffect(() => {
         const { getTodayTeamStats } = await import("../services/authService");
         const data = await getTodayTeamStats(token);
         
-        if (isMounted && data?.success) {
-          setTodayStats({
-            teamBusiness: data.teamBusiness || 0,
-            yourCommission: data.yourCommission || 0,
-            teamMembers: data.teamMembers || 0
-          });
-        }
+if (isMounted && data?.success) {
+  setTodayStats({
+    teamBusiness: data.data?.teamBusiness || 0,  // data.data वापर
+    yourCommission: data.data?.yourCommission || 0,
+    teamMembers: data.data?.teamMembers || 0
+  });
+}
       } catch (error) {
         console.error("Error fetching today stats:", error);
       }
@@ -4116,25 +4110,10 @@ useEffect(() => {
     }
   };
 
-  // ========== MARK NOTIFICATIONS AS READ ==========
-  const markNotificationsAsRead = async (commissionIds = []) => {
-    try {
-      const token = localStorage.getItem("token");
-      const { markMissedCommissionsAsRead } = await import("../services/authService");
-      
-      await markMissedCommissionsAsRead(token, commissionIds);
-      
-      const { getMissedCommissions, getFomoNotifications } = await import("../services/authService");
-      const missed = await getMissedCommissions(token);
-      setMissedCommissions(missed);
-      
-      const fomo = await getFomoNotifications(token);
-      setFomoNotifications(fomo.notifications || []);
-      
-    } catch (error) {
-      console.error("Error marking notifications as read:", error);
-    }
-  };
+const markNotificationsAsRead = async (commissionIds = []) => {
+  console.log("Notifications feature not implemented yet");
+  // TODO: implement when backend ready
+};
 
   const copyReferralCode = () => {
     navigator.clipboard.writeText(referralData.referralCode);
@@ -4186,16 +4165,12 @@ useEffect(() => {
   }, [legBreakdown]);
 
   // ========== CALCULATE TOTAL TEAM BUSINESS ==========
-  const totalTeamBusiness = useMemo(() => {
-    return teamStats 
-      ? Object.values(teamStats).reduce((sum, level) => {
-          if (level && typeof level === 'object' && level.teamCashback) {
-            return sum + (level.teamCashback || 0);
-          }
-          return sum;
-        }, 0) 
-      : 0;
-  }, [teamStats]);
+const totalTeamBusiness = useMemo(() => {
+  if (!legBreakdown?.legs) return 0;
+  return legBreakdown.legs.reduce((sum, leg) => {
+    return sum + (leg.stats?.totalTeamCashback || leg.totalTeamCashback || 0);
+  }, 0);
+}, [legBreakdown]);
 
   // ========== PAGINATED LEGS ==========
   const paginatedLegs = useMemo(() => {
@@ -4382,18 +4357,21 @@ const LegCard = React.memo(({
   const clickInProgress = useRef(false);
   
   // Calculate leg statistics
-  const totalUsersInLeg = leg.stats?.totalUsers || leg.totalUsers || 0;
-  const unlockedLevels = Object.values(leg.levels || {}).filter(l => l.isUnlocked).length;
-  const totalEarningsInLeg = leg.stats?.totalEarnings || leg.totalEarnings || 0;
+const unlockedLevels = leg.unlockedLevels || legBreakdown?.unlockedLevelsInEachLeg || 0;
+const totalEarningsInLeg = leg.totalEarnings || leg.stats?.totalEarnings || 0;
+const totalUsersInLeg = leg.totalUsers || leg.stats?.totalUsers || 0;
   const isActive = leg.isActive !== false;
   
   const isExpanded = expandedLeg === leg.legNumber;
 
-  const handleHeaderClick = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-    setExpandedLeg(prev => prev === leg.legNumber ? null : leg.legNumber);
-  };
+// असं कर
+const handleHeaderClick = (e) => {
+  e.stopPropagation();
+  e.preventDefault();
+  // Level grid वरून आलेला click ignore कर
+  if (e.target.closest('.level-grid-item')) return;
+  setExpandedLeg(prev => prev === leg.legNumber ? null : leg.legNumber);
+};
   
   // Handle level click
   const handleLevelClick = (e, level) => {
@@ -4518,7 +4496,7 @@ const LegCard = React.memo(({
               return (
                 <div 
                   key={level}
-                  className={`text-center p-2 rounded-lg ${bgColor} border ${borderColor} cursor-pointer hover:scale-105 transition-transform ${
+                  className={`level-grid-item text-center p-2 rounded-lg ${bgColor} border ${borderColor} cursor-pointer hover:scale-105 transition-transform ${
                     expandedLevel === level ? 'ring-2 ring-[#00F5A0]' : ''
                   } ${isLoading ? 'animate-pulse' : ''}`}
                   onClick={(e) => handleLevelClick(e, level)}
@@ -4905,59 +4883,25 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
           </div>
         )}
 
-        {/* Next Level to Unlock */}
-        {nextLevel?.nextLevelToUnlock && (
-          <div className="mb-6 p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertCircle size={16} className="text-yellow-400" />
-              <span className="text-xs font-bold text-yellow-400">Next Level to Unlock</span>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm font-bold text-white">Level {nextLevel.nextLevelToUnlock.level}</p>
-                  <p className="text-[10px] text-gray-400">
-                    Required Levels: {nextLevel.nextLevelToUnlock.requiredLevels?.join(', ')}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-400">Vertical Progress</p>
-                  <p className="text-sm font-bold text-[#00F5A0]">
-                    {nextLevel.nextLevelToUnlock.completedCount}/{nextLevel.nextLevelToUnlock.requiredLevels?.length}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-gradient-to-r from-[#00F5A0] to-green-500"
-                  style={{ width: `${(nextLevel.nextLevelToUnlock.completedCount / nextLevel.nextLevelToUnlock.requiredLevels?.length) * 100}%` }}
-                />
-              </div>
-              
-              <div className="flex justify-between items-center pt-2 border-t border-purple-500/20">
-                <span className="text-[10px] text-gray-400">Horizontal Requirement:</span>
-                <span className={`text-[10px] font-bold ${
-                  nextLevel.nextLevelToUnlock.horizontalProgress?.isComplete ? 'text-green-400' : 'text-yellow-400'
-                }`}>
-                  {nextLevel.nextLevelToUnlock.horizontalProgress?.current || 0}/
-                  {nextLevel.nextLevelToUnlock.horizontalProgress?.required || 0} directs
-                </span>
-              </div>
-              
-              <p className="text-[10px] text-gray-500">
-                {nextLevel.nextLevelToUnlock.isUnlockable 
-                  ? '✅ You can unlock this level now!' 
-                  : `⏳ Need: ${nextLevel.nextLevelToUnlock.horizontalProgress?.remaining > 0 
-                      ? `${nextLevel.nextLevelToUnlock.horizontalProgress.remaining} more direct referral(s)` 
-                      : ''} ${nextLevel.nextLevelToUnlock.remainingCount > 0 
-                      ? `and complete levels ${nextLevel.nextLevelToUnlock.requiredLevels.join(', ')}` 
-                      : ''}`.trim()}
-              </p>
-            </div>
-          </div>
-        )}
+{nextLevel?.nextLevel && (
+  <div className="mb-6 p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30">
+    <div className="flex items-center gap-2 mb-2">
+      <AlertCircle size={16} className="text-yellow-400" />
+      <span className="text-xs font-bold text-yellow-400">Next Level to Unlock</span>
+    </div>
+    <p className="text-sm font-bold text-white">Level {nextLevel.nextLevel}</p>
+    <p className="text-[10px] text-gray-400 mt-1">{nextLevel.message}</p>
+    <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden mt-3">
+      <div 
+        className="h-full bg-gradient-to-r from-[#00F5A0] to-green-500"
+        style={{ width: `${Math.min(100, ((nextLevel.currentDirects || 0) / nextLevel.nextLevel) * 100)}%` }}
+      />
+    </div>
+    <p className="text-[10px] text-gray-500 mt-2">
+      {nextLevel.currentDirects}/{nextLevel.nextLevel} directs — {nextLevel.remainingDirects} more needed
+    </p>
+  </div>
+)}
       </div>
 
    
@@ -5104,8 +5048,8 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
               </div>
             </div>
             <div className="flex justify-between text-[10px] text-gray-500 border-t border-white/5 pt-2">
-              <span>{statsFilter === 'today' ? 'Active today' : 'All legs combined'}</span>
-              <span className="text-[#00F5A0]">{legBreakdown?.legs?.length || 0} legs</span>
+              <span>{statsFilter === 'today' ? 'Active today' : 'All Directs combined'}</span>
+              <span className="text-[#00F5A0]">{legBreakdown?.legs?.length || 0} Directs</span>
             </div>
           </div>
 
