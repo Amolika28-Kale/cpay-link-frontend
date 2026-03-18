@@ -3782,6 +3782,11 @@ const ReferralPage = ({ referralData: propReferralData, teamStats: propTeamStats
     yourCommission: 0,
     teamMembers: 0
   });
+  const [totalStats, setTotalStats] = useState({
+  teamBusiness: 0,
+  yourCommission: 0,
+  teamMembers: 0
+});
   // Add these with your other useState declarations (around line where other states are declared)
 const [levelUsersCache, setLevelUsersCache] = useState({});
 const [loadingLevels, setLoadingLevels] = useState({});
@@ -4059,6 +4064,33 @@ if (isMounted && data?.success) {
     };
   }, []);
 
+  useEffect(() => {
+  let isMounted = true;
+
+  const fetchTotalStats = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const { getTotalTeamStats } = await import("../services/authService");
+
+      const data = await getTotalTeamStats(token);
+
+      if (isMounted && data?.success) {
+        setTotalStats({
+          teamBusiness: data.data?.teamBusiness || 0,
+          yourCommission: data.data?.yourCommission || 0,
+          teamMembers: data.data?.teamMembers || 0
+        });
+      }
+    } catch (err) {
+      console.error("Total stats error:", err);
+    }
+  };
+
+  fetchTotalStats();
+
+  return () => { isMounted = false; };
+}, []);
+
   // ========== FETCH MEMBER DETAILS ==========
   const fetchMemberDetails = async (memberId) => {
     if (memberDetails[memberId]) return;
@@ -4164,13 +4196,6 @@ const markNotificationsAsRead = async (commissionIds = []) => {
     }));
   }, [legBreakdown]);
 
-  // ========== CALCULATE TOTAL TEAM BUSINESS ==========
-const totalTeamBusiness = useMemo(() => {
-  if (!legBreakdown?.legs) return 0;
-  return legBreakdown.legs.reduce((sum, leg) => {
-    return sum + (leg.stats?.totalTeamCashback || leg.totalTeamCashback || 0);
-  }, 0);
-}, [legBreakdown]);
 
   // ========== PAGINATED LEGS ==========
   const paginatedLegs = useMemo(() => {
@@ -4843,7 +4868,7 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
             <p className="text-xl font-black text-green-400">
               {legStatus?.activeLegs || legBreakdown?.legs?.length || 0}
             </p>
-            <p className="text-[6px] text-gray-600">Total legs: {legBreakdown?.legs?.length || 0}</p>
+            <p className="text-[6px] text-gray-600">Total Directs: {legBreakdown?.legs?.length || 0}</p>
           </div>
           <div className="bg-black/40 p-3 rounded-lg text-center">
             <p className="text-[8px] text-gray-500">Total Team</p>
@@ -4852,12 +4877,14 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
                 ? todayStats.teamMembers 
                 : totalTeamMembersAllLegs || referralData.totalReferrals}
             </p>
-            <p className="text-[6px] text-gray-600">Across {legBreakdown?.legs?.length || 0} legs</p>
+            <p className="text-[6px] text-gray-600">Across {legBreakdown?.legs?.length || 0} Directs</p>
           </div>
           <div className="bg-black/40 p-3 rounded-lg text-center">
             <p className="text-[8px] text-gray-500">Team Business</p>
             <p className="text-xl font-black text-orange-400">
-              ₹{statsFilter === 'today' ? todayStats.teamBusiness.toFixed(2) : totalTeamBusiness.toFixed(2)}
+              ₹{statsFilter === 'today' ? todayStats.teamBusiness.toFixed(2) : statsFilter === 'today' 
+  ? todayStats.teamBusiness.toFixed(2)
+  : totalStats.teamBusiness.toFixed(2)}
             </p>
           </div>
         </div>
@@ -4911,7 +4938,7 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
         <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
           <h3 className="text-lg font-black italic mb-4 flex items-center gap-2">
             <Users size={20} className="text-[#00F5A0]" />
-            Leg-wise Detailed Breakdown ({legBreakdown.legs.length} Total Directs)
+            Directs-wise Detailed Breakdown ({legBreakdown.legs.length} Total Directs)
             {legBreakdown.legs.length > 20 && (
               <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-2 py-1 rounded-full">
                 Large Network: {legBreakdown.legs.length} Directs
@@ -4942,7 +4969,7 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
                 onClick={() => setShowAllLegs(!showAllLegs)}
                 className="w-full py-2 text-xs bg-white/5 hover:bg-white/10 rounded-lg transition-all font-bold"
               >
-                {showAllLegs ? `Show Less (${legsPerPage} legs)` : `Show All ${legBreakdown.legs.length} Legs`}
+                {showAllLegs ? `Show Less (${legsPerPage} directs)` : `Show All ${legBreakdown.legs.length} Directs`}
               </button>
             )}
           </div>
@@ -5061,7 +5088,7 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
               <div>
                 <p className="text-xs text-gray-400">Team Business</p>
                 <p className="text-2xl font-black text-[#00F5A0]">
-                  ₹{statsFilter === 'today' ? todayStats.teamBusiness.toFixed(2) : totalTeamBusiness.toFixed(2)}
+                  ₹{statsFilter === 'today' ? todayStats.teamBusiness.toFixed(2) : totalStats.teamBusiness.toFixed(2)}
                 </p>
               </div>
             </div>

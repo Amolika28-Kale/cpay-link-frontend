@@ -213,6 +213,18 @@ export const getTodayTeamStats = async (token) => {
   }
 };
 
+export const getTotalTeamStats = async (token) => {
+  try {
+    const res = await fetch(`${API_BASE}/auth/today-team-stats`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    return { success: false };
+  }
+};
+
 // ========== SIMPLIFIED: LEG DETAILS ==========
 export const getLegDetails = async (token, legNumber) => {
   try {

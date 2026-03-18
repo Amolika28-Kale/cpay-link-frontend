@@ -350,7 +350,6 @@ const DashboardView = ({
   );
 };
 
-// ================= USERS VIEW - WITH LEGS AND LEVELS =================
 const UsersView = ({ 
   users, searchTerm, setSearchTerm, setSelectedUser, 
   expandedUser, setExpandedUser, expandedLevel, setExpandedLevel,
