@@ -156,13 +156,13 @@ const [depositUpdateReason, setDepositUpdateReason] = useState("");
   // Calculate counts - FIXED to handle expired requests properly
   const activeRequestsCount = scanners.filter(s => 
     s.status === "ACTIVE" && 
-    String(s.user?._id) !== String(user._id) &&
+    String(s.user?._id) !== String(user.id || user._id) &&
     !isRequestExpired(s) // Only count non-expired requests
   ).length;
   
   const myActiveRequestsCount = scanners.filter(s => 
     s.status === "ACTIVE" && 
-    String(s.user?._id) === String(user._id) && 
+    String(s.user?._id) === String(user.id || user._id) && 
     !s.acceptedBy &&
     !isRequestExpired(s) // Only count non-expired requests
   ).length;
@@ -274,8 +274,8 @@ const slots = [
   { id: "1000-9999", label: "₹1000 - ₹9999", min: 1000, max: 10000},
 ];
 
-  const filteredRequests = scanners
-  .filter((s) => String(s.user?._id) !== String(user._id))
+const filteredRequests = scanners
+  .filter((s) => String(s.user?._id) !== String(user.id || user._id)) // ✅ Fix
   .filter((s) => {
     if (activeSlot === "ALL") return true;
 
@@ -1722,13 +1722,13 @@ const confirmActivation = async () => {
 
     {scanners.filter((s) => {
       const ownerId = typeof s.user === "object" ? s.user?._id : s.user;
-      return String(ownerId) === String(user._id) && s.status !== "ACTIVE";
+      return String(ownerId) === String(user.id || user._id) && s.status !== "ACTIVE"; // ✅ Fix
     }).length > 0 && (
       <span className="bg-gray-500/10 text-gray-400 text-[10px] px-2 py-1 rounded-full">
         {
           scanners.filter((s) => {
             const ownerId = typeof s.user === "object" ? s.user?._id : s.user;
-            return String(ownerId) === String(user._id) && s.status !== "ACTIVE";
+            return String(ownerId) === String(user.id || user._id) && s.status !== "ACTIVE"; // ✅ Fix
           }).length
         } completed/expired
       </span>
@@ -1740,7 +1740,7 @@ const confirmActivation = async () => {
     {scanners
       .filter((s) => {
         const ownerId = typeof s.user === "object" ? s.user?._id : s.user;
-        return String(ownerId) === String(user._id);
+        return String(ownerId) === String(user.id || user._id); // ✅ Fix
       })
       .map((s) => (
         <RequestCard
@@ -1758,7 +1758,7 @@ const confirmActivation = async () => {
 
     {scanners.filter((s) => {
       const ownerId = typeof s.user === "object" ? s.user?._id : s.user;
-      return String(ownerId) === String(user._id);
+      return String(ownerId) === String(user.id || user._id); // ✅ Fix
     }).length === 0 && (
       <div className="col-span-full text-center py-10">
         <p className="text-gray-600 font-black italic">No Bill Payments Created</p>
@@ -1784,9 +1784,8 @@ const confirmActivation = async () => {
 {/* SLOT FILTERS */}
 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 mb-6">
   {slots.map((slot) => {
-    // Check if this slot has any requests
     const hasRequestsInSlot = scanners
-      .filter((s) => String(s.user?._id) !== String(user._id))
+      .filter((s) => String(s.user?._id) !== String(user.id || user._id)) // ✅ Fix
       .some((s) => s.amount >= slot.min && s.amount <= slot.max);
     
     return (
@@ -1808,7 +1807,7 @@ const confirmActivation = async () => {
         {hasRequestsInSlot && (
           <span className="ml-1 text-[8px] bg-red-500 text-white px-1 rounded-full">
             {scanners
-              .filter((s) => String(s.user?._id) !== String(user._id))
+              .filter((s) => String(s.user?._id) !== String(user.id || user._id)) // ✅ Fix
               .filter((s) => s.amount >= slot.min && s.amount <= slot.max).length}
           </span>
         )}
@@ -2268,14 +2267,14 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
   // ✅ System request असल्यास (user = null) isOwner false
   // const isOwner = s.user ? String(s.user?._id) === String(user._id) : false;
 
-  // RequestCard कंपोनेंटमध्ये
-  const getUserId = (u) => {
-    if (!u) return null;
-    if (typeof u === "string") return u;
-    return u._id;
-  };
+const getUserId = (u) => {
+  if (!u) return null;
+  if (typeof u === "string") return u;
+  return u._id;
+};
 
-  const isOwner = String(getUserId(s.user)) === String(user._id);
+// ✅ user.id वापरा
+const isOwner = String(getUserId(s.user)) === String(user.id || user._id);
   const isSystemRequest = !s.user;
   // const isSystemRequest = !s.user; // user = null म्हणजे system request
   const isAutoRequest = s.isAutoRequest || false;
@@ -2629,6 +2628,21 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
     return s.user?.userId || `${s.user?._id?.slice(-6)}`;
   };
 
+const isAcceptedByCurrentUser = () => {
+  if (!s.acceptedBy) return false;
+  
+  // ✅ user.id वापरा, user._id नाही!
+  const currentUserId = String(user.id || user._id);
+  
+  if (typeof s.acceptedBy === 'object' && s.acceptedBy !== null) {
+    if (s.acceptedBy._id) {
+      return String(s.acceptedBy._id) === currentUserId;
+    }
+  }
+  
+  return String(s.acceptedBy) === currentUserId;
+};
+
   return (
     <div className={`bg-[#0A1F1A] ${getCardStyle()} p-5 rounded-[2rem] relative flex flex-col h-full hover:border-white/20 transition-all`}>
       
@@ -2718,11 +2732,11 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
           </p>
           <div className="flex items-center justify-center gap-3">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-black text-sm shadow-lg">
-              {s.acceptedBy.name?.charAt(0) || s.acceptedBy.userId?.charAt(0) || '?'}
+              {s.acceptedBy.name?.charAt(0) || s.acceptedBy.userId?.charAt(0) || (typeof s.acceptedBy === 'string' ? s.acceptedBy.charAt(0) : '?')}
             </div>
             <div>
               <p className="text-sm font-bold text-blue-400">
-                {s.acceptedBy.name || s.acceptedBy.userId || `User ${s.acceptedBy._id?.slice(-6)}`}
+                {s.acceptedBy.name || s.acceptedBy.userId || (typeof s.acceptedBy === 'string' ? s.acceptedBy : `User ${s.acceptedBy._id?.slice(-6)}`)}
               </p>
               <p className="text-[8px] text-gray-500">Accepted at: {new Date(s.acceptedAt).toLocaleTimeString()}</p>
             </div>
@@ -2803,7 +2817,8 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
           </>
         )}
         
-        {String(s.acceptedBy?._id) === String(user._id) && s.status === "ACCEPTED" && (
+        {/* ✅ FIXED: UPLOAD SCREENSHOT button - now works with both string and object acceptedBy */}
+        {isAcceptedByCurrentUser() && s.status === "ACCEPTED" && (
           <button 
             onClick={() => setSelectedScanner(s._id)} 
             className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white py-3 rounded-xl font-black text-sm hover:shadow-lg hover:shadow-blue-500/20 transition-all"
@@ -2812,8 +2827,8 @@ const RequestCard = ({ s, user, loadAllData, setSelectedScanner, handleCancelReq
           </button>
         )}
 
-        {/* ✅ NEW: UPDATE SCREENSHOT button - appears after proof is submitted */}
-        {String(s.acceptedBy?._id) === String(user._id) && s.status === "PAYMENT_SUBMITTED" && (
+        {/* ✅ FIXED: UPDATE SCREENSHOT button - now works with both string and object acceptedBy */}
+        {isAcceptedByCurrentUser() && s.status === "PAYMENT_SUBMITTED" && (
           <button 
             onClick={openScreenshotModal}
             className="w-full bg-yellow-500/20 text-yellow-500 py-2 rounded-xl font-black text-xs hover:bg-yellow-500/30 transition-all border border-yellow-500/20 flex items-center justify-center gap-2"
@@ -3732,723 +3747,6 @@ const HistoryPage = ({ transactions }) => (
   </div>
 );
 
-// // ReferralPage Component - COMPLETE FIXED VERSION
-
-// const ReferralPage = ({ referralData, teamStats }) => {
-//   const [showDetails, setShowDetails] = useState(false);
-//   const [showTeamCashback, setShowTeamCashback] = useState(false);
-//   const [selectedLevel, setSelectedLevel] = useState(null);
-//   const [expandedMember, setExpandedMember] = useState(null);
-//   const [expandedLevel, setExpandedLevel] = useState(null);
-//   const [statsFilter, setStatsFilter] = useState('total');
-//   const [legStatus, setLegStatus] = useState(null);
-//   const [nextLeg, setNextLeg] = useState(null);
-//   const [memberDetails, setMemberDetails] = useState({});
-//   const [loadingMember, setLoadingMember] = useState(false);
-//   const [todayStats, setTodayStats] = useState({
-//     teamBusiness: 0,
-//     yourCommission: 0,
-//     teamMembers: 0
-//   });
-
-//   // Load leg status
-//   useEffect(() => {
-//     const fetchLegStatus = async () => {
-//       try {
-//         const token = localStorage.getItem("token");
-//         const { getLegUnlockingStatus, getNextLegRequirement } = await import("../services/authService");
-        
-//         const status = await getLegUnlockingStatus(token);
-//         // console.log("Leg Status:", status);
-//         setLegStatus(status);
-        
-//         const next = await getNextLegRequirement(token);
-//         // console.log("Next Leg:", next);
-//         if (next?.success) {
-//           setNextLeg(next.data);
-//         }
-//       } catch (error) {
-//         // console.error("Error fetching leg status:", error);
-//       }
-//     };
-    
-//     fetchLegStatus();
-//   }, []);
-
-//   // Load today's stats
-//   useEffect(() => {
-//     const fetchTodayStats = async () => {
-//       try {
-//         const token = localStorage.getItem("token");
-//         const data = await getTodayTeamStats(token);
-        
-//         if (data?.success) {
-//           setTodayStats({
-//             teamBusiness: data.teamBusiness || 0,
-//             yourCommission: data.yourCommission || 0,
-//             teamMembers: data.teamMembers || 0
-//           });
-//         }
-//       } catch (error) {
-//         // console.error("Error fetching today stats:", error);
-//       }
-//     };
-    
-//     fetchTodayStats();
-//   }, []);
-
-// // UserDashboard.jsx मध्ये fetchMemberDetails function दुरुस्त करा
-
-// const fetchMemberDetails = async (memberId) => {
-//   // Skip if already loaded
-//   if (memberDetails[memberId]) {
-//     // console.log("Member details already loaded for:", memberId);
-//     return;
-//   }
-  
-//   setLoadingMember(true);
-//   try {
-//     const token = localStorage.getItem("token");
-//     const { getMemberDetails } = await import("../services/authService");
-    
-//     // console.log("Fetching details for member ID:", memberId);
-    
-//     // Try to fetch from API
-//     const response = await getMemberDetails(memberId, token);
-//     // console.log("Member details response:", response);
-    
-//     // If API returns data, use it
-//     if (response && response.success && response.data) {
-//       setMemberDetails(prev => ({
-//         ...prev,
-//         [memberId]: response.data
-//       }));
-//     } 
-//     // If API returns data without success flag but has data
-//     else if (response && response.data) {
-//       setMemberDetails(prev => ({
-//         ...prev,
-//         [memberId]: response.data
-//       }));
-//     }
-//     // If API returns data directly
-//     else if (response && response.userId) {
-//       setMemberDetails(prev => ({
-//         ...prev,
-//         [memberId]: response
-//       }));
-//     }
-//     // Fallback data
-//     else {
-//       // console.log("Using fallback data for member:", memberId);
-//       setMemberDetails(prev => ({
-//         ...prev,
-//         [memberId]: {
-//           userId: memberId,
-//           totalEarnings: 0,
-//           teamCashback: 0,
-//           directReferrals: 0,
-//           totalTeam: 0,
-//           legsUnlocked: {
-//             leg1: true, leg2: false, leg3: false,
-//             leg4: false, leg5: false, leg6: false, leg7: false
-//           },
-//           recentActivity: []
-//         }
-//       }));
-//     }
-//   } catch (error) {
-//     // console.error("Error fetching member details:", error);
-//     // Set fallback data on error
-//     setMemberDetails(prev => ({
-//       ...prev,
-//       [memberId]: {
-//         userId: memberId,
-//         totalEarnings: 0,
-//         teamCashback: 0,
-//         directReferrals: 0,
-//         totalTeam: 0,
-//         legsUnlocked: {
-//           leg1: true, leg2: false, leg3: false,
-//           leg4: false, leg5: false, leg6: false, leg7: false
-//         },
-//         recentActivity: []
-//       }
-//     }));
-//   } finally {
-//     setLoadingMember(false);
-//   }
-// };
-
-//   const copyReferralCode = () => {
-//     navigator.clipboard.writeText(referralData.referralCode);
-//     toast.success('Referral code copied!', { duration: 2000 });
-//   };
-
-//   const levels = [
-//     { level: 1, rate: "30%", color: "from-yellow-500 to-orange-500" },
-//     { level: 2, rate: "15%", color: "from-blue-500 to-cyan-500" },
-//     { level: 3, rate: "10%", color: "from-green-500 to-emerald-500" },
-//     { level: 4, rate: "5%", color: "from-purple-500 to-pink-500" },
-//     { level: 5, rate: "30%", color: "from-red-500 to-rose-500" },
-//     { level: 6, rate: "3%", color: "from-indigo-500 to-purple-500" },
-//     { level: 7, rate: "4%", color: "from-pink-500 to-red-500" },
-//     { level: 8, rate: "3%", color: "from-teal-500 to-green-500" },
-//     { level: 9, rate: "3%", color: "from-cyan-500 to-blue-500" },
-//     { level: 10, rate: "30%", color: "from-orange-500 to-red-500" },
-//     { level: 11, rate: "3%", color: "from-lime-500 to-green-500" },
-//     { level: 12, rate: "3%", color: "from-amber-500 to-orange-500" },
-//     { level: 13, rate: "3%", color: "from-emerald-500 to-teal-500" },
-//     { level: 14, rate: "3%", color: "from-sky-500 to-blue-500" },
-//     { level: 15, rate: "3%", color: "from-violet-500 to-purple-500" },
-//     { level: 16, rate: "5%", color: "from-fuchsia-500 to-pink-500" },
-//     { level: 17, rate: "10%", color: "from-rose-500 to-red-500" },
-//     { level: 18, rate: "15%", color: "from-amber-500 to-orange-500" },
-//     { level: 19, rate: "30%", color: "from-emerald-500 to-teal-500" },
-//     { level: 20, rate: "30%", color: "from-blue-500 to-indigo-500" },
-//     { level: 21, rate: "63%", color: "from-purple-500 to-pink-500" }
-//   ];
-
-//   // Group levels by legs
-//   const legs = [
-//     { name: "Leg 1", levels: [1, 2, 3], required: 0, unlocked: true },
-//     { name: "Leg 2", levels: [4, 5, 6], required: 1, unlocked: legStatus?.legsUnlocked?.leg2 || teamStats?.legsUnlocked?.leg2 },
-//     { name: "Leg 3", levels: [7, 8, 9], required: 2, unlocked: legStatus?.legsUnlocked?.leg3 || teamStats?.legsUnlocked?.leg3 },
-//     { name: "Leg 4", levels: [10, 11, 12], required: 3, unlocked: legStatus?.legsUnlocked?.leg4 || teamStats?.legsUnlocked?.leg4 },
-//     { name: "Leg 5", levels: [13, 14, 15], required: 4, unlocked: legStatus?.legsUnlocked?.leg5 || teamStats?.legsUnlocked?.leg5 },
-//     { name: "Leg 6", levels: [16, 17, 18], required: 5, unlocked: legStatus?.legsUnlocked?.leg6 || teamStats?.legsUnlocked?.leg6 },
-//     { name: "Leg 7", levels: [19, 20, 21], required: 6, unlocked: legStatus?.legsUnlocked?.leg7 || teamStats?.legsUnlocked?.leg7 }
-//   ];
-
-//   // Calculate total team business
-//   const totalTeamBusiness = teamStats 
-//     ? Object.values(teamStats).reduce((sum, level) => {
-//         if (level && typeof level === 'object' && level.teamCashback) {
-//           return sum + (level.teamCashback || 0);
-//         }
-//         return sum;
-//       }, 0) 
-//     : 0;
-
-// // ReferralPage मध्ये LevelMembersList कंपोनेंट सुधारित करा
-
-// // ✅ IMPROVED: Level Members List Component with member details
-// const LevelMembersList = ({ level, levelStats }) => {
-//   // Debug
-//   // console.log(`Level ${level} stats:`, levelStats);
-  
-//   if (!levelStats) {
-//     return (
-//       <div className="text-center py-4 bg-black/20 rounded-lg">
-//         <p className="text-xs text-gray-500">No data for Level {level}</p>
-//       </div>
-//     );
-//   }
-
-//   if (!levelStats.usersList || levelStats.usersList.length === 0) {
-//     return (
-//       <div className="text-center py-4 bg-black/20 rounded-lg">
-//         <p className="text-xs text-gray-500">No members in Level {level}</p>
-//         <p className="text-[8px] text-gray-600 mt-1">
-//           Total users: {levelStats.users || 0}
-//         </p>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="space-y-3 mt-2">
-//       {levelStats.usersList.map((member, idx) => {
-//         const isExpanded = expandedMember === member.userId;
-//         const details = memberDetails[member.userId];
-        
-//         return (
-//           <div key={idx} className="bg-black/30 rounded-xl overflow-hidden border border-white/5 hover:border-[#00F5A0]/20 transition-all">
-            
-//             {/* Member Header - Always Visible */}
-//             <div 
-//               className="p-4 cursor-pointer hover:bg-white/5 transition-all"
-//               onClick={() => {
-//                 if (isExpanded) {
-//                   setExpandedMember(null);
-//                 } else {
-//                   setExpandedMember(member.userId);
-//                   fetchMemberDetails(member.userId);
-//                 }
-//               }}
-//             >
-//               <div className="flex items-center justify-between">
-//                 <div className="flex items-center gap-4">
-//                   {/* Avatar with user ID first letter */}
-//                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-black text-lg shadow-lg">
-//                     {member.userId?.charAt(0).toUpperCase() || '?'}
-//                   </div>
-                  
-//                   {/* Member Basic Info */}
-//                   <div>
-//                     <div className="flex items-center gap-2 mb-1">
-//                       <p className="text-base font-bold text-white">{member.userId}</p>
-//                       <span className="text-[8px] bg-[#00F5A0]/20 text-[#00F5A0] px-2 py-0.5 rounded-full">
-//                         Level {level}
-//                       </span>
-//                     </div>
-                    
-//                     {/* Quick Stats Preview */}
-//                     <div className="flex items-center gap-3 text-xs">
-//                       <span className="text-[#00F5A0]">
-//                         ₹{Number(member.earnings || 0).toFixed(2)} earned
-//                       </span>
-//                       <span className="text-gray-500">•</span>
-//                       <span className="text-orange-400">
-//                         ₹{Number(member.teamCashback || 0).toFixed(2)} team
-//                       </span>
-//                     </div>
-//                   </div>
-//                 </div>
-                
-//                 {/* Expand/Collapse Button */}
-//                 <button className="text-[#00F5A0] p-2 hover:bg-white/5 rounded-lg transition-all">
-//                   {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-//                 </button>
-//               </div>
-//             </div>
-
-//             {/* Expanded Member Details */}
-//             {isExpanded && (
-//               <div className="p-4 border-t border-white/10 bg-black/40">
-                
-//                 {/* Loading State */}
-//                 {loadingMember && !details && (
-//                   <div className="flex items-center justify-center py-6">
-//                     <Loader size={24} className="animate-spin text-[#00F5A0]" />
-//                     <span className="ml-2 text-xs text-gray-400">Loading member details...</span>
-//                   </div>
-//                 )}
-
-//                 {/* Member Details */}
-//                 {details && (
-//                   <div className="space-y-4">
-                    
-//                     {/* Stats Grid */}
-//                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-//                       <div className="bg-black/40 p-3 rounded-lg text-center">
-//                         <p className="text-[8px] text-gray-500 mb-1">Total Earnings</p>
-//                         <p className="text-sm font-bold text-[#00F5A0]">
-//                           ₹{Number(details.totalEarnings || 0).toFixed(2)}
-//                         </p>
-//                       </div>
-//                       <div className="bg-black/40 p-3 rounded-lg text-center">
-//                         <p className="text-[8px] text-gray-500 mb-1">Team Cashback</p>
-//                         <p className="text-sm font-bold text-orange-400">
-//                           ₹{Number(details.teamCashback || 0).toFixed(2)}
-//                         </p>
-//                       </div>
-//                       <div className="bg-black/40 p-3 rounded-lg text-center">
-//                         <p className="text-[8px] text-gray-500 mb-1">Direct Referrals</p>
-//                         <p className="text-sm font-bold text-blue-400">{details.directReferrals || 0}</p>
-//                       </div>
-//                       <div className="bg-black/40 p-3 rounded-lg text-center">
-//                         <p className="text-[8px] text-gray-500 mb-1">Total Team</p>
-//                         <p className="text-sm font-bold text-purple-400">{details.totalTeam || 0}</p>
-//                       </div>
-//                     </div>
-
-//                     {/* Member's Own Downline Preview */}
-//                     {details.downlineCount && (
-//                       <div className="bg-black/40 p-3 rounded-lg">
-//                         <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
-//                           <Users size={12} className="text-[#00F5A0]" />
-//                           Member's Downline
-//                         </p>
-//                         <div className="grid grid-cols-7 gap-1">
-//                           {[1,2,3,4,5,6,7].map(lvl => {
-//                             const count = details.downlineCount[`level${lvl}`] || 0;
-//                             return (
-//                               <div key={lvl} className="text-center">
-//                                 <span className="text-[7px] text-gray-500">L{lvl}</span>
-//                                 <p className={`text-[9px] font-bold ${count > 0 ? 'text-[#00F5A0]' : 'text-gray-600'}`}>
-//                                   {count}
-//                                 </p>
-//                               </div>
-//                             );
-//                           })}
-//                         </div>
-//                       </div>
-//                     )}
-
-//                     {/* Recent Activity */}
-//                     {details.recentActivity && details.recentActivity.length > 0 && (
-//                       <div className="bg-black/40 p-3 rounded-lg">
-//                         <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
-//                           <Clock size={12} className="text-[#00F5A0]" />
-//                           Recent Activity
-//                         </p>
-//                         <div className="space-y-2 max-h-32 overflow-y-auto">
-//                           {details.recentActivity.map((activity, idx) => (
-//                             <div key={idx} className="flex justify-between items-center text-[10px] bg-black/60 p-2 rounded">
-//                               <span className="text-gray-400">{activity.date}</span>
-//                               <span className="text-[#00F5A0]">₹{Number(activity.amount).toFixed(2)}</span>
-//                               <span className="text-gray-500">{activity.type}</span>
-//                             </div>
-//                           ))}
-//                         </div>
-//                       </div>
-//                     )}
-//                   </div>
-//                 )}
-//               </div>
-//             )}
-//           </div>
-//         );
-//       })}
-//     </div>
-//   );
-// };
-
-//   return (
-//     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in">
-      
-//       {/* Referral Code Card */}
-//       <div className="bg-gradient-to-br from-[#00F5A0] to-[#00d88c] p-8 rounded-[2.5rem] text-[#051510] shadow-2xl">
-//         <div className="flex items-center justify-between mb-6">
-//           <h2 className="text-2xl font-black italic">Your Referral Code</h2>
-//           <Gift size={28} className="opacity-60" />
-//         </div>
-        
-//         <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl backdrop-blur-sm">
-//           <span className="text-3xl font-black tracking-widest">
-//             {referralData.referralCode}
-//           </span>
-//           <button
-//             onClick={copyReferralCode}
-//             className="bg-black text-[#00F5A0] p-3 rounded-xl hover:bg-black/80 transition-all"
-//           >
-//             <Copy size={20} />
-//           </button>
-//         </div>
-        
-//         <p className="text-sm font-bold mt-4 opacity-70">
-//           Share this code & earn commissions on 21 levels!
-//         </p>
-//       </div>
-
-//       {/* Leg Unlocking Status Card */}
-//       <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
-//         <h3 className="text-lg font-black italic mb-4 flex items-center gap-2">
-//           <Zap size={20} className="text-[#00F5A0]" />
-//           Leg Unlocking Status (Based on Direct Referrals)
-//         </h3>
-        
-//         {/* Direct Referrals Count */}
-//         <div className="mb-6 p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-xl border border-purple-500/30">
-//           <div className="flex items-center justify-between">
-//             <span className="text-sm text-gray-300">Your Direct Referrals:</span>
-//             <span className="text-2xl font-black text-[#00F5A0]">
-//               {nextLeg?.directReferrals || legStatus?.directReferrals || 0}
-//             </span>
-//           </div>
-          
-//           {/* Next Leg Requirement */}
-//           {nextLeg?.nextLegToUnlock && (
-//             <div className="mt-3 pt-3 border-t border-purple-500/20">
-//               <p className="text-xs text-yellow-400 font-bold flex items-center gap-2">
-//   <AlertCircle size={14} />
-//   {nextLeg?.nextLegToUnlock?.isUnlockable 
-//     ? `🎉 You can unlock ${nextLeg.nextLegToUnlock.leg} now!`
-//     : `Need ${nextLeg?.nextLegToUnlock?.remainingToUnlock || 0} more direct referral${
-//         nextLeg?.nextLegToUnlock?.remainingToUnlock > 1 ? 's' : ''
-//       } to unlock ${nextLeg?.nextLegToUnlock?.leg || ''} (Levels ${
-//         nextLeg?.nextLegToUnlock?.levelsInThisLeg?.join('-') || 'N/A'
-//       })`}
-// </p>
-//             </div>
-//           )}
-//         </div>
-
-
-// {/* Leg Grid */}
-// <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-//   {legs.map((leg, index) => {
-//     const legDetail = legStatus?.legDetails?.[`leg${index + 1}`];
-    
-//     return (
-//       <div 
-//         key={index}
-//         className={`p-4 rounded-xl border transition-all ${
-//           leg.unlocked 
-//             ? 'bg-gradient-to-br from-[#00F5A0]/20 to-green-500/20 border-[#00F5A0] shadow-[0_0_15px_rgba(0,245,160,0.3)]' 
-//             : 'bg-gray-800/50 border-gray-700 opacity-70'
-//         }`}
-//       >
-//         <div className="flex items-center justify-between mb-3">
-//           <span className="text-lg font-black">{leg.name}</span>
-//           {leg.unlocked ? (
-//             <span className="text-[8px] bg-green-500 text-black px-2 py-1 rounded-full font-bold">OPEN</span>
-//           ) : (
-//             <span className="text-[8px] bg-red-500/20 text-red-500 px-2 py-1 rounded-full font-bold">LOCKED</span>
-//           )}
-//         </div>
-        
-//         <div className="space-y-2 mb-3">
-//           {leg.levels.map(level => {
-//             const levelStats = teamStats?.[`level${level}`];
-//             return (
-//               <div 
-//                 key={level} 
-//                 className="flex justify-between items-center text-xs p-1 hover:bg-white/5 rounded cursor-pointer"
-//                 onClick={() => {
-//                   if (levelStats?.users > 0) {
-//                     setExpandedLevel(level);
-//                     setActiveTab("Referral");
-//                   }
-//                 }}
-//               >
-//                 <span className="text-gray-400 flex items-center gap-1">
-//                   <span>Level {level}</span>
-//                   {levelStats?.users > 0 && (
-//                     <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1 rounded-full">
-//                       {levelStats.users}
-//                     </span>
-//                   )}
-//                 </span>
-//                 <span className={`font-bold ${leg.unlocked ? 'text-[#00F5A0]' : 'text-gray-500'}`}>
-//                   {levelStats?.users || 0} members
-//                 </span>
-//               </div>
-//             );
-//           })}
-//         </div>
-
-//         {/* Requirement */}
-//         {!leg.unlocked && index > 0 && (
-//           <div className="mt-2 pt-2 border-t border-yellow-500/20">
-//             <p className="text-[8px] text-yellow-500">
-//               Need: {leg.required} direct referral{leg.required > 1 ? 's' : ''}
-//             </p>
-//             <p className="text-[8px] text-gray-500 mt-1">
-//               Current: {nextLeg?.directReferrals || 0}
-//             </p>
-//           </div>
-//         )}
-//       </div>
-//     );
-//   })}
-// </div>
-//       </div>
-
-//       {/* Stats Grid */}
-//       <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
-//         <div className="flex items-center justify-between mb-6">
-//           <h3 className="text-lg font-black italic">Team Statistics</h3>
-//           <div className="flex gap-2 bg-black/40 p-1 rounded-lg">
-//             <button
-//               onClick={() => setStatsFilter('today')}
-//               className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-//                 statsFilter === 'today' 
-//                   ? 'bg-[#00F5A0] text-black' 
-//                   : 'text-gray-400 hover:text-white'
-//               }`}
-//             >
-//               Today
-//             </button>
-//             <button
-//               onClick={() => setStatsFilter('total')}
-//               className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-//                 statsFilter === 'total' 
-//                   ? 'bg-[#00F5A0] text-black' 
-//                   : 'text-gray-400 hover:text-white'
-//               }`}
-//             >
-//               Total
-//             </button>
-//           </div>
-//         </div>
-
-//         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-//           {/* Team Members Card */}
-//           <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-[#00F5A0]/20 transition-all">
-//             <div className="flex items-center gap-3 mb-3">
-//               <div className="w-10 h-10 rounded-lg bg-[#00F5A0]/10 flex items-center justify-center">
-//                 <Users size={22} className="text-[#00F5A0]" />
-//               </div>
-//               <div>
-//                 <p className="text-xs text-gray-400">Total Team</p>
-//                 <p className="text-2xl font-black text-white">
-//                   {statsFilter === 'today' ? todayStats.teamMembers : referralData.totalReferrals}
-//                 </p>
-//               </div>
-//             </div>
-//             <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">
-//               {statsFilter === 'today' ? 'Active today' : 'Across 21 levels'}
-//             </p>
-//           </div>
-
-//           {/* Team Business Card */}
-//           <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-[#00F5A0]/20 transition-all">
-//             <div className="flex items-center gap-3 mb-3">
-//               <div className="w-10 h-10 rounded-lg bg-[#00F5A0]/10 flex items-center justify-center">
-//                 <TrendingUp size={22} className="text-[#00F5A0]" />
-//               </div>
-//               <div>
-//                 <p className="text-xs text-gray-400">Team Business</p>
-//                 <p className="text-2xl font-black text-[#00F5A0]">
-//                   ₹{statsFilter === 'today' 
-//                     ? todayStats.teamBusiness.toFixed(2) 
-//                     : totalTeamBusiness.toFixed(2)}
-//                 </p>
-//               </div>
-//             </div>
-//             <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">
-//               Total cashback earned by team
-//             </p>
-//           </div>
-
-//           {/* Your Commission Card */}
-//           <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-orange-400/20 transition-all">
-//             <div className="flex items-center gap-3 mb-3">
-//               <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
-//                 <Award size={22} className="text-orange-400" />
-//               </div>
-//               <div>
-//                 <p className="text-xs text-gray-400">Your Commission</p>
-//                 <p className="text-2xl font-black text-orange-400">
-//                   ₹{statsFilter === 'today' 
-//                     ? todayStats.yourCommission.toFixed(2) 
-//                     : Number(referralData.referralEarnings?.total || 0).toFixed(2)}
-//                 </p>
-//               </div>
-//             </div>
-//             <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">
-//               Commission from team
-//             </p>
-//           </div>
-//         </div>
-//       </div>
-
-
-// {/* Level-wise Members List */}
-// <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
-//   <div className="flex items-center justify-between mb-6">
-//     <h3 className="text-lg font-black italic flex items-center gap-2">
-//       <Users size={20} className="text-[#00F5A0]" />
-//       Level-wise Team Members
-//     </h3>
-//     <span className="text-[10px] text-gray-500">Click on level to expand and see members</span>
-//   </div>
-
-//   {/* Level Quick Filters */}
-//   <div className="grid grid-cols-7 gap-1 mb-6">
-//     {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
-//       const hasMembers = teamStats?.[`level${level}`]?.users > 0;
-//       return (
-//         <button
-//           key={level}
-//           onClick={() => hasMembers && setExpandedLevel(expandedLevel === level ? null : level)}
-//           className={`text-[8px] py-2 rounded-lg font-bold transition-all ${
-//             expandedLevel === level 
-//               ? 'bg-[#00F5A0] text-black' 
-//               : hasMembers
-//                 ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 cursor-pointer'
-//                 : 'bg-white/5 text-gray-500 cursor-not-allowed opacity-50'
-//           }`}
-//           disabled={!hasMembers}
-//         >
-//           L{level}
-//           {hasMembers && (
-//             <span className="ml-1 text-[6px] bg-blue-500 text-white px-1 rounded-full">
-//               {teamStats[`level${level}`].users}
-//             </span>
-//           )}
-//         </button>
-//       );
-//     })}
-//   </div>
-
-//   {/* Level-wise Details */}
-//   <div className="space-y-4">
-//     {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
-//       const levelStats = teamStats?.[`level${level}`];
-//       const isExpanded = expandedLevel === level;
-      
-//       // Only show levels with members
-//       if (!levelStats || levelStats.users === 0) {
-//         return null;
-//       }
-      
-//       return (
-//         <div key={level} className="border border-white/10 rounded-xl overflow-hidden">
-//           {/* Level Header - Shows summary */}
-//           <div 
-//             className="p-4 bg-gradient-to-r from-white/5 to-transparent cursor-pointer hover:bg-white/10 transition-all"
-//             onClick={() => setExpandedLevel(isExpanded ? null : level)}
-//           >
-//             <div className="flex items-center justify-between">
-//               <div className="flex items-center gap-4">
-//                 {/* Level Number with gradient */}
-//                 <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${
-//                   levels.find(l => l.level === level)?.color || 'from-gray-500 to-gray-600'
-//                 } flex items-center justify-center text-white font-black`}>
-//                   {level}
-//                 </div>
-                
-//                 {/* Level Info */}
-//                 <div>
-//                   <h4 className="text-sm font-bold">Level {level}</h4>
-//                   <p className="text-[10px] text-gray-400">
-//                     Rate: {levels.find(l => l.level === level)?.rate} | 
-//                     Members: {levelStats.users} | 
-//                     Team Cashback: ₹{Number(levelStats.teamCashback || 0).toFixed(2)}
-//                   </p>
-//                 </div>
-//               </div>
-              
-//               {/* Your Commission and Expand Button */}
-//               <div className="flex items-center gap-4">
-//                 <div className="text-right">
-//                   <p className="text-xs text-gray-400">Your Commission</p>
-//                   <p className="text-sm font-bold text-orange-400">
-//                     ₹{Number(levelStats.yourCommission || 0).toFixed(2)}
-//                   </p>
-//                 </div>
-//                 {isExpanded ? <ChevronUp size={20} className="text-[#00F5A0]" /> : <ChevronDown size={20} className="text-[#00F5A0]" />}
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Expanded Members List - Shows all members in this level */}
-//           {isExpanded && (
-//             <div className="p-4 border-t border-white/10 bg-black/20">
-//               <h5 className="text-xs font-bold text-[#00F5A0] mb-3 flex items-center gap-2">
-//                 <Users size={14} />
-//                 Members in Level {level} ({levelStats.users} total)
-//               </h5>
-//               <LevelMembersList level={level} levelStats={levelStats} />
-//             </div>
-//           )}
-//         </div>
-//       );
-//     })}
-
-//     {/* No Members Message */}
-//     {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].every(
-//       level => !teamStats?.[`level${level}`] || teamStats[`level${level}`].users === 0
-//     ) && (
-//       <div className="text-center py-10">
-//         <Users size={40} className="mx-auto mb-3 text-gray-600" />
-//         <p className="text-gray-500 font-bold">No team members yet</p>
-//         <p className="text-[10px] text-gray-600 mt-2">
-//           Share your referral code to build your team
-//         </p>
-//       </div>
-//     )}
-//   </div>
-// </div>
-//     </div>
-//   );
-// };
-
-
-
 const ReferralPage = ({ referralData: propReferralData, teamStats: propTeamStats }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [showTeamCashback, setShowTeamCashback] = useState(false);
@@ -4490,7 +3788,6 @@ const [loadingLevels, setLoadingLevels] = useState({});
 const [pendingRequests, setPendingRequests] = useState({});
 const [legsPerPage, setLegsPerPage] = useState(20); // Add this too if missing
   
-  // ========== USE PROP DATA IF PROVIDED, OTHERWISE USE LOCAL ==========
 // ========== USE PROP DATA IF PROVIDED, OTHERWISE USE LOCAL ==========
 const referralData = propReferralData || { ...localReferralData }; // Spread operator वापरा
 const teamStats = propTeamStats || { ...teamStatsLocal }; // जर teamStatsLocal असेल तर  const teamStats = propTeamStats || {};
@@ -5157,7 +4454,7 @@ const LegCard = React.memo(({
               {leg.legNumber}
             </div>
             <div>
-              <h4 className="text-base font-bold">Leg {leg.legNumber}</h4>
+              <h4 className="text-base font-bold">Directs {leg.legNumber}</h4>
               <p className="text-[10px] text-gray-400">
                 Root: {leg.rootUser?.userId || (leg.rootUser?.toString().slice(-6)) || 'N/A'}
               </p>
@@ -5177,7 +4474,7 @@ const LegCard = React.memo(({
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
-              <p className="text-xs text-gray-400">Leg Earnings</p>
+              <p className="text-xs text-gray-400">Directs Earnings</p>
               <p className="text-sm font-bold text-[#00F5A0]">₹{totalEarningsInLeg.toFixed(2)}</p>
             </div>
             {isExpanded ? <ChevronUp size={20} className="text-[#00F5A0]" /> : <ChevronDown size={20} className="text-[#00F5A0]" />}
@@ -5192,7 +4489,7 @@ const LegCard = React.memo(({
           onClick={(e) => e.stopPropagation()}
         >
           <h5 className="text-xs font-bold text-[#00F5A0] mb-3">
-            Level-wise Users in Leg {leg.legNumber}
+            Level-wise Users in Directs {leg.legNumber}
           </h5>
           
           {/* Level Grid */}
@@ -5276,7 +4573,7 @@ const LegCard = React.memo(({
               <p className="text-sm font-bold text-green-400">{unlockedLevels}/21</p>
             </div>
             <div className="text-center">
-              <p className="text-[8px] text-gray-500">Leg Earnings</p>
+              <p className="text-[8px] text-gray-500">Directs Earnings</p>
               <p className="text-sm font-bold text-orange-400">₹{totalEarningsInLeg.toFixed(2)}</p>
             </div>
           </div>
@@ -5334,7 +4631,7 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
     >
       <div className="flex items-center justify-between mb-2">
         <h6 className="text-xs font-bold text-[#00F5A0]">
-          Level {level} Users in Leg {legNumber}
+          Level {level} Users in Direct {legNumber}
           <span className="ml-2 text-[8px] bg-[#00F5A0]/20 px-2 py-0.5 rounded-full">
             {users.length} users
           </span>
@@ -5474,7 +4771,7 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
                         <p className="text-xs text-gray-300 mb-2">{notif.message}</p>
                         <div className="flex gap-2 text-[10px]">
                           <span className="bg-red-500/20 text-red-400 px-2 py-1 rounded-full">
-                            Leg {notif.legNumber}
+                            Directs {notif.legNumber}
                           </span>
                           <span className="bg-orange-500/20 text-orange-400 px-2 py-1 rounded-full">
                             Level {notif.level}
@@ -5552,7 +4849,7 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
       <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
         <h3 className="text-lg font-black italic mb-4 flex items-center gap-2">
           <Zap size={20} className="text-[#00F5A0]" />
-          Your Referral Network (Dynamic Legs)
+          Your Referral Network (Dynamic Directs)
         </h3>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -5561,10 +4858,10 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
             <p className="text-xl font-black text-[#00F5A0]">
               {legStatus?.directReferrals || referralData.directReferrals || 0}
             </p>
-            <p className="text-[6px] text-gray-600">= {legStatus?.directReferrals || 0} Legs</p>
+            <p className="text-[6px] text-gray-600">= {legStatus?.directReferrals || 0} Directs</p>
           </div>
           <div className="bg-black/40 p-3 rounded-lg text-center">
-            <p className="text-[8px] text-gray-500">Active Legs</p>
+            <p className="text-[8px] text-gray-500">Active Directs</p>
             <p className="text-xl font-black text-green-400">
               {legStatus?.activeLegs || legBreakdown?.legs?.length || 0}
             </p>
@@ -5670,10 +4967,10 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
         <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
           <h3 className="text-lg font-black italic mb-4 flex items-center gap-2">
             <Users size={20} className="text-[#00F5A0]" />
-            Leg-wise Detailed Breakdown ({legBreakdown.legs.length} Total Legs)
+            Leg-wise Detailed Breakdown ({legBreakdown.legs.length} Total Directs)
             {legBreakdown.legs.length > 20 && (
               <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-2 py-1 rounded-full">
-                Large Network: {legBreakdown.legs.length} legs
+                Large Network: {legBreakdown.legs.length} Directs
               </span>
             )}
           </h3>
@@ -5713,7 +5010,7 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
         <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
           <h3 className="text-lg font-black italic mb-4 flex items-center gap-2">
             <TrendingUp size={20} className="text-[#00F5A0]" />
-            Level Accessibility Map (Across All Legs)
+            Level Accessibility Map (Across All Directs)
           </h3>
           
           <div className="grid grid-cols-7 gap-1 mb-4">
@@ -5766,138 +5063,6 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
           </div>
         </div>
       )}
-
-      {/* ========== LEVEL-WISE MEMBERS LIST ========== */}
-      <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-black italic flex items-center gap-2">
-            <Users size={20} className="text-[#00F5A0]" />
-            Level-wise Team Members
-          </h3>
-          <span className="text-[10px] text-gray-500">Click on level to expand</span>
-        </div>
-
-        <div className="grid grid-cols-7 gap-1 mb-6">
-          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
-            const levelData = teamStats?.[`level${level}`];
-            const hasMembers = levelData?.users > 0;
-            const isAccessible = legStatus?.levelAccessibility?.[`level${level}`]?.isAccessible || level <= 3;
-            const requiredDirects = getHorizontalRequirement(level);
-            const meetsHorizontal = legStatus?.directReferrals >= requiredDirects;
-            
-            return (
-              <button
-                key={level}
-                onClick={() => hasMembers && setExpandedLevel(expandedLevel === level ? null : level)}
-                className={`text-[8px] py-2 rounded-lg font-bold transition-all relative ${
-                  expandedLevel === level 
-                    ? 'bg-[#00F5A0] text-black' 
-                    : hasMembers
-                      ? isAccessible
-                        ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 cursor-pointer'
-                        : meetsHorizontal
-                          ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 cursor-pointer'
-                          : 'bg-gray-500/20 text-gray-400 cursor-not-allowed opacity-50'
-                      : 'bg-white/5 text-gray-500 cursor-not-allowed opacity-50'
-                }`}
-                disabled={!hasMembers}
-              >
-                L{level}
-                {hasMembers && (
-                  <span className="ml-1 text-[6px] bg-blue-500 text-white px-1 rounded-full">
-                    {levelData.users}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="space-y-4">
-          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
-            const levelStats = teamStats?.[`level${level}`];
-            const isExpanded = expandedLevel === level;
-            const isAccessible = legStatus?.levelAccessibility?.[`level${level}`]?.isAccessible || level <= 3;
-            const requiredDirects = getHorizontalRequirement(level);
-            const meetsHorizontal = legStatus?.directReferrals >= requiredDirects;
-            
-            if (!levelStats || levelStats.users === 0) return null;
-            
-            return (
-              <div key={level} className="border border-white/10 rounded-xl overflow-hidden">
-                <div 
-                  className={`p-4 cursor-pointer hover:bg-white/10 transition-all ${
-                    isAccessible ? 'bg-gradient-to-r from-[#00F5A0]/5 to-transparent' : 
-                    meetsHorizontal ? 'bg-gradient-to-r from-yellow-500/5 to-transparent' : 'bg-gray-800/20'
-                  }`}
-                  onClick={() => setExpandedLevel(isExpanded ? null : level)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-lg bg-gradient-to-r ${
-                        levels.find(l => l.level === level)?.color || 'from-gray-500 to-gray-600'
-                      } flex items-center justify-center text-white font-black`}>
-                        {level}
-                      </div>
-                      
-                      <div>
-                        <h4 className="text-sm font-bold">Level {level}</h4>
-                        <p className="text-[10px] text-gray-400">
-                          Rate: {levels.find(l => l.level === level)?.rate} | 
-                          Members: {levelStats.users} | 
-                          Team Cashback: ₹{Number(levelStats.teamCashback || 0).toFixed(2)}
-                        </p>
-                        {!isAccessible && (
-                          <p className="text-[8px] text-yellow-500 mt-1">
-                            {meetsHorizontal 
-                              ? '⏳ Need to complete previous levels in at least one leg'
-                              : `🔒 Need ${requiredDirects} direct referrals (have ${legStatus?.directReferrals || 0})`}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <p className="text-xs text-gray-400">Your Commission</p>
-                        <p className="text-sm font-bold text-orange-400">
-                          ₹{Number(levelStats.yourCommission || 0).toFixed(2)}
-                        </p>
-                      </div>
-                      {isExpanded ? <ChevronUp size={20} className="text-[#00F5A0]" /> : <ChevronDown size={20} className="text-[#00F5A0]" />}
-                    </div>
-                  </div>
-                </div>
-
-                {isExpanded && (
-                  <div className="p-4 border-t border-white/10 bg-black/20">
-                    <h5 className="text-xs font-bold text-[#00F5A0] mb-3 flex items-center gap-2">
-                      <Users size={14} />
-                      Members in Level {level} ({levelStats.users} total)
-                      {!isAccessible && (
-                        <span className="text-[8px] bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded-full">
-                          {meetsHorizontal ? 'Vertical Locked' : 'Horizontal Locked'}
-                        </span>
-                      )}
-                    </h5>
-                    <LevelMembersList level={level} levelStats={levelStats} />
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].every(
-            level => !teamStats?.[`level${level}`] || teamStats[`level${level}`].users === 0
-          ) && (
-            <div className="text-center py-10">
-              <Users size={40} className="mx-auto mb-3 text-gray-600" />
-              <p className="text-gray-500 font-bold">No team members yet</p>
-              <p className="text-[10px] text-gray-600 mt-2">Share your referral code to build your team</p>
-            </div>
-          )}
-        </div>
-      </div>
 
       {/* ========== STATS GRID ========== */}
       <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6">
