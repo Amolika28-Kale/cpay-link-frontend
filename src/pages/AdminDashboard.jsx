@@ -606,7 +606,7 @@ const getUnlockedLegsCount = (user) => {
                 <th className="px-2 lg:px-3 py-2 lg:py-3">Levels</th>
                 <th className="px-2 lg:px-3 py-2 lg:py-3">Earnings</th>
                 <th className="px-2 lg:px-3 py-2 lg:py-3">Team Cashback</th>
-                <th className="px-2 lg:px-3 py-2 lg:py-3">Legs</th>
+                <th className="px-2 lg:px-3 py-2 lg:py-3">Direct Referrals</th>
                 <th className="px-2 lg:px-3 py-2 lg:py-3">Requests</th>
                 <th className="px-2 lg:px-3 py-2 lg:py-3 text-right">Actions</th>
               </tr>
@@ -812,7 +812,7 @@ const MobileUserCard = ({ user, expandedUser, setExpandedUser, setSelectedUser, 
       {/* Legs in Mobile View */}
       {user.legs && user.legs.length > 0 && (
         <div className="px-3 pb-2 pt-0">
-          <p className="text-[6px] text-gray-500 mb-1">Legs:</p>
+          <p className="text-[6px] text-gray-500 mb-1">Directs:</p>
           <div className="flex flex-wrap gap-1">
             {user.legs.map(leg => (
               <button
@@ -825,7 +825,7 @@ const MobileUserCard = ({ user, expandedUser, setExpandedUser, setSelectedUser, 
                   leg.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
                 }`}
               >
-                Leg {leg.legNumber}: {leg.stats?.totalUsers || 0}
+                Directs {leg.legNumber}: {leg.stats?.totalUsers || 0}
               </button>
             ))}
           </div>
@@ -943,7 +943,7 @@ const UserExpandedDetails = ({ user, copyToClipboard, expandedLevel, setExpanded
           <div className="mt-2 space-y-1 max-h-20 overflow-y-auto">
             {missedCommissions.slice(0, 3).map((mc, idx) => (
               <div key={idx} className="text-[8px] text-gray-400 flex justify-between">
-                <span>Leg {mc.legNumber} L{mc.level}</span>
+                <span>Directs {mc.legNumber} L{mc.level}</span>
                 <span className="text-red-400">₹{mc.amount}</span>
               </div>
             ))}
@@ -951,11 +951,11 @@ const UserExpandedDetails = ({ user, copyToClipboard, expandedLevel, setExpanded
         </div>
       )}
 
-      {/* Legs Overview */}
+      {/* Direct Referrals Overview */}
       {legs.length > 0 && (
         <div className="bg-black/40 p-3 rounded-lg">
           <h4 className="text-[10px] font-bold mb-2 text-[#00F5A0] flex items-center gap-2">
-            <GitBranch size={12} /> Legs Overview ({activeLegs}/{legs.length} Active)
+            <GitBranch size={12} /> Direct Referrals Overview ({activeLegs}/{legs.length} Active)
           </h4>
           
           <div className="space-y-2">
@@ -974,7 +974,7 @@ const UserExpandedDetails = ({ user, copyToClipboard, expandedLevel, setExpanded
                       <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full ${
                         leg.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
                       }`}>
-                        Leg {leg.legNumber}
+                        Directs {leg.legNumber}
                       </span>
                       <span className="text-[6px] text-gray-400">
                         {totalUsersInLeg} users • {unlockedLevels}/21 levels
@@ -1146,7 +1146,7 @@ const LegDetailsModal = ({ user, leg, onClose }) => {
         <div className="sticky top-0 bg-[#0A1F1A] p-6 border-b border-white/10 flex justify-between items-center">
           <div>
             <h2 className="text-xl font-black italic flex items-center gap-2">
-              Leg {leg.legNumber} Details
+              Direct {leg.legNumber} Details
               <span className={`text-[10px] px-2 py-1 rounded-full ${
                 leg.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
               }`}>
@@ -1174,7 +1174,7 @@ const LegDetailsModal = ({ user, leg, onClose }) => {
               <p className="text-2xl font-bold text-green-400">{unlockedLevels}/21</p>
             </div>
             <div className="bg-black/40 p-4 rounded-xl text-center">
-              <p className="text-[8px] text-gray-500">Leg Earnings</p>
+              <p className="text-[8px] text-gray-500">Directs Earnings</p>
               <p className="text-2xl font-bold text-orange-400">₹{totalEarnings}</p>
             </div>
           </div>
@@ -1349,7 +1349,7 @@ const LegWiseTeamStructure = ({ user, teamLevels, expandedLevel, setExpandedLeve
   return (
     <div className="bg-black/40 p-3 md:p-4 rounded-lg">
       <h4 className="text-[10px] md:text-xs font-bold mb-3 text-[#00F5A0] flex items-center gap-2">
-        <GitBranch size={14} /> Leg-wise Team Structure
+        <GitBranch size={14} /> Directs-wise Team Structure
       </h4>
 
       {/* Leg Cards */}
@@ -1563,7 +1563,7 @@ const LegsUnlockedView = ({ user }) => {
 
   return (
     <div className="bg-black/40 p-3 rounded-lg">
-      <h4 className="text-[10px] font-bold mb-2 text-[#00F5A0]">Legs Unlocked</h4>
+      <h4 className="text-[10px] font-bold mb-2 text-[#00F5A0]">Directs Unlocked</h4>
       <div className="grid grid-cols-7 gap-1">
         {legRequirements.map((item, index) => {
           const legKey = `leg${index + 1}`;
