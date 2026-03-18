@@ -13,7 +13,8 @@ import {
   getAllScanners, getAllTransactions, getSystemStats, getUserDetails 
 } from "../services/adminService";
 import toast from 'react-hot-toast';
-
+import { LifeBuoy } from "lucide-react";
+import { SupportView } from "../components/Adminsupporttab";
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [users, setUsers] = useState([]);
@@ -29,6 +30,7 @@ export default function AdminDashboard() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [expandedUser, setExpandedUser] = useState(null);
   const [expandedLevel, setExpandedLevel] = useState(null);
+  const [supportUnread, setSupportUnread] = useState(0);
   
   // Refs for notification tracking
   const prevDepositCount = useRef(0);
@@ -37,6 +39,7 @@ export default function AdminDashboard() {
   // Calculate pending counts
   const pendingDeposits = deposits.filter(d => d.status === 'pending').length;
   const pendingWithdraws = withdraws.filter(w => w.status === 'pending').length;
+
 
   const loadData = async () => {
     try {
@@ -176,6 +179,14 @@ export default function AdminDashboard() {
             active={activeTab === "Ledger"} 
             onClick={() => {setActiveTab("Ledger"); setIsSidebarOpen(false);}} 
           />
+          <SidebarLink
+  icon={<LifeBuoy size={18}/>}
+  label="Support"
+  badge={supportUnread}
+  active={activeTab === "Support"}
+  onClick={() => {setActiveTab("Support"); setIsSidebarOpen(false);}}
+  highlight={supportUnread > 0}
+/>
           
           <div className="pt-10 mt-10 border-t border-white/5">
             <button 
@@ -257,6 +268,7 @@ export default function AdminDashboard() {
             loadData={loadData}
           />
         )}
+        {activeTab === "Support" && <SupportView />}
 
         {/* BOTTOM SPACER FOR MOBILE */}
         <div className="h-20 md:hidden" />

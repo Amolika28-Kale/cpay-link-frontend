@@ -167,7 +167,8 @@ const HelpPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in pb-20">
-      
+              <ChatBot />
+
       {/* Header */}
       <div className="bg-gradient-to-br from-[#00F5A0] to-[#00d88c] p-8 rounded-[2.5rem] text-[#051510] shadow-2xl">
         <div className="flex items-center justify-between mb-6">
@@ -324,7 +325,6 @@ const HelpPage = () => {
         <p className="text-gray-400 text-sm mb-4">
           Get instant answers to your questions. Our AI assistant is here to help 24/7.
         </p>
-        <ChatBot />
       </div>
     </div>
   );
