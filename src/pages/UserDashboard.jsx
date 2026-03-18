@@ -745,7 +745,7 @@ const calculateActivationAmount = (limit) => {
 
 // ✅ Check if amount meets minimum $50
 const isMinimumMet = (amount) => {
-  return amount >= 50;
+  return amount >= 10;
 };
 
 // Example:
@@ -2061,7 +2061,7 @@ const confirmActivation = async () => {
             </div>
             
             {/* ✅ MINIMUM DEPOSIT WARNING - SHOW ONLY FOR FIRST TIME */}
-            {!walletActivated && calculateActivationAmount(localInputLimit) < 50 && (
+            {!walletActivated && calculateActivationAmount(localInputLimit) < 10 && (
               <div className="mt-3 p-2 bg-red-500/20 border border-red-500/30 rounded-lg">
                 <p className="text-[10px] text-red-400 font-bold flex items-center gap-1">
                   <AlertCircle size={12} />
@@ -2154,7 +2154,7 @@ const confirmActivation = async () => {
             !localInputLimit || 
             localInputLimit <= 0 || 
             (walletActivated && localInputLimit <= Number(dailyAcceptLimit || activationStatus.dailyLimit || 0)) ||
-            (!walletActivated && calculateActivationAmount(localInputLimit) < 50)
+            (!walletActivated && calculateActivationAmount(localInputLimit) < 10)
               ? "bg-gray-700 text-gray-400 cursor-not-allowed"
               : "bg-[#00F5A0] text-black hover:bg-[#00d88c]"
           }`}
@@ -3417,7 +3417,7 @@ const DepositPage = ({
             onChange={e => {
               const value = e.target.value;
               setDepositData({ ...depositData, amount: value });
-              if (value && Number(value) < 50) {
+              if (value && Number(value) < 10) {
                 toast.error("Minimum deposit is $10 USDT", {
                   duration: 2000,
                   icon: '⚠️'
@@ -3427,7 +3427,7 @@ const DepositPage = ({
             placeholder="Enter amount in USDT" 
             className="w-full bg-black/40 border border-white/10 rounded-xl p-4 font-bold text-lg outline-none focus:border-[#00F5A0] transition-all" 
             disabled={showTimer}
-            min="50"
+            min="10"
             step="0.01"
             required
           />
@@ -3439,7 +3439,7 @@ const DepositPage = ({
             </span>
           </div>
           
-          {depositData.amount && Number(depositData.amount) >= 50 && (
+          {depositData.amount && Number(depositData.amount) >= 10 && (
             <div className="mt-2 p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
               <p className="text-[10px] text-blue-400 flex items-center gap-1">
                 <Zap size={10} />
@@ -3448,7 +3448,7 @@ const DepositPage = ({
             </div>
           )}
           
-          {depositData.amount && Number(depositData.amount) < 50 && (
+          {depositData.amount && Number(depositData.amount) < 10 && (
             <div className="mt-2 p-2 bg-red-500/10 rounded-lg border border-red-500/20">
               <p className="text-[10px] text-red-400 flex items-center gap-1">
                 <AlertCircle size={10} />
