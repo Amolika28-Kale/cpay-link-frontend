@@ -374,11 +374,14 @@ const UsersView = ({
   const [memberDetails, setMemberDetails] = useState({});
   const [loadingMember, setLoadingMember] = useState(false);
   const [selectedLeg, setSelectedLeg] = useState(null);
-  const [legDetails, setLegDetails] = useState({});
-  const [loadingLegs, setLoadingLegs] = useState(false);
-  const [expandedLeg, setExpandedLeg] = useState(null);
   const [legUsersCache, setLegUsersCache] = useState({});
   
+  // Search result expanded state — leg → level users
+  const [searchExpandedLeg, setSearchExpandedLeg] = useState(null);
+  const [searchExpandedLevel, setSearchExpandedLevel] = useState(null);
+  const [searchLevelUsers, setSearchLevelUsers] = useState({});
+  const [searchLevelLoading, setSearchLevelLoading] = useState(null);
+
   const API_BASE = 'https://cpay-link-backend.onrender.com';
   // const API_BASE = 'http://localhost:5000';
 
@@ -396,31 +399,7 @@ const UsersView = ({
     currentPage * itemsPerPage
   );
 
-  // Fetch leg details for a user
-  const fetchLegDetails = async (userId) => {
-    if (legDetails[userId]) return legDetails[userId];
-    
-    setLoadingLegs(true);
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`${API_BASE}/api/auth/leg-breakdown`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        setLegDetails(prev => ({ ...prev, [userId]: data.data }));
-        return data.data;
-      }
-    } catch (error) {
-      console.error("Error fetching leg details:", error);
-    } finally {
-      setLoadingLegs(false);
-    }
-    return null;
-  };
-
-  // Fetch leg level users
+  // ✅ FIXED: user-specific endpoint
   const fetchLegLevelUsers = async (legNumber, level, userId) => {
     const cacheKey = `${userId}-${legNumber}-${level}`;
     if (legUsersCache[cacheKey]) return legUsersCache[cacheKey];
@@ -428,25 +407,60 @@ const UsersView = ({
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${API_BASE}/api/auth/leg-users/${legNumber}/${level}`,
+        `${API_BASE}/api/admin/user/${userId}/leg/${legNumber}/level/${level}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await response.json();
-      
       if (data.success) {
-        setLegUsersCache(prev => ({ ...prev, [cacheKey]: data.data.users || [] }));
-        return data.data.users;
+        const cached = {
+          users: data.data.users || [],
+          earnings: data.data.levelEarnings || 0,
+          teamCashback: data.data.levelTeamCashback || 0
+        };
+        setLegUsersCache(prev => ({ ...prev, [cacheKey]: cached }));
+        return cached;
       }
     } catch (error) {
       console.error("Error fetching leg level users:", error);
     }
-    return [];
+    return { users: [], earnings: 0, teamCashback: 0 };
   };
 
-  // Fetch member details
+  // ✅ NEW: Search result mdhe level users fetch
+  const fetchSearchLevelUsers = async (userId, legNumber, levelNum) => {
+    const cacheKey = `${userId}-${legNumber}-${levelNum}`;
+    if (searchLevelUsers[cacheKey]) {
+      setSearchExpandedLevel(cacheKey);
+      return;
+    }
+    setSearchLevelLoading(cacheKey);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${API_BASE}/api/admin/user/${userId}/leg/${legNumber}/level/${levelNum}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (data.success) {
+        setSearchLevelUsers(prev => ({
+          ...prev,
+          [cacheKey]: {
+            users: data.data.users || [],
+            earnings: data.data.levelEarnings || 0,
+            teamCashback: data.data.levelTeamCashback || 0
+          }
+        }));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSearchLevelLoading(null);
+      setSearchExpandedLevel(cacheKey);
+    }
+  };
+
   const fetchMemberDetails = async (memberId) => {
     if (memberDetails[memberId]) return memberDetails[memberId];
-    
     setLoadingMember(true);
     try {
       const token = localStorage.getItem("token");
@@ -454,7 +468,6 @@ const UsersView = ({
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
-      
       if (data.success) {
         setMemberDetails(prev => ({ ...prev, [memberId]: data.user }));
         return data.user;
@@ -467,67 +480,264 @@ const UsersView = ({
     return null;
   };
 
- 
-  // Calculate team count from legs
-const calculateTeamCount = (user) => {
-  if (!user?.legs) return 0;
-  return user.legs.reduce((total, leg) => {
-    return total + (leg.stats?.totalUsers || 0);
-  }, 0);
-};
-
-// Calculate total earnings from legs
-const calculateTotalEarnings = (user) => {
-  if (!user?.legs) return 0;
-  return user.legs.reduce((total, leg) => {
-    return total + (leg.stats?.totalEarnings || 0);
-  }, 0);
-};
-
-// Calculate total team cashback from legs
-const calculateTotalTeamCashback = (user) => {
-  if (!user?.legs) return 0;
-  return user.legs.reduce((total, leg) => {
-    return total + (leg.stats?.totalTeamCashback || 0);
-  }, 0);
-};
-
-// Get direct referrals count (legs length)
-const getDirectCount = (user) => {
-  return user?.legs?.length || 0;
-};
-
-// Get level-wise counts from all legs
-const getLevelWiseCounts = (user) => {
-  const counts = {};
-  if (!user?.legs) return counts;
-  
-  for (let level = 1; level <= 21; level++) {
-    let totalUsers = 0;
-    for (const leg of user.legs) {
-      const levelData = leg.levels?.[`level${level}`];
-      totalUsers += levelData?.users?.length || 0;
+  const calculateTeamCount = (user) => {
+    if (!user?.legs) return 0;
+    return user.legs.reduce((total, leg) => total + (leg.stats?.totalUsers || 0), 0);
+  };
+  const calculateTotalEarnings = (user) => {
+    if (!user?.legs) return 0;
+    return user.legs.reduce((total, leg) => total + (leg.stats?.totalEarnings || 0), 0);
+  };
+  const calculateTotalTeamCashback = (user) => {
+    if (!user?.legs) return 0;
+    return user.legs.reduce((total, leg) => total + (leg.stats?.totalTeamCashback || 0), 0);
+  };
+  const getDirectCount = (user) => user?.legs?.length || 0;
+  const getLevelWiseCounts = (user) => {
+    const counts = {};
+    if (!user?.legs) return counts;
+    for (let level = 1; level <= 21; level++) {
+      let totalUsers = 0;
+      for (const leg of user.legs) {
+        totalUsers += leg.levels?.[`level${level}`]?.users?.length || 0;
+      }
+      if (totalUsers > 0) counts[`level${level}`] = totalUsers;
     }
-    if (totalUsers > 0) {
-      counts[`level${level}`] = totalUsers;
-    }
-  }
-  return counts;
-};
-
-// Get unlocked legs count
-const getUnlockedLegsCount = (user) => {
-  return user.legs?.filter(leg => leg.isActive).length || 0;
-};
+    return counts;
+  };
+  const getUnlockedLegsCount = (user) => user.legs?.filter(leg => leg.isActive).length || 0;
 
   useEffect(() => {
-    const handleResize = () => {
-      setViewMode(window.innerWidth >= 768 ? 'table' : 'cards');
-    };
+    const handleResize = () => setViewMode(window.innerWidth >= 768 ? 'table' : 'cards');
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // ✅ NEW: Search result user cha referral tree inline panel
+  const SearchUserReferralPanel = ({ user }) => {
+    const legs = user.legs || [];
+    const [localExpandedLeg, setLocalExpandedLeg] = useState(null);
+
+    return (
+      <div className="mt-3 border-t border-white/10 pt-3 space-y-3">
+        {/* Summary */}
+        <div className="grid grid-cols-4 gap-2">
+          <div className="bg-black/40 p-2 rounded-lg text-center">
+            <p className="text-[7px] text-gray-500">Directs</p>
+            <p className="text-sm font-bold text-blue-400">{legs.length}</p>
+          </div>
+          <div className="bg-black/40 p-2 rounded-lg text-center">
+            <p className="text-[7px] text-gray-500">Team</p>
+            <p className="text-sm font-bold text-[#00F5A0]">{calculateTeamCount(user)}</p>
+          </div>
+          <div className="bg-black/40 p-2 rounded-lg text-center">
+            <p className="text-[7px] text-gray-500">Earnings</p>
+            <p className="text-sm font-bold text-orange-400">₹{calculateTotalEarnings(user).toFixed(0)}</p>
+          </div>
+          <div className="bg-black/40 p-2 rounded-lg text-center">
+            <p className="text-[7px] text-gray-500">Cashback</p>
+            <p className="text-sm font-bold text-green-400">₹{calculateTotalTeamCashback(user).toFixed(0)}</p>
+          </div>
+        </div>
+
+        {/* Wallets */}
+        <div className="bg-black/40 p-3 rounded-lg">
+          <p className="text-[9px] font-bold text-[#00F5A0] mb-2">Wallets</p>
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="text-[6px] text-gray-500">USDT</p>
+              <p className="text-xs font-bold text-blue-400">{(user.wallets?.USDT || 0).toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-[6px] text-gray-500">INR</p>
+              <p className="text-xs font-bold text-[#00F5A0]">₹{(user.wallets?.INR || 0).toFixed(2)}</p>
+            </div>
+            <div>
+              <p className="text-[6px] text-gray-500">CASHBACK</p>
+              <p className="text-xs font-bold text-orange-400">₹{(user.wallets?.CASHBACK || 0).toFixed(2)}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Legs → Levels → Users */}
+        {legs.length === 0 ? (
+          <p className="text-center text-gray-500 text-xs py-4">No referrals yet</p>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Direct Referrals Tree</p>
+            {legs.map(leg => {
+              const isLegOpen = localExpandedLeg === leg.legNumber;
+              const legUsers = leg.stats?.totalUsers || 0;
+              const legEarnings = leg.stats?.totalEarnings || 0;
+
+              return (
+                <div key={leg.legNumber} className="border border-white/10 rounded-xl overflow-hidden">
+                  {/* Leg Header */}
+                  <div
+                    className="p-3 flex items-center justify-between cursor-pointer hover:bg-black/40 transition-all"
+                    onClick={() => setLocalExpandedLeg(isLegOpen ? null : leg.legNumber)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                        leg.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {leg.legNumber}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold">Direct {leg.legNumber}</p>
+                        <p className="text-[8px] text-gray-500">
+                          Root: {leg.rootUser?.userId || 'N/A'} • {legUsers} users
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="text-[8px] text-orange-400 font-bold">₹{legEarnings}</p>
+                        <p className="text-[6px] text-gray-500">earned</p>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSelectedLeg({ user, leg }); }}
+                        className="text-[8px] bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-1 rounded-lg font-bold"
+                      >
+                        Full View
+                      </button>
+                      {isLegOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </div>
+                  </div>
+
+                  {/* Level Grid */}
+                  {isLegOpen && (
+                    <div className="p-3 border-t border-white/5 bg-black/20 space-y-3">
+                      <div className="grid grid-cols-7 gap-1">
+                        {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(levelNum => {
+                          const lvData = leg.levels?.[`level${levelNum}`] || {};
+                          const cnt = lvData.users?.length || 0;
+                          const unlocked = lvData.isUnlocked || false;
+                          const cacheKey = `${user._id}-${leg.legNumber}-${levelNum}`;
+                          const isActive = searchExpandedLevel === cacheKey;
+                          const isLoading = searchLevelLoading === cacheKey;
+
+                          return (
+                            <button
+                              key={levelNum}
+                              onClick={() => {
+                                if (cnt === 0) return;
+                                if (isActive) { setSearchExpandedLevel(null); return; }
+                                fetchSearchLevelUsers(user._id, leg.legNumber, levelNum);
+                              }}
+                              disabled={cnt === 0}
+                              className={`text-center p-1.5 rounded-lg transition-all ${
+                                cnt === 0 ? 'cursor-default' : 'cursor-pointer hover:scale-110'
+                              } ${isActive ? 'ring-2 ring-[#00F5A0]' : ''} ${
+                                cnt > 0
+                                  ? 'bg-[#00F5A0]/20 border border-[#00F5A0]/30'
+                                  : unlocked
+                                    ? 'bg-blue-500/10 border border-blue-500/20'
+                                    : 'bg-gray-800/50 border border-gray-700/50'
+                              }`}
+                            >
+                              <span className="text-[5px] text-gray-400 block">L{levelNum}</span>
+                              {isLoading ? (
+                                <Loader2 size={8} className="animate-spin text-[#00F5A0] mx-auto" />
+                              ) : (
+                                <span className={`text-[9px] font-bold ${
+                                  cnt > 0 ? 'text-[#00F5A0]' :
+                                  unlocked ? 'text-blue-400' : 'text-gray-600'
+                                }`}>{cnt}</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Level Users Panel */}
+                      {searchExpandedLevel?.startsWith(`${user._id}-${leg.legNumber}-`) && (() => {
+                        const cached = searchLevelUsers[searchExpandedLevel];
+                        const lvNum = parseInt(searchExpandedLevel.split('-')[2]);
+                        const lvData = leg.levels?.[`level${lvNum}`] || {};
+
+                        return (
+                          <div className="bg-black/40 rounded-xl p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="text-sm font-bold text-[#00F5A0] flex items-center gap-2">
+                                Level {lvNum} Members
+                                <span className="text-[9px] bg-[#00F5A0]/10 px-2 py-0.5 rounded-full">
+                                  {cached?.users?.length || 0} users
+                                </span>
+                              </h4>
+                              <button onClick={() => setSearchExpandedLevel(null)} className="text-gray-500 hover:text-white">
+                                <X size={12} />
+                              </button>
+                            </div>
+
+                            {/* Level Stats */}
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                              <div className="bg-black/30 p-1.5 rounded text-center">
+                                <p className="text-[6px] text-gray-500">Earnings</p>
+                                <p className="text-xs font-bold text-orange-400">
+                                  ₹{cached?.earnings ?? lvData.earnings ?? 0}
+                                </p>
+                              </div>
+                              <div className="bg-black/30 p-1.5 rounded text-center">
+                                <p className="text-[6px] text-gray-500">Cashback</p>
+                                <p className="text-xs font-bold text-green-400">
+                                  ₹{cached?.teamCashback ?? lvData.teamCashback ?? 0}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Members List */}
+                            {searchLevelLoading === searchExpandedLevel ? (
+                              <div className="text-center py-4">
+                                <Loader2 size={16} className="animate-spin text-[#00F5A0] mx-auto" />
+                              </div>
+                            ) : cached?.users?.length > 0 ? (
+                              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                {cached.users.map((member, idx) => (
+                                  <div key={idx} className="bg-black/50 p-2.5 rounded-lg">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-[10px]">
+                                          {member.userId?.charAt(0) || '?'}
+                                        </div>
+                                        <div>
+                                          <p className="text-xs font-bold">{member.userId}</p>
+                                          <p className="text-[7px] text-gray-500">{member.email}</p>
+                                        </div>
+                                      </div>
+                                      <p className="text-xs font-bold text-[#00F5A0]">₹{member.totalEarnings || 0}</p>
+                                    </div>
+                                    <div className="flex gap-2 mt-1.5 pt-1.5 border-t border-white/5">
+                                      <span className="text-[7px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">
+                                        D:{member.directCount || 0}
+                                      </span>
+                                      <span className="text-[7px] bg-[#00F5A0]/20 text-[#00F5A0] px-1.5 py-0.5 rounded">
+                                        T:{member.teamCount || 0}
+                                      </span>
+                                      <span className="text-[7px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">
+                                        {member.referralCode}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-center text-gray-500 text-xs py-3">No users in this level</p>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="bg-[#0A1F1A] border border-white/10 rounded-xl md:rounded-2xl lg:rounded-[2rem] overflow-hidden">
@@ -551,7 +761,7 @@ const getUnlockedLegsCount = (user) => {
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500" size={12} />
               <input 
                 type="text" 
-                placeholder="Search users..." 
+                placeholder="Search by email, userId, referral..." 
                 value={searchTerm} 
                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }} 
                 className="bg-black/40 border border-white/10 rounded-lg pl-7 pr-2 py-1.5 text-[10px] sm:text-xs w-full outline-none focus:border-[#00F5A0]" 
@@ -560,8 +770,24 @@ const getUnlockedLegsCount = (user) => {
           </div>
         </div>
 
+        {/* ✅ NEW: Search active असताना result count + hint दाखव */}
+        {searchTerm && (
+          <div className="flex items-center gap-2 mt-2 px-1">
+            <span className="text-[9px] text-[#00F5A0] font-bold">{filteredUsers.length} result{filteredUsers.length !== 1 ? 's' : ''} found</span>
+            <span className="text-[8px] text-gray-500">• Click on a row to expand referral tree</span>
+            {filteredUsers.length > 0 && (
+              <button
+                onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
+                className="ml-auto text-[8px] text-gray-500 hover:text-white flex items-center gap-1"
+              >
+                <X size={10} /> Clear
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Mobile Filters */}
-        <div className="md:hidden">
+        <div className="md:hidden mt-2">
           <button onClick={() => setShowMobileFilters(!showMobileFilters)} className="w-full flex items-center justify-between bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-[10px] font-bold">
             <span className="flex items-center gap-2"><Filter size={12} /> Filter & Sort</span>
             {showMobileFilters ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -605,169 +831,170 @@ const getUnlockedLegsCount = (user) => {
         </div>
       </div>
 
-      {/* Desktop Table View */}
-      {viewMode === 'table' && (
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="text-[8px] lg:text-[10px] uppercase text-gray-600 font-black border-b border-white/5 bg-black/10">
-              <tr>
-                <th className="px-2 lg:px-3 py-2 lg:py-3">User</th>
-                <th className="px-2 lg:px-3 py-2 lg:py-3">Direct</th>
-                <th className="px-2 lg:px-3 py-2 lg:py-3">Team</th>
-                <th className="px-2 lg:px-3 py-2 lg:py-3">Levels</th>
-                <th className="px-2 lg:px-3 py-2 lg:py-3">Earnings</th>
-                <th className="px-2 lg:px-3 py-2 lg:py-3">Team Cashback</th>
-                <th className="px-2 lg:px-3 py-2 lg:py-3">Direct Referrals</th>
-                <th className="px-2 lg:px-3 py-2 lg:py-3">Requests</th>
-                <th className="px-2 lg:px-3 py-2 lg:py-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {/* Table body मध्ये */}
-{paginatedUsers.map(u => {
-  const teamCount = calculateTeamCount(u);
-  const directCount = getDirectCount(u);
-  const totalEarnings = calculateTotalEarnings(u);
-  const teamCashbackTotal = calculateTotalTeamCashback(u);
-  const levelCounts = getLevelWiseCounts(u);
-  const levelSummary = Object.entries(levelCounts).slice(0, 3).map(([lvl, cnt]) => `${lvl}:${cnt}`).join(', ');
-  const remainingLevels = Object.keys(levelCounts).length - 3;
-  const unlockedLegs = getUnlockedLegsCount(u);
-  
-  // Pay request stats
-  const totalPayRequests = u.totalPayRequests || 0;
-  const totalAccepted = u.totalAcceptedRequests || 0;
-  
-  // Legs
-  const legs = u.legs || [];
-  
-  return (
-    <React.Fragment key={u._id}>
-      <tr className="hover:bg-white/[0.02] cursor-pointer" onClick={() => setExpandedUser(expandedUser === u._id ? null : u._id)}>
-        <td className="px-2 lg:px-3 py-2 lg:py-3">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#00F5A0] to-green-600 flex items-center justify-center text-black font-bold text-xs">
-              {u.email?.charAt(0)?.toUpperCase() || u.userId?.charAt(0) || 'U'}
-            </div>
-            <div>
-              <p className="font-bold text-xs">{u.email || u.userId}</p>
-              <p className="text-[6px] text-gray-500">Ref: {u.referralCode}</p>
-            </div>
-          </div>
-        </td>
-        <td className="px-2 lg:px-3 py-2 lg:py-3">
-          <span className="text-xs lg:text-sm font-bold text-blue-400">{directCount}</span>
-        </td>
-        <td className="px-2 lg:px-3 py-2 lg:py-3">
-          <span className="text-xs lg:text-sm font-bold text-[#00F5A0]">{teamCount}</span>
-        </td>
-        <td className="px-2 lg:px-3 py-2 lg:py-3">
-          <div className="text-[8px]">
-            {levelSummary}
-            {remainingLevels > 0 && (
-              <span className="text-gray-500 ml-1">+{remainingLevels}</span>
-            )}
-          </div>
-        </td>
-        <td className="px-2 lg:px-3 py-2 lg:py-3">
-          <p className="text-xs lg:text-sm font-bold text-orange-400">₹{totalEarnings.toFixed(2)}</p>
-        </td>
-        <td className="px-2 lg:px-3 py-2 lg:py-3">
-          <p className="text-xs lg:text-sm font-bold text-green-400">₹{teamCashbackTotal.toFixed(2)}</p>
-        </td>
-        <td className="px-2 lg:px-3 py-2 lg:py-3">
-          <div className="flex flex-wrap gap-1">
-            {legs.length > 0 ? (
-              legs.map(leg => (
-                <button
-                  key={leg.legNumber}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedLeg({ user: u, leg });
-                  }}
-                  className={`text-[8px] px-2 py-0.5 rounded-full font-bold transition-all ${
-                    leg.isActive 
-                      ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' 
-                      : 'bg-gray-500/20 text-gray-400'
-                  }`}
-                  title={`Leg ${leg.legNumber}: ${leg.stats?.totalUsers || 0} users, ₹${leg.stats?.totalEarnings || 0} earned`}
-                >
-                  L{leg.legNumber}
-                </button>
-              ))
-            ) : (
-              <span className="text-[8px] text-gray-600">No legs</span>
-            )}
-          </div>
-        </td>
-        <td className="px-2 lg:px-3 py-2 lg:py-3">
-          <div className="flex items-center gap-1">
-            <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">
-              C:{totalPayRequests}
-            </span>
-            <span className="text-[8px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">
-              A:{totalAccepted}
-            </span>
-          </div>
-        </td>
-        <td className="px-2 lg:px-3 py-2 lg:py-3 text-right">
-          <div className="flex items-center justify-end gap-1">
-            <button onClick={(e) => { e.stopPropagation(); setSelectedUser(u); }} className="bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-1 rounded-lg text-[8px] font-bold">Details</button>
-            <button onClick={(e) => { e.stopPropagation(); setExpandedUser(expandedUser === u._id ? null : u._id); }} className="text-gray-500 p-1">
-              {expandedUser === u._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
-          </div>
-        </td>
-      </tr>
-      {expandedUser === u._id && (
-        <tr className="bg-black/40">
-          <td colSpan="9" className="px-3 lg:px-4 py-3 lg:py-4">
-            <UserExpandedDetails 
-              user={u} 
-              copyToClipboard={copyToClipboard} 
-              expandedLevel={expandedLevel} 
-              setExpandedLevel={setExpandedLevel}
-              fetchMemberDetails={fetchMemberDetails}
-              memberDetails={memberDetails}
-              loadingMember={loadingMember}
-              setSelectedLeg={setSelectedLeg}
-            />
-          </td>
-        </tr>
-      )}
-    </React.Fragment>
-  );
-})}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Mobile Card View */}
-      {(viewMode === 'cards' || window.innerWidth < 768) && (
-        <div className="md:hidden space-y-2 p-3">
+      {/* ✅ SEARCH RESULT VIEW — search active असताना special card layout */}
+      {searchTerm && filteredUsers.length > 0 ? (
+        <div className="p-3 space-y-3">
           {paginatedUsers.map(u => (
-            <MobileUserCard 
-              key={u._id} 
-              user={u} 
-              expandedUser={expandedUser} 
-              setExpandedUser={setExpandedUser} 
-              setSelectedUser={setSelectedUser} 
-              copyToClipboard={copyToClipboard} 
-              expandedLevel={expandedLevel} 
-              setExpandedLevel={setExpandedLevel}
-              fetchMemberDetails={fetchMemberDetails}
-              memberDetails={memberDetails}
-              loadingMember={loadingMember}
-              setSelectedLeg={setSelectedLeg}
-            />
+            <div key={u._id} className="bg-black/40 border border-white/10 rounded-xl overflow-hidden">
+              {/* User Header */}
+              <div
+                className="p-4 flex items-center justify-between cursor-pointer hover:bg-black/60 transition-all"
+                onClick={() => setExpandedUser(expandedUser === u._id ? null : u._id)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00F5A0] to-green-600 flex items-center justify-center text-black font-bold text-sm">
+                    {u.email?.charAt(0)?.toUpperCase() || u.userId?.charAt(0) || 'U'}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">{u.email || u.userId}</p>
+                    <div className="flex gap-2 mt-0.5">
+                      <span className="text-[8px] text-gray-400">ID: {u.userId}</span>
+                      <span className="text-[8px] text-gray-500">•</span>
+                      <span className="text-[8px] text-gray-400">Ref: {u.referralCode}</span>
+                    </div>
+                    <div className="flex gap-2 mt-1">
+                      <span className="text-[7px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">D:{u.legs?.length || 0}</span>
+                      <span className="text-[7px] bg-[#00F5A0]/20 text-[#00F5A0] px-1.5 py-0.5 rounded">T:{calculateTeamCount(u)}</span>
+                      <span className="text-[7px] bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded">₹{calculateTotalEarnings(u).toFixed(0)}</span>
+                      <span className="text-[7px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">CB:₹{calculateTotalTeamCashback(u).toFixed(0)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setSelectedUser(u); }}
+                    className="bg-[#00F5A0]/10 text-[#00F5A0] px-3 py-1.5 rounded-lg text-[9px] font-bold"
+                  >
+                    Details
+                  </button>
+                  {expandedUser === u._id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
+              </div>
+
+              {/* ✅ Expanded: Full referral tree */}
+              {expandedUser === u._id && (
+                <div className="px-4 pb-4">
+                  <SearchUserReferralPanel user={u} />
+                </div>
+              )}
+            </div>
           ))}
         </div>
+      ) : searchTerm && filteredUsers.length === 0 ? (
+        <div className="p-12 text-center text-gray-500">
+          <Search size={32} className="mx-auto mb-3 opacity-30" />
+          <p className="text-sm font-bold">No users found</p>
+          <p className="text-[10px] mt-1">Try searching by email, user ID or referral code</p>
+        </div>
+      ) : (
+        <>
+          {/* Normal table/card view — search नसताना */}
+          {viewMode === 'table' && (
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="text-[8px] lg:text-[10px] uppercase text-gray-600 font-black border-b border-white/5 bg-black/10">
+                  <tr>
+                    <th className="px-2 lg:px-3 py-2 lg:py-3">User</th>
+                    <th className="px-2 lg:px-3 py-2 lg:py-3">Direct</th>
+                    <th className="px-2 lg:px-3 py-2 lg:py-3">Team</th>
+                    <th className="px-2 lg:px-3 py-2 lg:py-3">Levels</th>
+                    <th className="px-2 lg:px-3 py-2 lg:py-3">Earnings</th>
+                    <th className="px-2 lg:px-3 py-2 lg:py-3">Team Cashback</th>
+                    <th className="px-2 lg:px-3 py-2 lg:py-3">Direct Referrals</th>
+                    <th className="px-2 lg:px-3 py-2 lg:py-3">Requests</th>
+                    <th className="px-2 lg:px-3 py-2 lg:py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {paginatedUsers.map(u => {
+                    const teamCount = calculateTeamCount(u);
+                    const directCount = getDirectCount(u);
+                    const totalEarnings = calculateTotalEarnings(u);
+                    const teamCashbackTotal = calculateTotalTeamCashback(u);
+                    const levelCounts = getLevelWiseCounts(u);
+                    const levelSummary = Object.entries(levelCounts).slice(0, 3).map(([lvl, cnt]) => `${lvl}:${cnt}`).join(', ');
+                    const remainingLevels = Object.keys(levelCounts).length - 3;
+                    const totalPayRequests = u.totalPayRequests || 0;
+                    const totalAccepted = u.totalAcceptedRequests || 0;
+                    const legs = u.legs || [];
+
+                    return (
+                      <React.Fragment key={u._id}>
+                        <tr className="hover:bg-white/[0.02] cursor-pointer" onClick={() => setExpandedUser(expandedUser === u._id ? null : u._id)}>
+                          <td className="px-2 lg:px-3 py-2 lg:py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#00F5A0] to-green-600 flex items-center justify-center text-black font-bold text-xs">
+                                {u.email?.charAt(0)?.toUpperCase() || u.userId?.charAt(0) || 'U'}
+                              </div>
+                              <div>
+                                <p className="font-bold text-xs">{u.email || u.userId}</p>
+                                <p className="text-[6px] text-gray-500">Ref: {u.referralCode}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-2 lg:px-3 py-2 lg:py-3"><span className="text-xs font-bold text-blue-400">{directCount}</span></td>
+                          <td className="px-2 lg:px-3 py-2 lg:py-3"><span className="text-xs font-bold text-[#00F5A0]">{teamCount}</span></td>
+                          <td className="px-2 lg:px-3 py-2 lg:py-3">
+                            <div className="text-[8px]">
+                              {levelSummary}
+                              {remainingLevels > 0 && <span className="text-gray-500 ml-1">+{remainingLevels}</span>}
+                            </div>
+                          </td>
+                          <td className="px-2 lg:px-3 py-2 lg:py-3"><p className="text-xs font-bold text-orange-400">₹{totalEarnings.toFixed(2)}</p></td>
+                          <td className="px-2 lg:px-3 py-2 lg:py-3"><p className="text-xs font-bold text-green-400">₹{teamCashbackTotal.toFixed(2)}</p></td>
+                          <td className="px-2 lg:px-3 py-2 lg:py-3">
+                            <div className="flex flex-wrap gap-1">
+                              {legs.length > 0 ? legs.map(leg => (
+                                <button key={leg.legNumber} onClick={(e) => { e.stopPropagation(); setSelectedLeg({ user: u, leg }); }}
+                                  className={`text-[8px] px-2 py-0.5 rounded-full font-bold ${leg.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                                  L{leg.legNumber}
+                                </button>
+                              )) : <span className="text-[8px] text-gray-600">No legs</span>}
+                            </div>
+                          </td>
+                          <td className="px-2 lg:px-3 py-2 lg:py-3">
+                            <div className="flex items-center gap-1">
+                              <span className="text-[8px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">C:{totalPayRequests}</span>
+                              <span className="text-[8px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">A:{totalAccepted}</span>
+                            </div>
+                          </td>
+                          <td className="px-2 lg:px-3 py-2 lg:py-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <button onClick={(e) => { e.stopPropagation(); setSelectedUser(u); }} className="bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-1 rounded-lg text-[8px] font-bold">Details</button>
+                              <button onClick={(e) => { e.stopPropagation(); setExpandedUser(expandedUser === u._id ? null : u._id); }} className="text-gray-500 p-1">
+                                {expandedUser === u._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {expandedUser === u._id && (
+                          <tr className="bg-black/40">
+                            <td colSpan="9" className="px-3 py-3">
+                              <UserExpandedDetails user={u} copyToClipboard={copyToClipboard} expandedLevel={expandedLevel} setExpandedLevel={setExpandedLevel} fetchMemberDetails={fetchMemberDetails} memberDetails={memberDetails} loadingMember={loadingMember} setSelectedLeg={setSelectedLeg} />
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {(viewMode === 'cards' || window.innerWidth < 768) && (
+            <div className="md:hidden space-y-2 p-3">
+              {paginatedUsers.map(u => (
+                <MobileUserCard key={u._id} user={u} expandedUser={expandedUser} setExpandedUser={setExpandedUser} setSelectedUser={setSelectedUser} copyToClipboard={copyToClipboard} expandedLevel={expandedLevel} setExpandedLevel={setExpandedLevel} fetchMemberDetails={fetchMemberDetails} memberDetails={memberDetails} loadingMember={loadingMember} setSelectedLeg={setSelectedLeg} />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Pagination */}
       {filteredUsers.length > itemsPerPage && (
-        <div className="flex items-center justify-between p-3 border-t border-white-5">
+        <div className="flex items-center justify-between p-3 border-t border-white/5">
           <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold ${currentPage === 1 ? 'bg-white/5 text-gray-600 cursor-not-allowed' : 'bg-[#00F5A0] text-black'}`}>Previous</button>
           <span className="text-[10px] text-gray-500">Page {currentPage} of {totalPages}</span>
           <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold ${currentPage === totalPages ? 'bg-white/5 text-gray-600 cursor-not-allowed' : 'bg-[#00F5A0] text-black'}`}>Next</button>
@@ -780,8 +1007,6 @@ const getUnlockedLegsCount = (user) => {
           user={selectedLeg.user}
           leg={selectedLeg.leg}
           onClose={() => setSelectedLeg(null)}
-          fetchLegLevelUsers={fetchLegLevelUsers}
-          legUsersCache={legUsersCache}
         />
       )}
     </div>
@@ -791,9 +1016,9 @@ const getUnlockedLegsCount = (user) => {
 /* ================= MOBILE USER CARD ================= */
 const MobileUserCard = ({ user, expandedUser, setExpandedUser, setSelectedUser, copyToClipboard, expandedLevel, setExpandedLevel, fetchMemberDetails, memberDetails, loadingMember, setSelectedLeg }) => {
   const isExpanded = expandedUser === user._id;
-  const teamCount = calculateTeamCount(user);
-  const directCount = user.referralTree?.level1?.length || 0;
-  const totalEarnings = user.referralEarnings?.total || 0;
+const teamCount = user.legs?.reduce((sum, leg) => sum + (leg.stats?.totalUsers || 0), 0) || 0;
+const directCount = user.legs?.length || 0;
+const totalEarnings = user.legs?.reduce((sum, leg) => sum + (leg.stats?.totalEarnings || 0), 0) || 0;
 
   return (
     <div className="bg-black/40 border border-white/5 rounded-xl overflow-hidden">
@@ -1114,18 +1339,31 @@ const LegDetailsModal = ({ user, leg, onClose }) => {
   const [expandedLevel, setExpandedLevel] = useState(null);
   const [levelUsers, setLevelUsers] = useState({});
   const [loadingLevel, setLoadingLevel] = useState(false);
+  const [levelStats, setLevelStats] = useState({});
+
+  const API_BASE = 'https://cpay-link-backend.onrender.com';
+  // const API_BASE = 'http://localhost:5000';
 
   const fetchLevelUsers = async (level) => {
+    if (levelUsers[level]) return; // already cached
     setLoadingLevel(true);
     try {
       const token = localStorage.getItem("token");
+      // Use user-specific endpoint: /api/admin/user/:userId/leg/:legNumber/level/:level
       const response = await fetch(
-        `https://cpay-link-backend.onrender.com/api/admin/leg-users/${leg.legNumber}/${level}`,
+        `${API_BASE}/api/admin/user/${user._id}/leg/${leg.legNumber}/level/${level}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const data = await response.json();
       if (data.success) {
         setLevelUsers(prev => ({ ...prev, [level]: data.data.users || [] }));
+        setLevelStats(prev => ({ 
+          ...prev, 
+          [level]: { 
+            earnings: data.data.levelEarnings || 0,
+            teamCashback: data.data.levelTeamCashback || 0
+          } 
+        }));
       }
     } catch (error) {
       console.error("Error fetching level users:", error);
@@ -1139,13 +1377,10 @@ const LegDetailsModal = ({ user, leg, onClose }) => {
       setExpandedLevel(null);
     } else {
       setExpandedLevel(level);
-      if (!levelUsers[level]) {
-        fetchLevelUsers(level);
-      }
+      fetchLevelUsers(level);
     }
   };
 
-  // Calculate leg statistics
   const totalUsers = leg.stats?.totalUsers || 0;
   const unlockedLevels = Object.values(leg.levels || {}).filter(l => l.isUnlocked).length;
   const totalEarnings = leg.stats?.totalEarnings || 0;
@@ -1166,6 +1401,7 @@ const LegDetailsModal = ({ user, leg, onClose }) => {
             </h2>
             <p className="text-xs text-gray-400 mt-1">
               Root User: {leg.rootUser?.userId || leg.rootUser?.toString().slice(-6) || 'N/A'}
+              <span className="ml-2 text-gray-600">• {user.email || user.userId}</span>
             </p>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg">
@@ -1185,28 +1421,29 @@ const LegDetailsModal = ({ user, leg, onClose }) => {
               <p className="text-2xl font-bold text-green-400">{unlockedLevels}/21</p>
             </div>
             <div className="bg-black/40 p-4 rounded-xl text-center">
-              <p className="text-[8px] text-gray-500">Directs Earnings</p>
+              <p className="text-[8px] text-gray-500">Total Earnings</p>
               <p className="text-2xl font-bold text-orange-400">₹{totalEarnings}</p>
             </div>
           </div>
 
           {/* Level Grid */}
           <div className="bg-black/40 p-4 rounded-xl">
-            <h3 className="text-sm font-bold mb-4 text-[#00F5A0]">Level-wise Users</h3>
+            <h3 className="text-sm font-bold mb-4 text-[#00F5A0]">Level-wise Users (click to expand)</h3>
             <div className="grid grid-cols-7 gap-1">
               {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(level => {
                 const levelData = leg.levels?.[`level${level}`] || {};
                 const userCount = levelData.users?.length || 0;
-                const isUnlocked = levelData.isUnlocked || level <= 3;
+                const isUnlocked = levelData.isUnlocked || false;
                 const isPending = levelData.pendingUnlock || false;
 
                 return (
                   <button
                     key={level}
                     onClick={() => handleLevelClick(level)}
-                    className={`text-center p-2 rounded-lg cursor-pointer hover:scale-105 transition-all ${
-                      expandedLevel === level ? 'ring-2 ring-[#00F5A0]' : ''
-                    } ${
+                    disabled={userCount === 0}
+                    className={`text-center p-2 rounded-lg transition-all ${
+                      userCount === 0 ? 'cursor-default opacity-60' : 'cursor-pointer hover:scale-105'
+                    } ${expandedLevel === level ? 'ring-2 ring-[#00F5A0]' : ''} ${
                       isUnlocked 
                         ? userCount > 0 
                           ? 'bg-[#00F5A0]/20 border border-[#00F5A0]/30' 
@@ -1225,9 +1462,32 @@ const LegDetailsModal = ({ user, leg, onClose }) => {
                     }`}>
                       {userCount}
                     </span>
+                    {isUnlocked && userCount === 0 && (
+                      <span className="text-[4px] text-blue-300 block">unlocked</span>
+                    )}
                   </button>
                 );
               })}
+            </div>
+
+            {/* Legend */}
+            <div className="flex gap-3 mt-3 pt-3 border-t border-white/5 flex-wrap">
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-[#00F5A0]/20 border border-[#00F5A0]/30"></div>
+                <span className="text-[7px] text-gray-400">Has Users</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-blue-500/10 border border-blue-500/20"></div>
+                <span className="text-[7px] text-gray-400">Unlocked (Empty)</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-yellow-500/10 border border-yellow-500/20"></div>
+                <span className="text-[7px] text-gray-400">Pending Unlock</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded bg-gray-800/50 border border-gray-700"></div>
+                <span className="text-[7px] text-gray-400">Locked</span>
+              </div>
             </div>
           </div>
 
@@ -1235,57 +1495,77 @@ const LegDetailsModal = ({ user, leg, onClose }) => {
           {expandedLevel && (
             <div className="bg-black/40 p-4 rounded-xl">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-[#00F5A0]">
+                <h3 className="text-sm font-bold text-[#00F5A0] flex items-center gap-2">
                   Level {expandedLevel} Users
+                  <span className="text-[10px] bg-[#00F5A0]/10 px-2 py-0.5 rounded-full">
+                    {levelUsers[expandedLevel]?.length || 0} members
+                  </span>
                 </h3>
                 <button onClick={() => setExpandedLevel(null)} className="text-gray-400 hover:text-white">
                   <X size={14} />
                 </button>
               </div>
 
+              {/* Level Stats */}
+              {(levelStats[expandedLevel] || leg.levels?.[`level${expandedLevel}`]) && (
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <div className="bg-black/30 p-2 rounded text-center">
+                    <p className="text-[6px] text-gray-500">Level Earnings</p>
+                    <p className="text-sm font-bold text-orange-400">
+                      ₹{levelStats[expandedLevel]?.earnings ?? leg.levels?.[`level${expandedLevel}`]?.earnings ?? 0}
+                    </p>
+                  </div>
+                  <div className="bg-black/30 p-2 rounded text-center">
+                    <p className="text-[6px] text-gray-500">Team Cashback</p>
+                    <p className="text-sm font-bold text-green-400">
+                      ₹{levelStats[expandedLevel]?.teamCashback ?? leg.levels?.[`level${expandedLevel}`]?.teamCashback ?? 0}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {loadingLevel ? (
-                <div className="text-center py-4">
-                  <Loader2 size={20} className="animate-spin text-[#00F5A0] mx-auto" />
+                <div className="text-center py-6">
+                  <Loader2 size={24} className="animate-spin text-[#00F5A0] mx-auto mb-2" />
+                  <p className="text-[10px] text-gray-500">Loading members...</p>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
+                <div className="space-y-2 max-h-72 overflow-y-auto">
                   {levelUsers[expandedLevel]?.length > 0 ? (
                     levelUsers[expandedLevel].map((member, idx) => (
-                      <div key={idx} className="bg-black/60 p-3 rounded-lg flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs">
-                            {member.userId?.charAt(0) || '?'}
+                      <div key={idx} className="bg-black/60 p-3 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs">
+                              {member.userId?.charAt(0) || member.email?.charAt(0) || '?'}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold">{member.userId || member.email}</p>
+                              <p className="text-[8px] text-gray-500">{member.email}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-bold">{member.userId}</p>
-                            <p className="text-[8px] text-[#00F5A0]">
-                              Earnings: ₹{member.totalEarnings || 0}
-                            </p>
+                          <div className="text-right">
+                            <p className="text-[10px] font-bold text-[#00F5A0]">₹{member.totalEarnings || 0}</p>
+                            <p className="text-[7px] text-gray-500">earned</p>
                           </div>
+                        </div>
+                        {/* Member Stats */}
+                        <div className="flex gap-2 mt-2 pt-2 border-t border-white/5">
+                          <span className="text-[7px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">
+                            Direct: {member.directCount || 0}
+                          </span>
+                          <span className="text-[7px] bg-[#00F5A0]/20 text-[#00F5A0] px-1.5 py-0.5 rounded">
+                            Team: {member.teamCount || 0}
+                          </span>
+                          <span className="text-[7px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">
+                            Ref: {member.referralCode}
+                          </span>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-center text-gray-500 py-4">No users in this level</p>
+                    <p className="text-center text-gray-500 py-4 text-xs">No users in this level</p>
                   )}
-                </div>
-              )}
-
-              {/* Level Statistics */}
-              {leg.levels?.[`level${expandedLevel}`] && (
-                <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-2 gap-2 text-[10px]">
-                  <div className="text-center">
-                    <span className="text-gray-500">Level Earnings:</span>
-                    <span className="ml-1 text-[#00F5A0] font-bold">
-                      ₹{leg.levels[`level${expandedLevel}`].earnings || 0}
-                    </span>
-                  </div>
-                  <div className="text-center">
-                    <span className="text-gray-500">Team Cashback:</span>
-                    <span className="ml-1 text-orange-400 font-bold">
-                      ₹{leg.levels[`level${expandedLevel}`].teamCashback || 0}
-                    </span>
-                  </div>
                 </div>
               )}
             </div>
@@ -1340,8 +1620,8 @@ const LegWiseTeamStructure = ({ user, teamLevels, expandedLevel, setExpandedLeve
   ];
 
   const [selectedLeg, setSelectedLeg] = useState(null);
-   const API_BASE = 'https://cpay-link-backend.onrender.com';
-    // const API_BASE = 'http://localhost:5000';
+  //  const API_BASE = 'https://cpay-link-backend.onrender.com';
+    const API_BASE = 'http://localhost:5000';
 
 
   const getLegColor = (color) => {
@@ -1537,8 +1817,12 @@ const MemberCard = ({ memberId, levelNum, legName, onMemberClick, isExpanded, on
               <span className="text-[5px] bg-[#00F5A0]/20 text-[#00F5A0] px-1 rounded-full">{legName}</span>
             </div>
             <div className="flex gap-1 mt-0.5">
-              <span className="text-[5px] bg-blue-500/20 text-blue-400 px-1 rounded">D:{member?.referralTree?.level1?.length || 0}</span>
-              <span className="text-[5px] bg-orange-500/20 text-orange-400 px-1 rounded">₹{member?.referralEarnings?.total || 0}</span>
+<span className="text-[5px] bg-blue-500/20 text-blue-400 px-1 rounded">
+  D:{member?.legs?.length || member?.directReferralsCount || 0}
+</span>
+<span className="text-[5px] bg-orange-500/20 text-orange-400 px-1 rounded">
+  ₹{member?.totalEarnings || 0}
+</span>
               <span className="text-[5px] bg-green-500/20 text-green-400 px-1 rounded">T:₹{teamCashbackTotal}</span>
             </div>
           </div>
@@ -1620,8 +1904,8 @@ const MemberHistoryModal = ({ member, onClose, levelNum, legName }) => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <QuickStatCard label="User ID" value={member?.userId} />
             <QuickStatCard label="Referral Code" value={member?.referralCode} />
-            <QuickStatCard label="Direct" value={member?.referralTree?.level1?.length || 0} />
-            <QuickStatCard label="Earnings" value={`₹${member?.referralEarnings?.total || 0}`} />
+          <QuickStatCard label="Direct" value={member?.legs?.length || member?.directReferralsCount || 0} />
+<QuickStatCard label="Earnings" value={`₹${member?.totalEarnings || 0}`} />
           </div>
 
           {/* Wallets */}
@@ -1757,12 +2041,17 @@ const ScannerStatCard = ({ title, count, total, scanners, color }) => {
   );
 };
 
+// Replace at the bottom of AdminDashboard.jsx:
 const calculateTeamCount = (user) => {
+  if (!user) return 0;
+  // New legs-based structure
+  if (user.legs?.length > 0) {
+    return user.legs.reduce((total, leg) => total + (leg.stats?.totalUsers || 0), 0);
+  }
+  // Fallback for old referralTree structure
   let count = 0;
-  if (user?.referralTree) {
-    for (let i = 1; i <= 21; i++) {
-      count += user.referralTree[`level${i}`]?.length || 0;
-    }
+  for (let i = 1; i <= 21; i++) {
+    count += user.referralTree?.[`level${i}`]?.length || 0;
   }
   return count;
 };
@@ -3182,66 +3471,87 @@ const MobileLedgerCard = ({ transaction: tx, formatDate }) => {
 };
 
 
-/* ================= USER DETAILS MODAL - WITH COMPLETE PAY REQUEST STATS ================= */
 const UserDetailsModal = ({ user, onClose }) => {
   const [userDetails, setUserDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedLevel, setExpandedLevel] = useState(null);
-  const [showCreatedList, setShowCreatedList] = useState(false);
-  const [showAcceptedList, setShowAcceptedList] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview'); // overview, scanners, earnings, team
+  const [activeTab, setActiveTab] = useState('overview');
+  const [expandedLeg, setExpandedLeg] = useState(null);
+  const [levelUsers, setLevelUsers] = useState({});
+  const [loadingLevel, setLoadingLevel] = useState(null);
+
+  // const API_BASE = 'https://cpay-link-backend.onrender.com';
+  const API_BASE = 'http://localhost:5000';
 
   useEffect(() => {
     const fetchDetails = async () => {
       setLoading(true);
       const data = await getUserDetails(user._id);
-      if (data?.success) {
-        setUserDetails(data.user);
-      }
+      if (data?.success) setUserDetails(data.user);
       setLoading(false);
     };
     fetchDetails();
   }, [user._id]);
 
-  if (loading) {
-    return (
-      <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[1000]">
-        <Loader2 className="animate-spin text-[#00F5A0]" size={40} />
-      </div>
-    );
-  }
+  // Fetch users for a specific leg+level of THIS user
+  const fetchLegLevelUsers = async (legNumber, level) => {
+    const cacheKey = `${legNumber}-${level}`;
+    if (levelUsers[cacheKey]) return;
+    
+    setLoadingLevel(cacheKey);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${API_BASE}/api/admin/user/${user._id}/leg/${legNumber}/level/${level}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      if (data.success) {
+        setLevelUsers(prev => ({ 
+          ...prev, 
+          [cacheKey]: {
+            users: data.data.users || [],
+            earnings: data.data.levelEarnings || 0,
+            teamCashback: data.data.levelTeamCashback || 0
+          }
+        }));
+      }
+    } catch (err) {
+      console.error("Error fetching level users:", err);
+    } finally {
+      setLoadingLevel(null);
+    }
+  };
 
-  // Calculate scanner statistics
+  const handleLevelClick = (legNumber, level) => {
+    const key = `${legNumber}-${level}`;
+    if (expandedLevel === key) {
+      setExpandedLevel(null);
+    } else {
+      setExpandedLevel(key);
+      fetchLegLevelUsers(legNumber, level);
+    }
+  };
+
+  if (loading) return (
+    <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[1000]">
+      <Loader2 className="animate-spin text-[#00F5A0]" size={40} />
+    </div>
+  );
+
   const createdScanners = userDetails?.scanners?.created || [];
   const acceptedScanners = userDetails?.scanners?.accepted || [];
-  
   const totalPayRequests = userDetails?.totalPayRequests || 0;
   const totalAcceptedRequests = userDetails?.totalAcceptedRequests || 0;
   const pendingPayRequests = totalPayRequests - totalAcceptedRequests;
-  
-  const createdTotalAmount = createdScanners.reduce((sum, s) => sum + (s.amount || 0), 0);
-  const acceptedTotalAmount = acceptedScanners.reduce((sum, s) => sum + (s.amount || 0), 0);
 
-  // Group scanners by status
-  const createdByStatus = {
-    ACTIVE: createdScanners.filter(s => s.status === 'ACTIVE').length,
-    ACCEPTED: createdScanners.filter(s => s.status === 'ACCEPTED').length,
-    PAYMENT_SUBMITTED: createdScanners.filter(s => s.status === 'PAYMENT_SUBMITTED').length,
-    COMPLETED: createdScanners.filter(s => s.status === 'COMPLETED').length,
-    EXPIRED: createdScanners.filter(s => s.status === 'EXPIRED').length
-  };
-
-  const acceptedByStatus = {
-    ACTIVE: acceptedScanners.filter(s => s.status === 'ACTIVE').length,
-    ACCEPTED: acceptedScanners.filter(s => s.status === 'ACCEPTED').length,
-    PAYMENT_SUBMITTED: acceptedScanners.filter(s => s.status === 'PAYMENT_SUBMITTED').length,
-    COMPLETED: acceptedScanners.filter(s => s.status === 'COMPLETED').length,
-    EXPIRED: acceptedScanners.filter(s => s.status === 'EXPIRED').length
-  };
+  // Build legs from userDetails (fetched fresh with legs populated)
+  const legs = userDetails?.legs || [];
 
   return (
     <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[1000] p-4 overflow-y-auto">
       <div className="bg-[#0A1F1A] border border-white/10 rounded-[2rem] w-full max-w-6xl max-h-[90vh] overflow-y-auto">
+        
         {/* Header */}
         <div className="sticky top-0 bg-[#0A1F1A] p-6 border-b border-white/10 flex justify-between items-center z-10">
           <div className="flex items-center gap-3">
@@ -3253,23 +3563,13 @@ const UserDetailsModal = ({ user, onClose }) => {
               <p className="text-[10px] text-gray-500">Joined: {new Date(userDetails?.createdAt).toLocaleDateString()}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg">
-            <X size={20} />
-          </button>
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg"><X size={20} /></button>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Tabs */}
         <div className="flex gap-2 p-4 border-b border-white/5 overflow-x-auto">
-          <TabButton 
-            label="Overview" 
-            active={activeTab === 'overview'} 
-            onClick={() => setActiveTab('overview')} 
-          />
-          <TabButton 
-            label="Earnings" 
-            active={activeTab === 'earnings'} 
-            onClick={() => setActiveTab('earnings')}
-          />
+          <TabButton label="Overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
+          <TabButton label="Earnings" active={activeTab === 'earnings'} onClick={() => setActiveTab('earnings')} />
           <TabButton 
             label="Team" 
             active={activeTab === 'team'} 
@@ -3279,19 +3579,17 @@ const UserDetailsModal = ({ user, onClose }) => {
         </div>
 
         <div className="p-6 space-y-6">
-          
+
           {/* ========== OVERVIEW TAB ========== */}
           {activeTab === 'overview' && (
             <>
-              {/* Basic Info */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <InfoCard label="User ID" value={userDetails?.userId} />
-                <InfoCard label="Referral Code" value={userDetails?.referralCode} copyable />
+                <InfoCard label="Referral Code" value={userDetails?.referralCode} />
                 <InfoCard label="Joined" value={new Date(userDetails?.createdAt).toLocaleDateString()} />
                 <InfoCard label="Referred By" value={userDetails?.referredBy?.userId || 'None'} />
               </div>
 
-              {/* Wallets */}
               <div className="bg-black/40 p-4 rounded-xl">
                 <h3 className="text-sm font-bold mb-3 text-[#00F5A0]">Wallet Balances</h3>
                 <div className="grid grid-cols-3 gap-4">
@@ -3301,7 +3599,6 @@ const UserDetailsModal = ({ user, onClose }) => {
                 </div>
               </div>
 
-              {/* Pay Request Summary Card */}
               <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 p-4 rounded-xl">
                 <h3 className="text-sm font-bold mb-3 text-blue-400 flex items-center gap-2">
                   <CreditCard size={16} /> Pay Request Summary
@@ -3310,40 +3607,33 @@ const UserDetailsModal = ({ user, onClose }) => {
                   <div className="text-center">
                     <p className="text-[10px] text-gray-500">Created</p>
                     <p className="text-2xl font-bold text-[#00F5A0]">{totalPayRequests}</p>
-                    {/* <p className="text-[8px] text-gray-500">₹{createdTotalAmount.toLocaleString()}</p> */}
                   </div>
                   <div className="text-center">
                     <p className="text-[10px] text-gray-500">Accepted</p>
                     <p className="text-2xl font-bold text-green-400">{totalAcceptedRequests}</p>
-                    {/* <p className="text-[8px] text-gray-500">₹{acceptedTotalAmount.toLocaleString()}</p> */}
                   </div>
                   <div className="text-center">
                     <p className="text-[10px] text-gray-500">Pending</p>
                     <p className="text-2xl font-bold text-orange-400">{pendingPayRequests}</p>
-                    {/* <p className="text-[8px] text-gray-500">Awaiting</p> */}
                   </div>
                 </div>
               </div>
 
-              {/* Quick Stats Grid */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard label="Direct Referrals" value={userDetails?.referralTree?.level1?.length || 0} color="blue" />
+                <StatCard label="Direct Referrals" value={userDetails?.legs?.length || 0} color="blue" />
                 <StatCard label="Total Team" value={userDetails?.team?.total || 0} color="purple" />
                 <StatCard label="Total Earnings" value={`₹${userDetails?.earnings?.total || 0}`} color="orange" />
                 <StatCard label="Team Cashback" value={`₹${Object.values(userDetails?.teamCashback || {}).reduce((s, l) => s + (l.total || 0), 0)}`} color="green" />
               </div>
 
-              {/* Recent Activity Preview */}
-              {userDetails?.transactions && userDetails.transactions.length > 0 && (
+              {userDetails?.transactions?.length > 0 && (
                 <div className="bg-black/40 p-4 rounded-xl">
                   <h3 className="text-sm font-bold mb-3 text-gray-400">Recent Activity</h3>
                   <div className="space-y-2 max-h-32 overflow-y-auto">
                     {userDetails.transactions.slice(0, 5).map(tx => (
                       <div key={tx._id} className="flex justify-between items-center text-[10px] bg-black/30 p-2 rounded">
                         <span className="text-gray-400">{new Date(tx.createdAt).toLocaleDateString()}</span>
-                        <span className={`font-bold ${tx.type === 'CREDIT' ? 'text-green-400' : 'text-red-400'}`}>
-                          {tx.type}
-                        </span>
+                        <span className={`font-bold ${tx.type === 'CREDIT' ? 'text-green-400' : 'text-red-400'}`}>{tx.type}</span>
                         <span className="font-bold text-[#00F5A0]">₹{tx.amount}</span>
                       </div>
                     ))}
@@ -3356,7 +3646,6 @@ const UserDetailsModal = ({ user, onClose }) => {
           {/* ========== EARNINGS TAB ========== */}
           {activeTab === 'earnings' && (
             <div className="space-y-6">
-              {/* Commission by Level */}
               <div className="bg-black/40 p-4 rounded-xl">
                 <h3 className="text-sm font-bold mb-3 text-orange-400">Commission by Level</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-60 overflow-y-auto">
@@ -3370,15 +3659,12 @@ const UserDetailsModal = ({ user, onClose }) => {
                     );
                   })}
                 </div>
-                <div className="mt-3 pt-3 border-t border-white/10">
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs text-gray-400">Total Commission:</span>
-                    <span className="text-lg font-bold text-orange-400">₹{userDetails?.earnings?.total || 0}</span>
-                  </div>
+                <div className="mt-3 pt-3 border-t border-white/10 flex justify-between items-center">
+                  <span className="text-xs text-gray-400">Total Commission:</span>
+                  <span className="text-lg font-bold text-orange-400">₹{userDetails?.earnings?.total || 0}</span>
                 </div>
               </div>
 
-              {/* Team Cashback by Level */}
               <div className="bg-black/40 p-4 rounded-xl">
                 <h3 className="text-sm font-bold mb-3 text-green-400">Team Cashback by Level</h3>
                 <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -3399,25 +3685,249 @@ const UserDetailsModal = ({ user, onClose }) => {
             </div>
           )}
 
-          {/* ========== TEAM TAB ========== */}
+          {/* ========== TEAM TAB — LEGS → LEVELS → USERS ========== */}
           {activeTab === 'team' && (
-            <div className="bg-black/40 p-4 rounded-xl">
-              <h3 className="text-sm font-bold mb-3 text-[#00F5A0]">Team Structure ({userDetails?.team?.total || 0} members)</h3>
-              {userDetails?.team?.levels && userDetails.team.levels.length > 0 ? (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {userDetails.team.levels.map(level => (
-                    <TeamLevelCard
-                      key={level.level}
-                      level={level}
-                      expandedLevel={expandedLevel}
-                      setExpandedLevel={setExpandedLevel}
-                    />
-                  ))}
+            <div className="space-y-4">
+              
+              {/* Summary */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-black/40 p-3 rounded-xl text-center">
+                  <p className="text-[8px] text-gray-500">Total Directs</p>
+                  <p className="text-2xl font-bold text-blue-400">{legs.length}</p>
+                </div>
+                <div className="bg-black/40 p-3 rounded-xl text-center">
+                  <p className="text-[8px] text-gray-500">Total Team</p>
+                  <p className="text-2xl font-bold text-[#00F5A0]">{userDetails?.team?.total || 0}</p>
+                </div>
+                <div className="bg-black/40 p-3 rounded-xl text-center">
+                  <p className="text-[8px] text-gray-500">Active Directs</p>
+                  <p className="text-2xl font-bold text-green-400">{legs.filter(l => l.isActive).length}</p>
+                </div>
+              </div>
+
+              {legs.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Users size={40} className="mx-auto mb-3 opacity-30" />
+                  <p className="text-sm font-bold">No direct referrals yet</p>
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <Users size={32} className="mx-auto mb-2 opacity-30" />
-                  <p className="text-xs">No team members yet</p>
+                <div className="space-y-3">
+                  {legs.map(leg => {
+                    const legTotalUsers = leg.stats?.totalUsers || 0;
+                    const legTotalEarnings = leg.stats?.totalEarnings || 0;
+                    const legTotalCashback = leg.stats?.totalTeamCashback || 0;
+                    const unlockedLevels = Object.values(leg.levels || {}).filter(l => l.isUnlocked).length;
+                    const isLegExpanded = expandedLeg === leg.legNumber;
+
+                    return (
+                      <div key={leg.legNumber} className="bg-black/40 border border-white/10 rounded-xl overflow-hidden">
+                        
+                        {/* Leg Header */}
+                        <div
+                          className="p-4 flex items-center justify-between cursor-pointer hover:bg-black/60 transition-all"
+                          onClick={() => setExpandedLeg(isLegExpanded ? null : leg.legNumber)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${
+                              leg.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {leg.legNumber}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-bold">Direct {leg.legNumber}</p>
+                                <span className={`text-[8px] px-2 py-0.5 rounded-full font-bold ${
+                                  leg.isActive ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                                }`}>
+                                  {leg.isActive ? 'Active' : 'Inactive'}
+                                </span>
+                              </div>
+                              <p className="text-[9px] text-gray-500 mt-0.5">
+                                Root: {leg.rootUser?.userId || 'N/A'} • {legTotalUsers} users • {unlockedLevels}/21 levels
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-4">
+                            <div className="text-right hidden sm:block">
+                              <p className="text-[8px] text-gray-500">Earnings</p>
+                              <p className="text-sm font-bold text-orange-400">₹{legTotalEarnings}</p>
+                            </div>
+                            <div className="text-right hidden sm:block">
+                              <p className="text-[8px] text-gray-500">Cashback</p>
+                              <p className="text-sm font-bold text-green-400">₹{legTotalCashback}</p>
+                            </div>
+                            {isLegExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </div>
+                        </div>
+
+                        {/* Leg Expanded: Level Grid */}
+                        {isLegExpanded && (
+                          <div className="border-t border-white/5 p-4 space-y-4">
+                            
+                            {/* Mobile earnings (hidden on sm+) */}
+                            <div className="flex gap-3 sm:hidden">
+                              <div className="flex-1 bg-black/30 p-2 rounded text-center">
+                                <p className="text-[7px] text-gray-500">Earnings</p>
+                                <p className="text-sm font-bold text-orange-400">₹{legTotalEarnings}</p>
+                              </div>
+                              <div className="flex-1 bg-black/30 p-2 rounded text-center">
+                                <p className="text-[7px] text-gray-500">Cashback</p>
+                                <p className="text-sm font-bold text-green-400">₹{legTotalCashback}</p>
+                              </div>
+                            </div>
+
+                            {/* Level Grid */}
+                            <div>
+                              <p className="text-[10px] text-gray-500 mb-2 font-bold uppercase tracking-wider">Levels</p>
+                              <div className="grid grid-cols-7 gap-1">
+                                {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map(levelNum => {
+                                  const levelData = leg.levels?.[`level${levelNum}`] || {};
+                                  const userCount = levelData.users?.length || 0;
+                                  const isUnlocked = levelData.isUnlocked || false;
+                                  const cacheKey = `${leg.legNumber}-${levelNum}`;
+                                  const isExpanded = expandedLevel === cacheKey;
+                                  const isLoading = loadingLevel === cacheKey;
+
+                                  return (
+                                    <button
+                                      key={levelNum}
+                                      onClick={() => handleLevelClick(leg.legNumber, levelNum)}
+                                      disabled={userCount === 0}
+                                      className={`text-center p-1.5 rounded-lg transition-all ${
+                                        userCount === 0 ? 'cursor-default' : 'cursor-pointer hover:scale-110'
+                                      } ${isExpanded ? 'ring-2 ring-[#00F5A0]' : ''} ${
+                                        userCount > 0
+                                          ? 'bg-[#00F5A0]/20 border border-[#00F5A0]/30'
+                                          : isUnlocked
+                                            ? 'bg-blue-500/10 border border-blue-500/20'
+                                            : 'bg-gray-800/50 border border-gray-700/50'
+                                      }`}
+                                      title={`L${levelNum}: ${userCount} users`}
+                                    >
+                                      <span className="text-[5px] text-gray-400 block">L{levelNum}</span>
+                                      {isLoading ? (
+                                        <Loader2 size={8} className="animate-spin text-[#00F5A0] mx-auto" />
+                                      ) : (
+                                        <span className={`text-[9px] font-bold ${
+                                          userCount > 0 ? 'text-[#00F5A0]' :
+                                          isUnlocked ? 'text-blue-400' : 'text-gray-600'
+                                        }`}>
+                                          {userCount}
+                                        </span>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Legend */}
+                              <div className="flex gap-3 mt-2 flex-wrap">
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2.5 h-2.5 rounded bg-[#00F5A0]/20 border border-[#00F5A0]/30"></div>
+                                  <span className="text-[7px] text-gray-500">Has Users</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2.5 h-2.5 rounded bg-blue-500/10 border border-blue-500/20"></div>
+                                  <span className="text-[7px] text-gray-500">Unlocked</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <div className="w-2.5 h-2.5 rounded bg-gray-800/50 border border-gray-700/50"></div>
+                                  <span className="text-[7px] text-gray-500">Locked</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Expanded Level Users — shown inside the same leg card */}
+                            {expandedLevel?.startsWith(`${leg.legNumber}-`) && (
+                              <div className="bg-black/30 rounded-xl p-3">
+                                {(() => {
+                                  const levelNum = parseInt(expandedLevel.split('-')[1]);
+                                  const cached = levelUsers[expandedLevel];
+                                  const levelData = leg.levels?.[`level${levelNum}`] || {};
+
+                                  return (
+                                    <>
+                                      <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-sm font-bold text-[#00F5A0] flex items-center gap-2">
+                                          Level {levelNum} Members
+                                          <span className="text-[9px] bg-[#00F5A0]/10 px-2 py-0.5 rounded-full">
+                                            {cached?.users?.length || levelData.users?.length || 0} users
+                                          </span>
+                                        </h4>
+                                        <button onClick={() => setExpandedLevel(null)} className="text-gray-500 hover:text-white">
+                                          <X size={14} />
+                                        </button>
+                                      </div>
+
+                                      {/* Level Stats */}
+                                      <div className="grid grid-cols-2 gap-2 mb-3">
+                                        <div className="bg-black/40 p-2 rounded text-center">
+                                          <p className="text-[7px] text-gray-500">Level Earnings</p>
+                                          <p className="text-sm font-bold text-orange-400">
+                                            ₹{cached?.earnings ?? levelData.earnings ?? 0}
+                                          </p>
+                                        </div>
+                                        <div className="bg-black/40 p-2 rounded text-center">
+                                          <p className="text-[7px] text-gray-500">Team Cashback</p>
+                                          <p className="text-sm font-bold text-green-400">
+                                            ₹{cached?.teamCashback ?? levelData.teamCashback ?? 0}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      {/* Users List */}
+                                      {loadingLevel === expandedLevel ? (
+                                        <div className="text-center py-6">
+                                          <Loader2 size={20} className="animate-spin text-[#00F5A0] mx-auto mb-2" />
+                                          <p className="text-[10px] text-gray-500">Loading members...</p>
+                                        </div>
+                                      ) : cached?.users?.length > 0 ? (
+                                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                                          {cached.users.map((member, idx) => (
+                                            <div key={idx} className="bg-black/50 p-3 rounded-lg">
+                                              <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-xs">
+                                                    {member.userId?.charAt(0) || member.email?.charAt(0) || '?'}
+                                                  </div>
+                                                  <div>
+                                                    <p className="text-xs font-bold">{member.userId}</p>
+                                                    <p className="text-[8px] text-gray-500">{member.email}</p>
+                                                  </div>
+                                                </div>
+                                                <div className="text-right">
+                                                  <p className="text-xs font-bold text-[#00F5A0]">₹{member.totalEarnings || 0}</p>
+                                                  <p className="text-[7px] text-gray-500">earned</p>
+                                                </div>
+                                              </div>
+                                              <div className="flex gap-2 mt-2 pt-1.5 border-t border-white/5">
+                                                <span className="text-[7px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded">
+                                                  D:{member.directCount || 0}
+                                                </span>
+                                                <span className="text-[7px] bg-[#00F5A0]/20 text-[#00F5A0] px-1.5 py-0.5 rounded">
+                                                  T:{member.teamCount || 0}
+                                                </span>
+                                                <span className="text-[7px] bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">
+                                                  {member.referralCode}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <p className="text-center text-gray-500 py-4 text-xs">No users in this level</p>
+                                      )}
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -3427,7 +3937,6 @@ const UserDetailsModal = ({ user, onClose }) => {
     </div>
   );
 };
-
 /* ================= HELPER COMPONENTS FOR MODAL ================= */
 
 // Tab Button Component

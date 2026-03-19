@@ -60,12 +60,11 @@ export const getSystemStats = async () => {
 export const getUserDetails = async (userId) => {
   try {
     const token = localStorage.getItem("token");
-    const res = await fetch(`${API}/admin/users/${userId}`, {
+    const res = await fetch(`${API}/admin/user/${userId}`, {  // "user" singular
       headers: { "Authorization": `Bearer ${token}` }
     });
     return await res.json();
   } catch (error) {
-    // console.error("Error fetching user details:", error);
     return null;
   }
 };
