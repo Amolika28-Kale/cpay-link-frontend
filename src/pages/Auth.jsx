@@ -242,7 +242,7 @@
 
 // pages/Auth.jsx - FIXED INITIAL STATE
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import {
   Zap,
   ArrowRight,
@@ -261,6 +261,8 @@ import { login as userLogin, register, adminLogin } from "../services/authServic
 import toast from 'react-hot-toast';
 
 export default function Auth() {
+    const refFromUrl = new URLSearchParams(window.location.search).get("ref") || "";
+
   const [isLogin, setIsLogin] = useState(true);
   const [showPin, setShowPin] = useState(false);
   const [showConfirmPin, setShowConfirmPin] = useState(false);
@@ -276,6 +278,20 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [registrationStep, setRegistrationStep] = useState(1);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();  // ← हे add करा
+
+// Referral code URL मधून auto-read
+// useEffect(() => {
+//   const refCode = searchParams.get("ref");
+//   if (refCode) {
+//     setFormData(prev => ({ 
+//       ...prev, 
+//       referralCode: refCode.toUpperCase() 
+//     }));
+//     // Register mode वर switch करा
+//     setIsLogin(false);
+//   }
+// }, [searchParams]);
 
   useEffect(() => {
     if (!isLogin && registrationStep === 1 && !generatedUserId) {
@@ -289,15 +305,25 @@ export default function Auth() {
     return randomNum.toString();
   };
 
-  const handleStartRegistration = () => {
-    if (!generatedUserId) {
-      const newUserId = generateUserId();
-      setGeneratedUserId(newUserId);
-    }
-    setRegistrationStep(2);
-    setFormData({ pin: "", confirmPin: "", referralCode: "", email: "" }); // ✅ Email reset
-    setError("");
-  };
+  useEffect(() => {
+  if (refFromUrl) {
+    setIsLogin(false);
+  }
+}, []); // फक्त once, empty dependency
+const handleStartRegistration = () => {
+  if (!generatedUserId) {
+    const newUserId = generateUserId();
+    setGeneratedUserId(newUserId);
+  }
+  setRegistrationStep(2);
+  setFormData({ 
+    pin: "", 
+    confirmPin: "", 
+    referralCode: refFromUrl.toUpperCase(),
+    email: "" 
+  });
+  setError("");
+};
 
   const handleGenerateNewId = () => {
     const newUserId = generateUserId();
@@ -691,12 +717,18 @@ export default function Auth() {
               {isLogin ? "New to the platform?" : "Already have an account?"}
               <button
                 onClick={() => {
-                  setIsLogin(!isLogin);
-                  setError("");
-                  setFormData({ pin: "", confirmPin: "", referralCode: "", userId: "", email: "" });
-                  setGeneratedUserId("");
-                  setRegistrationStep(1);
-                }}
+  setIsLogin(!isLogin);
+  setError("");
+  setFormData({ 
+    pin: "", 
+    confirmPin: "", 
+    referralCode: refFromUrl.toUpperCase(), // ← हा बदल
+    userId: "", 
+    email: "" 
+  });
+  setGeneratedUserId("");
+  setRegistrationStep(1);
+}}
                 className="text-[#00F5A0] hover:underline ml-2 italic font-black"
               >
                 {isLogin ? "Create Account" : "Login Here"}

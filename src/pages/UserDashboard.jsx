@@ -5,7 +5,8 @@ import {
   LogOut, X, Clock, Menu, Loader, Zap, PlusCircle, Camera, UploadCloud, Bell,
   Users, TrendingUp, Award, Gift, Copy, ChevronDown, ChevronUp, User, Key, AlertCircle,
   ArrowRight,Info,
-  HelpCircle
+  HelpCircle,
+  Share2
 } from "lucide-react";
 
 import {
@@ -4153,6 +4154,12 @@ const markNotificationsAsRead = async (commissionIds = []) => {
     toast.success('Referral code copied!', { duration: 2000 });
   };
 
+  const copyReferralLink = () => {
+  const link = `https://cpaylink.io/auth?ref=${referralData.referralCode}`;
+  navigator.clipboard.writeText(link);
+  toast.success('Referral link copied!', { duration: 2000 });
+};
+
   // ========== COMMISSION RATES ==========
   const levels = useMemo(() => [
     { level: 1, rate: "30%", color: "from-yellow-500 to-orange-500" },
@@ -4829,17 +4836,27 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
     <Gift size={28} className="opacity-60" />
   </div>
   
-  <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl backdrop-blur-sm">
-    <span className="text-3xl font-black tracking-widest">
-      {localReferralData.referralCode} {/* थेट localReferralData वापरा */}
-    </span>
+<div className="flex items-center justify-between bg-black/20 p-4 rounded-xl backdrop-blur-sm">
+  <span className="text-3xl font-black tracking-widest">
+    {localReferralData.referralCode}
+  </span>
+  <div className="flex gap-2">
     <button
       onClick={copyReferralCode}
       className="bg-black text-[#00F5A0] p-3 rounded-xl hover:bg-black/80 transition-all"
+      title="Copy Code"
     >
       <Copy size={20} />
     </button>
+    <button
+      onClick={copyReferralLink}
+      className="bg-black text-[#00F5A0] p-3 rounded-xl hover:bg-black/80 transition-all"
+      title="Copy Link"
+    >
+      <Share2 size={20} />
+    </button>
   </div>
+</div>
   
   <p className="text-sm font-bold mt-4 opacity-70">
     Share this code & earn commissions on 21 levels!
