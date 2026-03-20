@@ -66,20 +66,32 @@ const HelpPage = () => {
         }
       ]
     },
+{
+  title: "Referral System",
+  icon: <BarChart3 size={18} />,
+  faqs: [
     {
-      title: "Referral System",
-      icon: <BarChart3 size={18} />,
-      faqs: [
-        {
-          q: "How does referral system work?",
-          a: "21 Levels Commission Structure:\n\nLevel 1: 30%\nLevel 2: 15%\nLevel 3: 10%\nLevel 4: 5%\nLevel 5: 30%\nLevel 6-15: 3% each\nLevel 16: 5%\nLevel 17: 10%\nLevel 18: 15%\nLevel 19-20: 30% each\nLevel 21: 63%\n\nYou earn commission on your team's cashback."
-        },
-        {
-          q: "What are Legs?",
-          a: "7 Legs System:\nLeg 1: Levels 1-3\nLeg 2: Levels 4-6\nLeg 3: Levels 7-9\nLeg 4: Levels 10-12\nLeg 5: Levels 13-15\nLeg 6: Levels 16-18\nLeg 7: Levels 19-21\n\nTo unlock next leg, add at least 1 member in the last level of current leg."
-        }
-      ]
+      q: "How does the Referral System work?",
+      a: "Every time you refer someone directly, a new 'Direct' (Leg) is created for you.\n\nEach Direct has 21 Levels inside it.\n\n🔑 KEY RULE:\nYour number of Direct Referrals = Levels unlocked in EACH Direct\n\nExample:\n• 1 Direct → Level 1 unlocked in all Directs\n• 5 Directs → Levels 1-5 unlocked in all Directs\n• 21 Directs → All 21 Levels unlocked in all Directs\n\n✅ More Directs = More levels unlocked = More earnings!"
     },
+    {
+      q: "What are Directs (Legs)?",
+      a: "When you refer someone directly, that person becomes your 'Direct' and a new Leg opens for you.\n\n• Direct 1 → your 1st referral\n• Direct 2 → your 2nd referral\n• Direct 3 → your 3rd referral\n... and so on up to 21 Directs\n\nEach Direct has its own 21-level deep team under it.\nThe people referred by your direct, their referrals, etc. all go into that Direct's levels."
+    },
+    {
+      q: "How do Levels unlock?",
+      a: "Levels unlock based on how many Directs you have:\n\n1 Direct  → Level 1 unlocked in ALL Directs\n2 Directs → Levels 1-2 unlocked in ALL Directs\n3 Directs → Levels 1-3 unlocked in ALL Directs\n...\n10 Directs → Levels 1-10 unlocked in ALL Directs\n...\n21 Directs → ALL 21 Levels unlocked in ALL Directs\n\n⚡ Every new Direct you add unlocks the next level across all your existing Directs!"
+    },
+    {
+      q: "Commission rates per level?",
+      a: "Level 1:  30%\nLevel 2:  15%\nLevel 3:  10%\nLevel 4:  5%\nLevel 5:  30%\nLevel 6:  3%\nLevel 7:  4%\nLevel 8:  3%\nLevel 9:  3%\nLevel 10: 30%\nLevel 11: 3%\nLevel 12: 3%\nLevel 13: 3%\nLevel 14: 3%\nLevel 15: 3%\nLevel 16: 5%\nLevel 17: 10%\nLevel 18: 15%\nLevel 19: 30%\nLevel 20: 30%\nLevel 21: 63%\n\nYou earn this % on your team members' cashback at each level."
+    },
+    {
+      q: "Example: How earnings grow with more Directs?",
+      a: "With 3 Directs:\n→ 3 Legs open, Levels 1-3 unlocked in each\n→ Earn from Level 1, 2, 3 across all 3 Directs\n\nWith 10 Directs:\n→ 10 Legs open, Levels 1-10 unlocked in each\n→ Earn from Levels 1-10 across all 10 Directs\n\nWith 21 Directs (Maximum):\n→ 21 Legs open, ALL 21 Levels unlocked in each\n→ Earn from all levels, all directs\n→ Maximum income potential! 🏆\n\nSo always grow your Directs to unlock more levels!"
+    }
+  ]
+},
     {
       title: "Troubleshooting",
       icon: <Shield size={18} />,
@@ -143,20 +155,21 @@ const HelpPage = () => {
         '9️⃣ Wait for confirmation'
       ]
     },
-    {
-      id: 'referral',
-      title: 'Referral System Guide',
-      icon: <BarChart3 size={20} />,
-      steps: [
-        '1️⃣ Copy your referral code',
-        '2️⃣ Share with friends',
-        '3️⃣ They register using your code',
-        '4️⃣ They join your team',
-        '5️⃣ Earn commission on their cashback',
-        '6️⃣ Commission up to 21 levels',
-        '7️⃣ More referrals = More income'
-      ]
-    }
+{
+  id: 'referral',
+  title: 'Referral System Guide',
+  icon: <BarChart3 size={20} />,
+  steps: [
+    '1️⃣ Copy your referral code from Referral tab',
+    '2️⃣ Share with friends/family',
+    '3️⃣ Each person who joins = 1 new Direct for you',
+    '4️⃣ Your Directs count = Levels unlocked in ALL Directs',
+    '5️⃣ 1 Direct → L1 open | 5 Directs → L1-5 open',
+    '6️⃣ Each Direct has 21 levels of your team inside it',
+    '7️⃣ Earn commission % on team cashback at each level',
+    '8️⃣ 21 Directs = ALL 21 levels open = Max earnings! 🏆'
+  ]
+},
   ];
 
   const copyUserId = () => {

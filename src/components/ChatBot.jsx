@@ -30,10 +30,22 @@ const FAQ = {
     text: "💰 10% of 7-day limit in USDT\n\nExample:\n₹35000 → ₹3500 → **36.84 USDT** (₹95/USDT)",
     options: ["How to activate wallet?", "Back to Menu"]
   },
-  "how does referral system work": {
-    text: "🌐 **21-Level Commission:**\n\nL1:30% • L2:15% • L3:10% • L4:5% • L5:30%\nL6-15:3% each • L16:5% • L17:10%\nL18:15% • L19-20:30% • L21:63%",
-    options: ["How to unlock legs?", "Back to Menu"]
-  },
+"how does referral system work": {
+  text: "🌐 **Referral System — Simple Rule:**\n\nYour Direct Referrals = Levels unlocked in EACH Leg\n\n1 Direct  → Level 1 open in all Legs\n5 Directs → Levels 1-5 open in all Legs\n21 Directs → ALL 21 Levels open! 🏆\n\nEach Direct creates a new Leg with 21 levels inside it.",
+  options: ["Commission rates?", "How to unlock more levels?", "What are Legs?", "Back to Menu"]
+},
+"commission rates": {
+  text: "💰 **Commission per Level:**\n\nL1: 30%  L2: 15%  L3: 10%\nL4: 5%   L5: 30%  L6-15: 3%\nL16: 5%  L17: 10% L18: 15%\nL19: 30% L20: 30% L21: 63%\n\nYou earn this % on team's cashback at each level.",
+  options: ["How does referral system work?", "Back to Menu"]
+},
+"how to unlock more levels": {
+  text: "🔓 **Unlock More Levels:**\n\nAdd 1 more Direct Referral = Next level unlocks in ALL Legs!\n\nExample:\n• You have 3 Directs → Levels 1-3 open\n• Add 1 more → Level 4 opens in ALL 3 Legs\n\n✅ Keep referring to unlock all 21 levels!",
+  options: ["How does referral system work?", "Back to Menu"]
+},
+"what are legs": {
+  text: "🦵 **What are Legs (Directs)?**\n\nEach person you refer directly = 1 Leg\n\nLeg 1 = your 1st direct referral\nLeg 2 = your 2nd direct referral\n...\nLeg 21 = your 21st direct referral\n\nEach Leg has 21 levels of team inside it.\nMore Legs = More earning potential!",
+  options: ["How to unlock more levels?", "Commission rates?", "Back to Menu"]
+},
   "what is daily limit": {
     text: "📊 7-day limit ÷ 7 = daily average\n\nExample: ₹35000 → ₹5000/day",
     options: ["How to activate wallet?", "Back to Menu"]
@@ -46,10 +58,19 @@ const FAQ = {
     text: "⚠️ **Quick Fixes:**\n\n• Expired? → Create new request\n• QR issue? → DOWNLOAD QR button\n• Not confirming? → Create a support ticket 👇",
     options: ["🎫 Create Support Ticket", "Back to Menu"]
   },
-  "back to menu": {
-    text: "🏠 What can I help you with?",
-    options: ["How to activate wallet?","How does referral system work?","What is daily limit?","How to create payment request?","Payment issues","🎫 Create Support Ticket","📋 My Tickets"]
-  },
+"back to menu": {
+  text: "🏠 What can I help you with?",
+  options: [
+    "How to activate wallet?",
+    "How does referral system work?",
+    "What are Legs?",
+    "How to unlock more levels?",
+    "Commission rates?",
+    "Payment issues",
+    "🎫 Create Support Ticket",
+    "📋 My Tickets"
+  ]
+},
   "contact support": {
     text: "📞 Create a support ticket and we'll reply within 24-48 hrs.",
     options: ["🎫 Create Support Ticket", "Back to Menu"]
@@ -59,11 +80,19 @@ const FAQ = {
 const ChatBot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('chat');
-  const [messages, setMessages] = useState([{
-    id: 1, sender: 'bot',
-    text: "👋 Hello! I'm CpayLink AI Assistant.\nHow can I help you today?",
-    options: ["How to activate wallet?","How does referral system work?","What is daily limit?","How to create payment request?","Payment issues","🎫 Create Support Ticket","📋 My Tickets"]
-  }]);
+const [messages, setMessages] = useState([{
+  id: 1, sender: 'bot',
+  text: "👋 Hello! I'm CpayLink AI Assistant.\nHow can I help you today?",
+  options: [
+    "How to activate wallet?",
+    "How does referral system work?",
+    "What are Legs?",
+    "Commission rates?",
+    "Payment issues",
+    "🎫 Create Support Ticket",
+    "📋 My Tickets"
+  ]
+}]);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);

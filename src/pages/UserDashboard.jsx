@@ -31,6 +31,7 @@ import jsQR from "jsqr";
 
 import { QRCodeCanvas } from "qrcode.react";
 import { DepositScreenshotModal } from "./DepositScreenshotModal";
+import ProfilePage from "./ProfilePage";
 // At the top of your UserDashboard.jsx, after imports:
 // console.log('Imported component:', DepositScreenshotModal);
 
@@ -1413,6 +1414,12 @@ const confirmActivation = async () => {
             active={activeTab === "Referral"}
             onClick={() => { setActiveTab("Referral"); setIsSidebarOpen(false); }}
           />
+          <SidebarLink
+  icon={<User size={20} />}
+  label="Profile"
+  active={activeTab === "Profile"}
+  onClick={() => { setActiveTab("Profile"); setIsSidebarOpen(false); }}
+/>
           <SidebarLink 
   icon={<HelpCircle size={20} />} 
   label="Help" 
@@ -1910,6 +1917,7 @@ const confirmActivation = async () => {
             teamStats={teamStats}
           />
         )}
+        {activeTab === "Profile" && <ProfilePage />}
 
         {activeTab === "Help" && (
   <HelpPage />

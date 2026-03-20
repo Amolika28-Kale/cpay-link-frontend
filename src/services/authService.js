@@ -672,6 +672,58 @@ export const getUnlockProgress = (directReferrals) => {
   };
 };
 
+// ========== GET PROFILE ==========
+export const getProfile = async (token) => {
+  try {
+    const res = await fetch(`${API_BASE}/auth/profile`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    console.error("Error fetching profile:", error);
+    return { success: false, message: "Network error" };
+  }
+};
+
+// ========== UPDATE EMAIL ==========
+export const updateEmail = async (token, email) => {
+  try {
+    const res = await fetch(`${API_BASE}/auth/update-email`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    console.error("Error updating email:", error);
+    return { success: false, message: "Network error" };
+  }
+};
+
+// ========== UPDATE PIN ==========
+export const updatePin = async (token, currentPin, newPin) => {
+  try {
+    const res = await fetch(`${API_BASE}/auth/update-pin`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ currentPin, newPin })
+    });
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    console.error("Error updating PIN:", error);
+    return { success: false, message: "Network error" };
+  }
+};
+
 export default {
   login,
   adminLogin,
@@ -700,5 +752,8 @@ export default {
   getAllCommissionRates,
   isLevelUnlocked,
   getNextLevelToUnlock,
-  getUnlockProgress
+  getUnlockProgress,
+  getProfile,
+  updateEmail,
+  updatePin
 };
