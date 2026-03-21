@@ -5,7 +5,8 @@ import {
   Zap, Clock, Search, ScanLine, Eye, ListOrdered, TrendingUp, Award,
   ChevronDown, ChevronUp, User, Copy, DollarSign, PieChart, BarChart3,
   Users2, GitBranch, Network, Wallet, Coins, History, Download,
-  Filter, ChevronLeft, ChevronRight, AlertCircle, Info, CheckCircle
+  Filter, ChevronLeft, ChevronRight, AlertCircle, Info, CheckCircle,PlusCircle, Gift,
+  Camera
 } from "lucide-react";
 import { 
   getAllUsers, getAllDeposits, updateDepositStatus, 
@@ -15,6 +16,7 @@ import {
 import toast from 'react-hot-toast';
 import { LifeBuoy } from "lucide-react";
 import { SupportView } from "../components/Adminsupporttab";
+import API_BASE from "../services/api";
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [users, setUsers] = useState([]);
@@ -31,6 +33,9 @@ export default function AdminDashboard() {
   const [expandedUser, setExpandedUser] = useState(null);
   const [expandedLevel, setExpandedLevel] = useState(null);
   const [supportUnread, setSupportUnread] = useState(0);
+  // Add this state in AdminDashboard component
+const [systemRequests, setSystemRequests] = useState([]); // Add this state
+const [creatingRequest, setCreatingRequest] = useState(false); // Add this
   
   // Refs for notification tracking
   const prevDepositCount = useRef(0);
@@ -106,6 +111,110 @@ export default function AdminDashboard() {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard!');
   };
+// Update fetchSystemRequests function in AdminDashboard
+const fetchSystemRequests = async () => {
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_BASE}/admin/system-requests`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    
+    // // ✅ ADD DEBUG LOGGING
+    // console.log("=== SYSTEM REQUESTS DATA ===");
+    // console.log("Raw response:", data);
+    // console.log("Grouped requests:", data.groupedRequests);
+    // console.log("Single requests:", data.singleRequests);
+    
+    if (data.success) {
+      // ✅ Handle both grouped and single requests
+      if (data.groupedRequests && data.groupedRequests.length > 0) {
+        // Log each request's status
+        data.groupedRequests.forEach(group => {
+          console.log(`Group ${group.groupId}:`);
+          group.requests?.forEach(req => {
+            console.log(`  - User: ${req.createdFor?.userId}, Status: ${req.status}, Has screenshots: ${req.paymentScreenshots?.length || 0}`);
+          });
+        });
+        setSystemRequests(data.groupedRequests);
+      } else if (data.singleRequests && data.singleRequests.length > 0) {
+        console.log("Single requests:", data.singleRequests);
+        // ✅ FIX: Convert single requests to grouped format
+        // Each single request becomes its own "group"
+        const groupedSingleRequests = data.singleRequests.map(req => ({
+          groupId: req._id,
+          _id: req._id,
+          amount: req.amount,
+          createdAt: req.createdAt,
+          totalUsers: 1,
+          completed: req.status === 'COMPLETED',
+          requests: [req],
+          status: req.status
+        }));
+        setSystemRequests(groupedSingleRequests);
+      } else if (data.requests) {
+        console.log("Requests array:", data.requests);
+        // ✅ FIX: Convert requests array to grouped format if needed
+        const groupedRequests = data.requests.map(req => ({
+          groupId: req._id,
+          _id: req._id,
+          amount: req.amount,
+          createdAt: req.createdAt,
+          totalUsers: 1,
+          completed: req.status === 'COMPLETED',
+          requests: [req],
+          status: req.status
+        }));
+        setSystemRequests(groupedRequests);
+      } else {
+        setSystemRequests([]);
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching system requests:", error);
+    setSystemRequests([]);
+  }
+};
+// Add this function for creating system request
+const handleCreateSystemRequest = async (userId, amount = 900) => {
+  if (!userId) {
+    toast.error("Please enter User ID");
+    return;
+  }
+  
+  setCreatingRequest(true);
+  try {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_BASE}/admin/create-system-request`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({ userId, amount })
+    });
+    const data = await res.json();
+    if (data.success) {
+      toast.success(`System request created for ${userId}`);
+      fetchSystemRequests();
+      // Also refresh the main scanners list
+      const sData = await getAllScanners();
+      setScanners(Array.isArray(sData) ? sData : []);
+    } else {
+      toast.error(data.message || "Failed to create request");
+    }
+  } catch (error) {
+    toast.error("Failed to create system request");
+  } finally {
+    setCreatingRequest(false);
+  }
+};
+
+// Add useEffect to fetch system requests
+useEffect(() => {
+  fetchSystemRequests();
+}, []);
+
 
   if (loading) return (
     <div className="min-h-screen bg-[#051510] flex flex-col items-center justify-center gap-4 text-[#00F5A0] font-black italic">
@@ -179,6 +288,15 @@ export default function AdminDashboard() {
             active={activeTab === "Ledger"} 
             onClick={() => {setActiveTab("Ledger"); setIsSidebarOpen(false);}} 
           />
+<SidebarLink 
+  icon={<Gift size={18}/>} 
+  label="System Req" 
+  badge={systemRequests.filter(s => s.status === 'PAYMENT_SUBMITTED').length}
+  active={activeTab === "SystemRequests"} 
+  onClick={() => {setActiveTab("SystemRequests"); setIsSidebarOpen(false);}} 
+  highlight={systemRequests.filter(s => s.status === 'PAYMENT_SUBMITTED').length > 0}
+/>
+
           <SidebarLink
   icon={<LifeBuoy size={18}/>}
   label="Support"
@@ -268,6 +386,14 @@ export default function AdminDashboard() {
             loadData={loadData}
           />
         )}
+{activeTab === "SystemRequests" && (
+  <SystemRequestsView 
+    requests={systemRequests}
+    onRefresh={fetchSystemRequests}
+    onCreateRequest={handleCreateSystemRequest}
+    creatingRequest={creatingRequest}
+  />
+)}
         {activeTab === "Support" && <SupportView />}
 
         {/* BOTTOM SPACER FOR MOBILE */}
@@ -3376,6 +3502,595 @@ const LedgerView = ({ transactions, loadData }) => {
           >
             View All Transactions ({transactions.length})
           </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// AdminDashboard.jsx - Update the SystemRequestsView component
+
+const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequest }) => {
+  const [filter, setFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [showScreenshotModal, setShowScreenshotModal] = useState(false);
+  const [confirming, setConfirming] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [targetUserType, setTargetUserType] = useState('single');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [userList, setUserList] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const itemsPerPage = 10;
+
+  // const API_BASE = 'http://localhost:5000/api';
+    const API_BASE = 'https://cpay-link-backend.onrender.com/api';
+
+
+  // ✅ Fetch all users on component mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoadingUsers(true);
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`${API_BASE}/admin/users`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await res.json();
+        
+        if (Array.isArray(data)) {
+          setUserList(data);
+        } else if (data.success && Array.isArray(data.users)) {
+          setUserList(data.users);
+        } else if (data.users && Array.isArray(data.users)) {
+          setUserList(data.users);
+        } else if (data.data && Array.isArray(data.data)) {
+          setUserList(data.data);
+        } else {
+          console.warn("Unexpected user data format:", data);
+          setUserList([]);
+        }
+      } catch (error) {
+        console.error("Error fetching users:", error);
+        setUserList([]);
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+    fetchUsers();
+  }, []);
+
+  // ✅ Filter users based on search
+  const filteredUsers = userList.filter(user => 
+    user.userId?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+    user.email?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+    user._id?.toLowerCase().includes(userSearchTerm.toLowerCase())
+  );
+
+  // ✅ Handle user selection
+  const handleSelectUser = (user) => {
+    setSelectedUserId(user.userId);
+    setShowUserDropdown(false);
+    setUserSearchTerm('');
+  };
+
+  // ✅ Check for undefined requests
+  if (!requests) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="animate-spin text-[#00F5A0]" size={32} />
+        <span className="ml-2 text-gray-400">Loading system requests...</span>
+      </div>
+    );
+  }
+
+  // Filter requests - ensure requests is an array
+  const filteredRequests = (Array.isArray(requests) ? requests : []).filter(req => {
+    if (filter !== 'all' && req.status !== filter) return false;
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const hasMatchingUser = req.requests?.some(r => 
+        r.createdFor?.userId?.toLowerCase().includes(searchLower)
+      );
+      return hasMatchingUser;
+    }
+    return true;
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
+  const paginatedRequests = filteredRequests.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handleConfirm = async (scannerId) => {
+    setConfirming(scannerId);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/admin/confirm-system-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ scannerId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Request confirmed! ₹${data.amount} credited to user`);
+        onRefresh();
+      } else {
+        toast.error(data.message || "Failed to confirm");
+      }
+    } catch (error) {
+      console.error("Confirm error:", error);
+      toast.error("Something went wrong");
+    } finally {
+      setConfirming(null);
+    }
+  };
+
+  const handleCreate = () => {
+    if (targetUserType === 'single' && !selectedUserId) {
+      toast.error("Please select a user");
+      return;
+    }
+    const userId = targetUserType === 'all' ? 'all' : selectedUserId;
+    onCreateRequest(userId, 900);
+    if (targetUserType === 'single') {
+      setSelectedUserId('');
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const config = {
+      'ACTIVE': { color: 'bg-green-500/20 text-green-500 border-green-500/30', label: 'ACTIVE' },
+      'ACCEPTED': { color: 'bg-blue-500/20 text-blue-500 border-blue-500/30', label: 'ACCEPTED' },
+      'PAYMENT_SUBMITTED': { color: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30 animate-pulse', label: 'PROOF SUBMITTED' },
+      'COMPLETED': { color: 'bg-purple-500/20 text-purple-500 border-purple-500/30', label: 'COMPLETED' }
+    };
+    return config[status] || { color: 'bg-gray-500/20 text-gray-500', label: status };
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  return (
+    <div className="space-y-4 animate-in fade-in">
+      
+      {/* Header with Create Form */}
+      <div className="bg-[#0A1F1A] border border-white/10 rounded-xl p-4">
+        <h2 className="text-lg font-black italic flex items-center gap-2 mb-4">
+          <Gift size={20} className="text-[#00F5A0]" />
+          System Requests (₹900 Auto Requests)
+          <span className="bg-[#00F5A0]/10 text-[#00F5A0] text-[10px] px-2 py-1 rounded-full">
+            {filteredRequests.length} Groups
+          </span>
+        </h2>
+
+        {/* Create Request Form */}
+        <div className="flex flex-col gap-3 mb-4 p-3 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl border border-purple-500/20">
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setTargetUserType('single');
+                setSelectedUserId('');
+              }}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                targetUserType === 'single' 
+                  ? 'bg-[#00F5A0] text-black' 
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              Single User
+            </button>
+            <button
+              onClick={() => {
+                setTargetUserType('all');
+                setSelectedUserId('');
+              }}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                targetUserType === 'all' 
+                  ? 'bg-[#00F5A0] text-black' 
+                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
+              }`}
+            >
+              All Users
+            </button>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-3">
+            {targetUserType === 'single' && (
+              <div className="flex-1 relative">
+                {/* User Selector with Dropdown */}
+                <div className="relative">
+                  <div 
+                    className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold outline-none cursor-pointer flex items-center justify-between hover:border-[#00F5A0] transition-all"
+                    onClick={() => setShowUserDropdown(!showUserDropdown)}
+                  >
+                    <span className={selectedUserId ? "text-white" : "text-gray-500"}>
+                      {selectedUserId ? selectedUserId : "Select a user..."}
+                    </span>
+                    <ChevronDown size={16} className={`text-gray-400 transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
+                  </div>
+                  
+                  {showUserDropdown && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-[#0A1F1A] border border-white/10 rounded-xl shadow-xl z-50 max-h-80 overflow-hidden">
+                      <div className="p-2 border-b border-white/10">
+                        <div className="relative">
+                          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                          <input
+                            type="text"
+                            placeholder="Search by User ID or Email..."
+                            value={userSearchTerm}
+                            onChange={(e) => setUserSearchTerm(e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-[#00F5A0]"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-64 overflow-y-auto">
+                        {loadingUsers ? (
+                          <div className="p-4 text-center">
+                            <Loader2 size={20} className="animate-spin text-[#00F5A0] mx-auto" />
+                            <p className="text-xs text-gray-500 mt-2">Loading users...</p>
+                          </div>
+                        ) : filteredUsers.length === 0 ? (
+                          <div className="p-4 text-center text-gray-500 text-sm">
+                            No users found
+                          </div>
+                        ) : (
+                          filteredUsers.map(user => (
+                            <div
+                              key={user._id}
+                              className="p-3 hover:bg-white/5 cursor-pointer transition-all border-b border-white/5 last:border-0"
+                              onClick={() => handleSelectUser(user)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-bold text-white">{user.userId}</p>
+                                  <p className="text-xs text-gray-500">{user.email}</p>
+                                </div>
+                                <span className="text-[8px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+                                  ID: {user._id.slice(-6)}
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Show selected user info */}
+                {selectedUserId && (
+                  <div className="mt-2 p-2 bg-green-500/10 rounded-lg border border-green-500/20">
+                    <p className="text-[10px] text-green-400 flex items-center gap-1">
+                      <CheckCircle size={12} />
+                      Selected User: {selectedUserId}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {targetUserType === 'all' && (
+              <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-gray-400">
+                ⚡ This request will be sent to ALL active users
+              </div>
+            )}
+            
+            <button
+              onClick={handleCreate}
+              disabled={creatingRequest || (targetUserType === 'single' && !selectedUserId)}
+              className="bg-gradient-to-r from-[#00F5A0] to-green-500 text-black px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50 flex items-center gap-2"
+            >
+              {creatingRequest ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <PlusCircle size={16} />
+              )}
+              Create System Request (₹900)
+            </button>
+          </div>
+        </div>
+        <p className="text-[10px] text-gray-500 text-center">
+          ⚡ For "All Users" - Only the first user who accepts will get the reward. Others will see it as expired.
+        </p>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-[#0A1F1A] border border-white/10 rounded-xl p-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex gap-2 flex-wrap">
+            {['all', 'ACTIVE', 'ACCEPTED', 'PAYMENT_SUBMITTED', 'COMPLETED'].map(status => (
+              <button
+                key={status}
+                onClick={() => setFilter(status)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                  filter === status 
+                    ? 'bg-[#00F5A0] text-black' 
+                    : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                {status === 'all' ? 'All' : status}
+              </button>
+            ))}
+          </div>
+          
+          <div className="relative flex-1 sm:max-w-xs ml-auto">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Search by User ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-black/40 border border-white/10 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-[#00F5A0]"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Requests List - Grouped View */}
+      <div className="space-y-3">
+ {paginatedRequests.length === 0 ? (
+  <div className="bg-[#0A1F1A] border border-white/10 rounded-xl p-12 text-center">
+    <Gift size={48} className="mx-auto mb-3 opacity-30 text-gray-500" />
+    <p className="text-gray-500 font-bold">No system requests found</p>
+    <p className="text-[10px] text-gray-600 mt-1">Create one above to get started</p>
+  </div>
+) : (
+  paginatedRequests.map(group => {
+    const activeCount = group.requests?.filter(r => r.status === 'ACTIVE').length || 0;
+    // ✅ Find accepted request (ACCEPTED or PAYMENT_SUBMITTED)
+    const acceptedRequest = group.requests?.find(r => r.status === 'ACCEPTED' || r.status === 'PAYMENT_SUBMITTED');
+    const completedRequest = group.requests?.find(r => r.status === 'COMPLETED');
+    const isCompleted = group.completed || completedRequest;
+    
+    let status = 'ACTIVE';
+    if (isCompleted) {
+      status = 'COMPLETED';
+    } else if (acceptedRequest) {
+      status = acceptedRequest.status;
+    } else if (activeCount > 0) {
+      status = 'ACTIVE';
+    } else {
+      status = 'EXPIRED';
+    }
+    
+    const statusBadge = getStatusBadge(status);
+    const isPaymentSubmitted = status === 'PAYMENT_SUBMITTED';
+   
+            
+    return (
+      <div key={group.groupId || group._id} className="bg-[#0A1F1A] border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-all">
+                <div className="p-4">
+                  {/* Header */}
+                  <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                        activeCount > 0 ? 'bg-green-500/20 text-green-400' : 
+                        acceptedRequest ? 'bg-yellow-500/20 text-yellow-400' : 
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {activeCount > 0 ? activeCount : (acceptedRequest ? '📸' : '✗')}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold flex items-center gap-2">
+                          {activeCount > 0 
+                            ? `${activeCount} users waiting` 
+                            : acceptedRequest 
+                              ? `Payment Submitted by: ${acceptedRequest.acceptedBy?.userId || 'User'}` 
+                              : 'All expired'}
+                          <span className="text-[8px] text-gray-500">
+                            Created: {formatDate(group.createdAt)}
+                          </span>
+                        </p>
+                        <div className="flex gap-2 mt-1">
+                          <span className={`inline-block px-2 py-0.5 text-[8px] font-black uppercase rounded-full border ${statusBadge.color}`}>
+                            {statusBadge.label}
+                          </span>
+                          <span className="text-[8px] text-gray-500">
+                            Total users: {group.totalUsers}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-black text-[#00F5A0]">₹{group.amount}</p>
+                    </div>
+                  </div>
+
+                  {/* Users List */}
+                  {group.requests && group.requests.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-[8px] text-gray-500 mb-1 flex items-center gap-1">
+                        <Users size={10} /> Users in this group:
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {group.requests.map(req => (
+                          <div key={req._id} className="flex items-center gap-1 bg-black/30 px-2 py-1 rounded-lg">
+                            <span className={`w-2 h-2 rounded-full ${
+                              req.status === 'COMPLETED' ? 'bg-purple-500' :
+                              req.status === 'PAYMENT_SUBMITTED' ? 'bg-yellow-500 animate-pulse' :
+                              req.status === 'ACCEPTED' ? 'bg-blue-500' :
+                              req.status === 'ACTIVE' ? 'bg-green-500' : 'bg-gray-500'
+                            }`} />
+                            <span className="text-[8px] font-mono">{req.createdFor?.userId || 'Unknown'}</span>
+                            {req.acceptedBy && (
+                              <span className="text-[6px] text-blue-400 ml-1">
+                                (accepted)
+                              </span>
+                            )}
+                            {req.status === 'PAYMENT_SUBMITTED' && (
+                              <span className="text-[6px] text-yellow-400 ml-1 animate-pulse">
+                                proof uploaded
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Screenshots Preview - Show for PAYMENT_SUBMITTED */}
+                  {acceptedRequest?.paymentScreenshots && acceptedRequest.paymentScreenshots.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-[8px] text-gray-500 mb-1 flex items-center gap-1">
+                        <Camera size={10} /> Payment Proof 
+                        <span className="text-yellow-400 text-[8px]">(click to view)</span>
+                      </p>
+                      <div className="flex gap-2">
+                        {acceptedRequest.paymentScreenshots.filter(ss => ss.isActive).slice(0, 3).map((ss, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              setSelectedRequest(acceptedRequest);
+                              setShowScreenshotModal(true);
+                            }}
+                            className="w-16 h-16 rounded-lg overflow-hidden border border-white/10 hover:border-[#00F5A0] transition-all group relative"
+                          >
+                            <img 
+                              src={`https://cpay-link-backend.onrender.com${ss.url}`}
+                              alt="proof"
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                            />
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                              <Eye size={16} className="text-[#00F5A0]" />
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  {isPaymentSubmitted && acceptedRequest && (
+                    <button
+                      onClick={() => handleConfirm(acceptedRequest._id)}
+                      disabled={confirming === acceptedRequest._id}
+                      className="w-full mt-3 bg-gradient-to-r from-[#00F5A0] to-green-500 text-black py-2.5 rounded-xl font-bold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {confirming === acceptedRequest._id ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <>
+                          <CheckCircle size={16} />
+                          CONFIRM & CREDIT (₹{acceptedRequest.amount})
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {acceptedRequest && acceptedRequest.status === 'ACCEPTED' && !acceptedRequest.paymentScreenshots?.length && (
+                    <div className="mt-3 text-center text-xs text-blue-500 bg-blue-500/10 p-2 rounded-lg">
+                      📸 Waiting for user to upload payment proof
+                    </div>
+                  )}
+
+                  {activeCount > 0 && !acceptedRequest && (
+                    <div className="mt-3 text-center text-xs text-yellow-500 bg-yellow-500/10 p-2 rounded-lg">
+                      ⏳ {activeCount} user(s) can accept this request (first come first serve)
+                    </div>
+                  )}
+
+                  {group.completed && (
+                    <div className="mt-3 text-center text-xs text-green-500 bg-green-500/10 p-2 rounded-lg">
+                      ✅ Completed
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-3 bg-[#0A1F1A] border border-white/10 rounded-xl p-3">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 disabled:opacity-50 hover:bg-white/10"
+          >
+            Previous
+          </button>
+          <span className="text-xs text-gray-500">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 disabled:opacity-50 hover:bg-white/10"
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      {/* Screenshot Modal */}
+      {showScreenshotModal && selectedRequest && (
+        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[500] p-4 backdrop-blur-sm">
+          <div className="bg-[#0A1F1A] rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b border-white/10 flex justify-between items-center sticky top-0 bg-[#0A1F1A]">
+              <h3 className="font-bold flex items-center gap-2">
+                <Camera size={16} className="text-[#00F5A0]" />
+                Payment Proof - ₹{selectedRequest.amount}
+                <span className="text-[10px] text-gray-500">
+                  Uploaded by: {selectedRequest.acceptedBy?.userId}
+                </span>
+              </h3>
+              <button onClick={() => setShowScreenshotModal(false)} className="p-2 hover:bg-white/10 rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-4">
+              {selectedRequest.paymentScreenshots?.filter(ss => ss.isActive).map((ss, idx) => (
+                <div key={idx} className="mb-4">
+                  <img
+                    src={`https://cpay-link-backend.onrender.com${ss.url}`}
+                    alt={`Payment Proof ${idx + 1}`}
+                    className="max-w-full max-h-[60vh] mx-auto rounded-lg border border-white/10"
+                  />
+                  <p className="text-[10px] text-gray-500 text-center mt-2">
+                    Uploaded: {formatDate(ss.uploadedAt)}
+                  </p>
+                </div>
+              ))}
+              <div className="mt-4 flex gap-3">
+                <button
+                  onClick={() => setShowScreenshotModal(false)}
+                  className="flex-1 bg-white/10 py-2 rounded-lg font-bold text-sm"
+                >
+                  Close
+                </button>
+                {selectedRequest.status === 'PAYMENT_SUBMITTED' && (
+                  <button
+                    onClick={() => {
+                      handleConfirm(selectedRequest._id);
+                      setShowScreenshotModal(false);
+                    }}
+                    className="flex-1 bg-[#00F5A0] text-black py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle size={16} />
+                    Confirm & Credit
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
