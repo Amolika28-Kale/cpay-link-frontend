@@ -479,7 +479,7 @@ const loadAllData = async () => {
       getTeamCashbackSummary(token)
     ]);
 
-    setWallets(w || []);
+setWallets(Array.isArray(w) ? w : []);
     setTransactions(t || []);
 
     // ✅ FIX: Existing scanners merge करा
@@ -2212,31 +2212,56 @@ const SidebarLink = ({ icon, label, active, onClick, badge, highlight }) => (
   </button>
 );
 
-// OverviewPage Component
 const OverviewPage = ({ wallets, transactions, setActiveTab, onRedeem }) => {
   const usdt = wallets.find(w => w.type === "USDT")?.balance || 0;
-  const inr = wallets.find(w => w.type === "INR")?.balance || 0;
+  const inrWallet = wallets.find(w => w.type === "INR");
+  const inr = inrWallet?.balance || 0;
+  const heldINR = inrWallet?.heldBalance || 0;
+  const availableINR = inrWallet?.availableBalance ?? inr;
+  const nextRelease = inrWallet?.nextReleaseAt;
   const cb = wallets.find(w => w.type === "CASHBACK")?.balance || 0;
-  
+
   return (
     <div className="animate-in fade-in space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* USDT Wallet - $ symbol */}
+        
+        {/* USDT Wallet */}
         <WalletCard
           label="USDT Wallet"
           val={`$${usdt.toFixed(2)}`}
           sub={`≈ ₹${(usdt * 95).toLocaleString()}`}
         />
 
-        {/* INR Wallet - ₹ symbol */}
-        <WalletCard
-          label="INR Wallet"
-          val={`₹${inr.toLocaleString()}`}
-          sub="Ready to spend"
-          highlight
-        />
+        {/* INR Wallet - held balance सहित */}
+        <div className="p-6 md:p-8 rounded-[2rem] bg-[#00F5A0] text-black shadow-[0_10px_30px_rgba(0,245,160,0.2)]">
+          <p className="text-[10px] font-black uppercase mb-2 text-black/50">INR Wallet</p>
+          <h3 className="text-2xl md:text-3xl font-black italic tracking-tighter">
+            ₹{availableINR.toLocaleString()}
+          </h3>
+          <p className="text-[10px] font-bold opacity-60 italic">Available to spend</p>
 
-        {/* Cashback Wallet - ₹ symbol */}
+          {heldINR > 0 && (
+            <div className="mt-3 bg-black/10 rounded-xl p-3">
+              <p className="text-[11px] font-black flex items-center gap-1.5">
+                <Clock size={11} />
+                ₹{heldINR.toLocaleString()} on hold
+              </p>
+              <p className="text-[9px] opacity-70 mt-0.5">
+                New deposit — 12hr lock
+                {nextRelease && (
+                  <span className="block">
+                    Releases: {new Date(nextRelease).toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Cashback Wallet */}
         <WalletCard
           label="Cashback"
           val={`₹${cb.toLocaleString()}`}
@@ -2245,29 +2270,77 @@ const OverviewPage = ({ wallets, transactions, setActiveTab, onRedeem }) => {
           onRedeem={onRedeem}
         />
       </div>
-      
-      {/* Rest remains same */}
+
       <div className="flex gap-4">
         <ActionButton icon={<PlusCircle />} label="Deposit" onClick={() => setActiveTab("Deposit")} />
         <ActionButton icon={<ScanLine />} label="Scanner Queue" primary onClick={() => setActiveTab("Scanner")} />
       </div>
-      
+
+      {/* Super Hours Banner */}
+      <SuperHoursBanner />
+
       <div className="bg-[#0A1F1A] border border-white/10 rounded-[2rem] p-6 md:p-8">
         <h3 className="font-black italic mb-6">Recent Ledger</h3>
         <div className="space-y-2">
           {transactions.slice(0, 5).map(tx => (
-            <TransactionRow 
-  key={tx._id} 
-  merchant={tx.type} 
-  date={new Date(tx.createdAt).toLocaleDateString()} 
-  amt={tx.amount}  // फक्त number पाठवा, symbol नको
-  status="SUCCESS" 
-  type={tx.type}   // type पाठवा
-    meta={tx.meta || {}} 
-/>
+            <TransactionRow
+              key={tx._id}
+              merchant={tx.type}
+              date={new Date(tx.createdAt).toLocaleDateString()}
+              amt={tx.amount}
+              status="SUCCESS"
+              type={tx.type}
+              meta={tx.meta || {}}
+            />
           ))}
         </div>
       </div>
+    </div>
+  );
+};
+
+// Add this component near the top of the file (outside OverviewPage):
+const SuperHoursBanner = () => {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(t);
+  }, []);
+  
+  const h = now.getHours(), m = now.getMinutes();
+  const totalMin = h * 60 + m;
+  const inWindow1 = totalMin >= 720 && totalMin < 900;  // 12pm-3pm
+  const inWindow2 = totalMin >= 1080 && totalMin < 1260; // 6pm-9pm
+  const isActive = inWindow1 || inWindow2;
+
+  const nextWindow = () => {
+    if (totalMin < 720) return "12:00 PM";
+    if (totalMin < 1080) return "6:00 PM";
+    return "12:00 PM tomorrow";
+  };
+
+  return (
+    <div className={`p-4 rounded-2xl border flex items-center gap-3 ${
+      isActive 
+        ? "bg-yellow-500/10 border-yellow-500/30 animate-pulse" 
+        : "bg-white/5 border-white/10"
+    }`}>
+      <Zap size={20} className={isActive ? "text-yellow-400" : "text-gray-500"} />
+      <div className="flex-1">
+        <p className="text-xs font-bold">
+          {isActive 
+            ? "⚡ SUPER HOURS ACTIVE NOW!" 
+            : `Super Hours: 12pm–3pm & 6pm–9pm`}
+        </p>
+        <p className="text-[10px] text-gray-500 mt-0.5">
+          {isActive 
+            ? `Window: ${inWindow1 ? "12:00 PM – 3:00 PM" : "6:00 PM – 9:00 PM"}` 
+            : `Next: ${nextWindow()}`}
+        </p>
+      </div>
+      {isActive && (
+        <span className="text-[10px] bg-yellow-500 text-black px-2 py-1 rounded-full font-black">LIVE</span>
+      )}
     </div>
   );
 };
