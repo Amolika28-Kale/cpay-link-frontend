@@ -32,8 +32,6 @@ import jsQR from "jsqr";
 import { QRCodeCanvas } from "qrcode.react";
 import { DepositScreenshotModal } from "./DepositScreenshotModal";
 import ProfilePage from "./ProfilePage";
-// At the top of your UserDashboard.jsx, after imports:
-// console.log('Imported component:', DepositScreenshotModal);
 
 export default function UserDashboard() {
   const navigate = useNavigate();
@@ -1077,16 +1075,29 @@ const readImageFile = (file) => {
   }
 };
 
-  const handleRedeemCashback = async () => {
-    const cashbackWallet = wallets.find(w => w.type === "CASHBACK");
-    
-    if (!cashbackWallet || cashbackWallet.balance <= 0) {
-      toast.error("No cashback available to redeem");
-      return;
-    }
+const handleRedeemCashback = async () => {
+  const cashbackWallet = wallets.find(w => w.type === "CASHBACK");
+  
+  // ✅ Check if cashback is sufficient
+  if (!cashbackWallet || cashbackWallet.balance < 1000) {
+    toast.error(
+      <div className="flex items-center gap-2">
+        <AlertCircle size={20} className="text-red-500" />
+        <div>
+          <div className="font-bold">Insufficient Cashback! ❌</div>
+          <div className="text-xs">Need minimum ₹1000 cashback to redeem</div>
+          <div className="text-xs text-gray-400 mt-1">
+            Current balance: ₹{cashbackWallet?.balance || 0}
+          </div>
+        </div>
+      </div>,
+      { duration: 4000 }
+    );
+    return;
+  }
 
-    setShowRedeemModal(true);
-  };
+  setShowRedeemModal(true);
+};
 
   const confirmRedeem = async () => {
     if (!redeemAmount || Number(redeemAmount) <= 0) {
@@ -2220,6 +2231,9 @@ const OverviewPage = ({ wallets, transactions, setActiveTab, onRedeem }) => {
   const availableINR = inrWallet?.availableBalance ?? inr;
   const nextRelease = inrWallet?.nextReleaseAt;
   const cb = wallets.find(w => w.type === "CASHBACK")?.balance || 0;
+  
+  // ✅ Check if cashback is sufficient for redemption (minimum ₹1000)
+  const canRedeemCashback = cb >= 1000;
 
   return (
     <div className="animate-in fade-in space-y-6">
@@ -2261,12 +2275,12 @@ const OverviewPage = ({ wallets, transactions, setActiveTab, onRedeem }) => {
           )}
         </div>
 
-        {/* Cashback Wallet */}
+        {/* Cashback Wallet - Only show redeem button if balance >= 1000 */}
         <WalletCard
           label="Cashback"
           val={`₹${cb.toLocaleString()}`}
-          sub="Available to redeem"
-          showRedeem={cb > 0}
+          sub={cb >= 1000 ? "Ready to redeem" : "Need atleast ₹1000 to redeem"}
+          showRedeem={cb >= 1000}  // ✅ Only show redeem if balance >= 1000
           onRedeem={onRedeem}
         />
       </div>
@@ -5218,19 +5232,25 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
   );
 };
 
-// WalletCard Component
 const WalletCard = ({ label, val, sub, highlight, showRedeem, onRedeem }) => (
   <div className={`p-6 md:p-8 rounded-[2rem] border ${highlight ? "bg-[#00F5A0] text-black shadow-[0_10px_30px_rgba(0,245,160,0.2)]" : "bg-[#0A1F1A] border-white/10"}`}>
     <p className={`text-[10px] font-black uppercase mb-4 ${highlight ? "text-black/50" : "text-gray-500"}`}>{label}</p>
     <h3 className="text-2xl md:text-3xl font-black italic tracking-tighter">{val}</h3>
     <p className="text-[10px] font-bold opacity-60 italic">{sub}</p>
-    {showRedeem && (
+    
+    {showRedeem ? (
       <button 
         onClick={onRedeem} 
         className="mt-4 text-[9px] font-black bg-[#00F5A0] text-black px-3 py-1 rounded-full uppercase hover:shadow-lg hover:shadow-[#00F5A0]/20 transition-all"
       >
         REDEEM CASHBACK
       </button>
+    ) : (
+      label === "Cashback" && (
+        <div className="mt-4 text-[9px] font-bold text-gray-500 bg-black/20 px-3 py-1 rounded-full text-center">
+          Need atleast ₹1000 to redeem
+        </div>
+      )
     )}
   </div>
 );
