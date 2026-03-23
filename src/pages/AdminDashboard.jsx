@@ -17,6 +17,7 @@ import toast from 'react-hot-toast';
 import { LifeBuoy } from "lucide-react";
 import { SupportView } from "../components/Adminsupporttab";
 import API_BASE from "../services/api";
+import { exportSingleUserToPDF, exportToExcel, exportToPDF } from "../utils/exportUtils";
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [users, setUsers] = useState([]);
@@ -507,6 +508,28 @@ const UsersView = ({
   const [searchExpandedLevel, setSearchExpandedLevel] = useState(null);
   const [searchLevelUsers, setSearchLevelUsers] = useState({});
   const [searchLevelLoading, setSearchLevelLoading] = useState(null);
+  // Add these imports at the top of AdminDashboard.jsx
+
+// Add this inside the UsersView component, before the return statement:
+const handleExportAll = (format) => {
+  if (format === 'excel') {
+    exportToExcel(filteredUsers, 'users_export');
+    toast.success('Excel export started!');
+  } else if (format === 'pdf') {
+    exportToPDF(filteredUsers, 'users_export');
+    toast.success('PDF export started!');
+  }
+};
+
+const handleExportSingleUser = (user, format) => {
+  if (format === 'excel') {
+    exportToExcel([user], `user_${user.userId || user._id}`);
+    toast.success('User details exported!');
+  } else if (format === 'pdf') {
+    exportSingleUserToPDF(user);
+    toast.success('User PDF generated!');
+  }
+};
 
   const API_BASE = 'https://cpay-link-backend.onrender.com';
   // const API_BASE = 'http://localhost:5000';
@@ -639,6 +662,7 @@ const UsersView = ({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  
 
   // ✅ NEW: Search result user cha referral tree inline panel
   const SearchUserReferralPanel = ({ user }) => {
@@ -646,7 +670,9 @@ const UsersView = ({
     const [localExpandedLeg, setLocalExpandedLeg] = useState(null);
 
     return (
+      
       <div className="mt-3 border-t border-white/10 pt-3 space-y-3">
+        
         {/* Summary */}
         <div className="grid grid-cols-4 gap-2">
           <div className="bg-black/40 p-2 rounded-lg text-center">
@@ -879,6 +905,40 @@ const UsersView = ({
           </h3>
           
           <div className="flex items-center gap-2 w-full sm:w-auto">
+             <div className="relative">
+    <button
+      id="exportButton"
+      onClick={(e) => {
+        e.stopPropagation();
+        const dropdown = document.getElementById('exportDropdown');
+        if (dropdown) dropdown.classList.toggle('hidden');
+      }}
+      className="bg-[#00F5A0]/10 text-[#00F5A0] px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-[#00F5A0]/20 transition-all"
+    >
+      <Download size={12} />
+      Export
+      <ChevronDown size={10} />
+    </button>
+    <div
+      id="exportDropdown"
+      className="hidden absolute right-0 mt-2 bg-[#0A1F1A] border border-white/10 rounded-xl shadow-xl z-50 min-w-[160px]"
+    >
+      <button
+        onClick={() => handleExportAll('excel')}
+        className="w-full px-4 py-2 text-left text-xs font-bold text-white hover:bg-white/5 rounded-t-xl flex items-center gap-2"
+      >
+        <Download size={12} />
+        Export All to Excel
+      </button>
+      <button
+        onClick={() => handleExportAll('pdf')}
+        className="w-full px-4 py-2 text-left text-xs font-bold text-white hover:bg-white/5 rounded-b-xl flex items-center gap-2"
+      >
+        <Download size={12} />
+        Export All to PDF
+      </button>
+    </div>
+  </div>
             <div className="flex md:hidden bg-white/5 rounded-lg p-1">
               <button onClick={() => setViewMode('table')} className={`px-2 py-1 rounded text-[8px] font-bold ${viewMode === 'table' ? 'bg-[#00F5A0] text-black' : 'text-gray-400'}`}>Table</button>
               <button onClick={() => setViewMode('cards')} className={`px-2 py-1 rounded text-[8px] font-bold ${viewMode === 'cards' ? 'bg-[#00F5A0] text-black' : 'text-gray-400'}`}>Cards</button>
@@ -1084,14 +1144,39 @@ const UsersView = ({
                               <span className="text-[8px] bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded">A:{totalAccepted}</span>
                             </div>
                           </td>
-                          <td className="px-2 lg:px-3 py-2 lg:py-3 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <button onClick={(e) => { e.stopPropagation(); setSelectedUser(u); }} className="bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-1 rounded-lg text-[8px] font-bold">Details</button>
-                              <button onClick={(e) => { e.stopPropagation(); setExpandedUser(expandedUser === u._id ? null : u._id); }} className="text-gray-500 p-1">
-                                {expandedUser === u._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                              </button>
-                            </div>
-                          </td>
+                        <td className="px-2 lg:px-3 py-2 lg:py-3 text-right">
+  <div className="flex items-center justify-end gap-1">
+    {/* ✅ ADD THIS EXPORT BUTTON */}
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        handleExportSingleUser(u, 'pdf');
+      }}
+      className="text-[#00F5A0] p-1 hover:bg-white/5 rounded"
+      title="Export PDF"
+    >
+      <Download size={12} />
+    </button>
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        setSelectedUser(u);
+      }}
+      className="bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-1 rounded-lg text-[8px] font-bold"
+    >
+      Details
+    </button>
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        setExpandedUser(expandedUser === u._id ? null : u._id);
+      }}
+      className="text-gray-500 p-1"
+    >
+      {expandedUser === u._id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+    </button>
+  </div>
+</td>
                         </tr>
                         {expandedUser === u._id && (
                           <tr className="bg-black/40">
@@ -1162,10 +1247,29 @@ const totalEarnings = user.legs?.reduce((sum, leg) => sum + (leg.stats?.totalEar
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <button onClick={(e) => { e.stopPropagation(); setSelectedUser(user); }} className="bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-1 rounded-lg text-[8px] font-bold">View</button>
-          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-        </div>
+       <div className="flex items-center gap-1">
+  {/* ✅ ADD THIS EXPORT BUTTON */}
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      handleExportSingleUser(user, 'pdf');
+    }}
+    className="text-[#00F5A0] p-1 hover:bg-white/5 rounded"
+    title="Export PDF"
+  >
+    <Download size={12} />
+  </button>
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      setSelectedUser(user);
+    }}
+    className="bg-[#00F5A0]/10 text-[#00F5A0] px-2 py-1 rounded-lg text-[8px] font-bold"
+  >
+    View
+  </button>
+  {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+</div>
       </div>
       <div className="px-3 pb-2 flex gap-1">
         <button onClick={(e) => { e.stopPropagation(); copyToClipboard(user.referralCode); }} className="bg-white/5 text-gray-400 px-2 py-1 rounded-lg text-[8px] font-bold flex items-center gap-1"><Copy size={8} /> Copy Ref</button>
@@ -2942,8 +3046,21 @@ const ScannersView = ({ scanners }) => {
   );
 };
 
-/* ================= SCANNER CARD COMPONENT ================= */
+/* ================= SCANNER CARD COMPONENT - FIXED ================= */
 const ScannerCard = ({ scanner: s, expanded, onToggle, formatDate, formatShortDate, getStatusColor }) => {
+  // Determine the correct creator based on isAutoRequest flag
+  const isSystemRequest = s.isAutoRequest === true;
+  
+  // For system requests, use createdFor if available, otherwise fallback to user
+  const creator = isSystemRequest && s.createdFor ? s.createdFor : s.user;
+  const creatorName = creator?.userId || creator?.email || (isSystemRequest ? 'System' : 'Unknown');
+  const creatorId = creator?._id || (isSystemRequest ? 'System' : 'Unknown');
+  
+  // Acceptor details remain the same
+  const acceptor = s.acceptedBy;
+  const acceptorName = acceptor?.userId || acceptor?.name || acceptor?.email;
+  const acceptorId = acceptor?._id;
+
   return (
     <div className="bg-[#0A1F1A] border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-all">
       {/* Card Header */}
@@ -2951,15 +3068,20 @@ const ScannerCard = ({ scanner: s, expanded, onToggle, formatDate, formatShortDa
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00F5A0] to-green-600 flex items-center justify-center text-black font-bold text-xs">
-              {s.user?.email?.charAt(0)?.toUpperCase() || s.user?.userId?.charAt(0) || 'S'}
+              {creatorName?.charAt(0)?.toUpperCase() || (isSystemRequest ? 'S' : 'U')}
             </div>
             <div>
               <p className="text-xs font-bold truncate max-w-[120px]">
-                {s.user?.email || s.user?.userId || 'System Request'}
+                {creatorName}
               </p>
               <p className="text-[6px] text-gray-500 font-mono">
-                ID: {s._id.slice(-8)}
+                ID: {creatorId !== 'System' ? creatorId?.slice(-8) : 'SYSTEM'}
               </p>
+              {isSystemRequest && (
+                <span className="text-[6px] bg-purple-500/20 text-purple-400 px-1 rounded-full mt-0.5 inline-block">
+                  Auto Request
+                </span>
+              )}
             </div>
           </div>
           <span className={`px-2 py-1 text-[8px] font-black uppercase rounded-full ${getStatusColor(s.status)}`}>
@@ -2989,7 +3111,7 @@ const ScannerCard = ({ scanner: s, expanded, onToggle, formatDate, formatShortDa
           <div className="bg-black/30 p-2 rounded">
             <p className="text-gray-500">Accepted By</p>
             <p className="font-bold truncate">
-              {s.acceptedBy?.name || s.acceptedBy?.userId || '—'}
+              {acceptorName || '—'}
             </p>
           </div>
           <div className="bg-black/30 p-2 rounded">
@@ -3050,39 +3172,39 @@ const ScannerCard = ({ scanner: s, expanded, onToggle, formatDate, formatShortDa
 
           {/* Creator Details */}
           <div className="bg-black/30 p-3 rounded">
-            <p className="text-[8px] font-bold text-[#00F5A0] uppercase tracking-wider mb-2">Creator Details</p>
+            <p className="text-[8px] font-bold text-[#00F5A0] uppercase tracking-wider mb-2">
+              {isSystemRequest ? 'Created For' : 'Creator Details'}
+            </p>
             <div className="space-y-1 text-[8px]">
               <div className="flex justify-between">
                 <span className="text-gray-500">User ID:</span>
-                <span className="font-mono">{s.user?._id || 'System'}</span>
+                <span className="font-mono">{creatorId !== 'System' ? creatorId : 'System'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Email:</span>
-                <span>{s.user?.email || '—'}</span>
+                <span className="text-gray-500">User ID / Email:</span>
+                <span>{creatorName}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">User ID:</span>
-                <span>{s.user?.userId || '—'}</span>
-              </div>
+              {isSystemRequest && s.user && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Accepted By (Scanner):</span>
+                  <span>{s.user?.userId || s.user?.email || '—'}</span>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Acceptor Details */}
-          {s.acceptedBy && (
+          {acceptor && (
             <div className="bg-black/30 p-3 rounded">
               <p className="text-[8px] font-bold text-blue-400 uppercase tracking-wider mb-2">Acceptor Details</p>
               <div className="space-y-1 text-[8px]">
                 <div className="flex justify-between">
                   <span className="text-gray-500">User ID:</span>
-                  <span className="font-mono">{s.acceptedBy._id}</span>
+                  <span className="font-mono">{acceptorId}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Name:</span>
-                  <span>{s.acceptedBy.name || '—'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">User ID:</span>
-                  <span>{s.acceptedBy.userId || '—'}</span>
+                  <span className="text-gray-500">Name/Email:</span>
+                  <span>{acceptorName}</span>
                 </div>
               </div>
             </div>
@@ -3138,11 +3260,16 @@ const ScannerCard = ({ scanner: s, expanded, onToggle, formatDate, formatShortDa
           )}
 
           {/* Auto Request Info */}
-          {s.isAutoRequest && (
-            <div className="bg-blue-500/10 border border-blue-500/20 p-2 rounded">
-              <p className="text-[8px] text-blue-400 flex items-center gap-1">
+          {isSystemRequest && (
+            <div className="bg-purple-500/10 border border-purple-500/20 p-2 rounded">
+              <p className="text-[8px] text-purple-400 flex items-center gap-1">
                 <Zap size={8} /> Auto Request (Cycle {s.autoRequestCycle || 1})
               </p>
+              {s.groupRequestId && (
+                <p className="text-[6px] text-gray-500 mt-1">
+                  Group ID: {s.groupRequestId}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -4461,7 +4588,21 @@ const UserDetailsModal = ({ user, onClose }) => {
                                 Root: {leg.rootUser?.userId || 'N/A'} • {legTotalUsers} users • {unlockedLevels}/21 levels
                               </p>
                             </div>
-                          </div>
+                          
+                           <div className="flex items-center gap-2">
+    {/* ✅ ADD THIS EXPORT BUTTON */}
+    <button
+      onClick={() => exportSingleUserToPDF(userDetails)}
+      className="p-2 hover:bg-white/10 rounded-lg"
+      title="Export to PDF"
+    >
+      <Download size={20} className="text-[#00F5A0]" />
+    </button>
+    <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg">
+      <X size={20} />
+    </button>
+  </div>
+  </div>
                           
                           <div className="flex items-center gap-4">
                             <div className="text-right hidden sm:block">
