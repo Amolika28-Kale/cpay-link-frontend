@@ -2258,10 +2258,10 @@ const OverviewPage = ({ wallets, transactions, setActiveTab, onRedeem }) => {
             <div className="mt-3 bg-black/10 rounded-xl p-3">
               <p className="text-[11px] font-black flex items-center gap-1.5">
                 <Clock size={11} />
-                ₹{heldINR.toLocaleString()} on hold
+                ₹{heldINR.toLocaleString()} Unlocking Shortly
               </p>
               <p className="text-[9px] opacity-70 mt-0.5">
-                New deposit — 12hr lock
+                New deposit — 12hr Cooling Period
                 {nextRelease && (
                   <span className="block">
                     Releases: {new Date(nextRelease).toLocaleTimeString([], { 
