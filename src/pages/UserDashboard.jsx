@@ -140,6 +140,7 @@ const [myDeposits, setMyDeposits] = useState([]);
 const [selectedDeposit, setSelectedDeposit] = useState(null);
 const [showDepositScreenshotModal, setShowDepositScreenshotModal] = useState(false);
 const [depositUpdateReason, setDepositUpdateReason] = useState("");
+const walletExpiryToastShown = useRef(false);
   
     // Helper function to check if request is expired
   const isRequestExpired = (request) => {
@@ -441,19 +442,20 @@ useEffect(() => {
         localStorage.setItem("walletExpiry", status.expiryDate);
       }
       
-      // Show warning if near expiry
-      if (status.activated && status.remainingDays <= 2 && status.remainingDays > 0) {
-        toast(
-          <div className="flex items-center gap-2">
-            <AlertCircle size={20} className="text-yellow-500" />
-            <div>
-              <div className="font-bold text-yellow-500">Wallet Expiring Soon!</div>
-              <div className="text-xs">{status.remainingDays} days remaining</div>
-            </div>
-          </div>,
-          { duration: 10000 }
-        );
-      }
+  // ✅ नवीन code (हा टाका)
+if (status.activated && status.remainingDays <= 2 && status.remainingDays > 0 && !walletExpiryToastShown.current) {
+  walletExpiryToastShown.current = true;
+  toast(
+    <div className="flex items-center gap-2">
+      <AlertCircle size={20} className="text-yellow-500" />
+      <div>
+        <div className="font-bold text-yellow-500">Wallet Expiring Soon!</div>
+        <div className="text-xs">{status.remainingDays} days remaining</div>
+      </div>
+    </div>,
+    { duration: 10000 }
+  );
+}
       
     } catch (error) {
       // console.error("Error loading activation status:", error);
