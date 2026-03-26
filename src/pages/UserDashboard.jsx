@@ -154,21 +154,37 @@ const walletExpiryToastShown = useRef(false);
   };
 
   
-  // Calculate counts - FIXED to handle expired requests properly
-  const activeRequestsCount = scanners.filter(s => 
-    s.status === "ACTIVE" && 
-    String(s.user?._id) !== String(user.id || user._id) &&
-    !isRequestExpired(s) // Only count non-expired requests
-  ).length;
+  // // Calculate counts - FIXED to handle expired requests properly
+  // const activeRequestsCount = scanners.filter(s => 
+  //   s.status === "ACTIVE" && 
+  //   String(s.user?._id) !== String(user.id || user._id) &&
+  //   !isRequestExpired(s) // Only count non-expired requests
+  // ).length;
   
-  const myActiveRequestsCount = scanners.filter(s => 
-    s.status === "ACTIVE" && 
-    String(s.user?._id) === String(user.id || user._id) && 
-    !s.acceptedBy &&
-    !isRequestExpired(s) // Only count non-expired requests
-  ).length;
+  // const myActiveRequestsCount = scanners.filter(s => 
+  //   s.status === "ACTIVE" && 
+  //   String(s.user?._id) === String(user.id || user._id) && 
+  //   !s.acceptedBy &&
+  //   !isRequestExpired(s) // Only count non-expired requests
+  // ).length;
 
+// Update activeRequestsCount
+const activeRequestsCount = scanners.filter(s => 
+  s.status === "ACTIVE" && 
+  String(s.user?._id) !== String(user.id || user._id) &&
+  !isRequestExpired(s) &&
+  s.status !== "COMPLETED" && // Add this
+  s.status !== "EXPIRED"      // Add this
+).length;
 
+const myActiveRequestsCount = scanners.filter(s => 
+  s.status === "ACTIVE" && 
+  String(s.user?._id) === String(user.id || user._id) && 
+  !s.acceptedBy &&
+  !isRequestExpired(s) &&
+  s.status !== "COMPLETED" && // Add this
+  s.status !== "EXPIRED"      // Add this
+).length;
 
   // Play notification sound
   const playNotificationSound = (type = 'new') => {
@@ -479,16 +495,26 @@ const loadAllData = async () => {
       getTeamCashbackSummary(token)
     ]);
 
-setWallets(Array.isArray(w) ? w : []);
+    setWallets(Array.isArray(w) ? w : []);
     setTransactions(t || []);
 
-    // ✅ FIX: Existing scanners merge करा
+    // ✅ FIX: Filter out COMPLETED and EXPIRED requests from backend
+    const backend = (s || []).filter(req => 
+      req.status !== "COMPLETED" && 
+      req.status !== "EXPIRED"
+    );
+    
+    // ✅ FIX: Merge only non-completed/non-expired requests
     setScanners(prev => {
-      const backend = s || [];
       const merged = [...backend];
       
-      // prev मध्ये जे requests आहेत पण backend मध्ये नाहीत, ते add करा
+      // prev मध्ये जे requests आहेत पण backend मध्ये नाहीत आणि COMPLETED/EXPIRED नाहीत, ते add करा
       prev.forEach(req => {
+        // Skip if request is already completed or expired
+        if (req.status === "COMPLETED" || req.status === "EXPIRED") {
+          return;
+        }
+        
         const exists = merged.find(b => b._id === req._id);
         if (!exists) {
           merged.push(req);
@@ -500,16 +526,16 @@ setWallets(Array.isArray(w) ? w : []);
 
     setPaymentMethods(pm || []);
 
-   if (ref?.success && ref?.data) {
-  setReferralData({
-    referralCode: ref.data.referralCode || "",
-    totalReferrals: ref.data.totalTeam || 0,
-    referralEarnings: { total: ref.data.totalEarnings || 0 },
-    cashbackBalance: 0,
-    referralTree: {},
-    earningsByLevel: {}
-  });
-}
+    if (ref?.success && ref?.data) {
+      setReferralData({
+        referralCode: ref.data.referralCode || "",
+        totalReferrals: ref.data.totalTeam || 0,
+        referralEarnings: { total: ref.data.totalEarnings || 0 },
+        cashbackBalance: 0,
+        referralTree: {},
+        earningsByLevel: {}
+      });
+    }
 
     setTeamStats(team);
 
@@ -519,7 +545,32 @@ setWallets(Array.isArray(w) ? w : []);
     setLoading(false);
   }
 };
-// ==================== ADD THIS FUNCTION AFTER loadAllData (around line 350) ====================
+
+const cleanupCompletedRequests = () => {
+  setScanners(prev => {
+    const now = new Date();
+    const filtered = prev.filter(s => 
+      s.status !== "COMPLETED" && 
+      s.status !== "EXPIRED" &&
+      !(s.status === "ACTIVE" && new Date(s.expiresAt) < now)
+    );
+    
+    if (filtered.length !== prev.length) {
+      console.log(`✅ Cleaned up ${prev.length - filtered.length} completed/expired requests`);
+    }
+    
+    return filtered;
+  });
+};
+
+// Add this useEffect for auto-cleanup
+useEffect(() => {
+  const cleanupInterval = setInterval(() => {
+    cleanupCompletedRequests();
+  }, 5000); // Clean every 5 seconds
+  
+  return () => clearInterval(cleanupInterval);
+}, []);
 
 // ==================== FIX: Load my deposits ====================
 const loadMyDeposits = async () => {
@@ -2890,6 +2941,29 @@ const isAcceptedByCurrentUser = () => {
         </div>
       )}
 
+      {/* UTR Request Indicator - Only visible to acceptor */}
+{s.utrRequested && isAcceptedByCurrentUser() && s.status === "PAYMENT_SUBMITTED" && (
+  <div className="mb-3 p-3 bg-yellow-500/20 rounded-xl border border-yellow-500/30 animate-pulse">
+    <div className="flex items-center gap-2 mb-2">
+      <AlertCircle size={16} className="text-yellow-400" />
+      <span className="text-xs font-bold text-yellow-400">📩 UTR NUMBER REQUESTED!</span>
+    </div>
+    <p className="text-[10px] text-gray-300">
+      The bill creator has requested the UTR number screenshot. Please upload the UTR screenshot immediately.
+    </p>
+    <button
+      onClick={() => {
+        // Open screenshot modal for UTR upload
+        openScreenshotModal();
+      }}
+      className="mt-2 w-full bg-yellow-500/30 text-yellow-400 py-2 rounded-lg text-[10px] font-bold hover:bg-yellow-500/40 transition-all flex items-center justify-center gap-2"
+    >
+      <UploadCloud size={12} />
+      UPLOAD UTR SCREENSHOT NOW
+    </button>
+  </div>
+)}
+
       {/* Action Buttons */}
       <div className="mt-auto space-y-2">
         {isOwner ? (
@@ -2920,24 +2994,48 @@ const isAcceptedByCurrentUser = () => {
                 )}
               </button>
               
-              {/* ✅ CONFIRM RECEIPT button - proofViewed वर condition */}
-              {!isAutoRequest && (
-                <button 
-                  onClick={() => {
-                    if (proofViewed) {
-                      confirmRequest(s._id).then(loadAllData);
-                    }
-                  }}
-                  disabled={!proofViewed}
-                  className={`w-full py-3 rounded-xl font-black text-sm transition-all ${
-                    proofViewed 
-                      ? "bg-gradient-to-r from-[#00F5A0] to-[#00d88c] text-black hover:shadow-lg hover:shadow-[#00F5A0]/20 cursor-pointer" 
-                      : "bg-gray-700 text-gray-400 cursor-not-allowed opacity-50"
-                  }`}
-                >
-                  {proofViewed ? "✅ CONFIRM RECEIPT" : "🔒 VIEW PROOF FIRST"}
-                </button>
-              )}
+           {/* ✅ CONFIRM RECEIPT button - INSTANT confirmation */}
+{!isAutoRequest && (
+  <button 
+    onClick={async () => {
+      if (!proofViewed) {
+        toast.error("Please view proof first");
+        return;
+      }
+      
+      try {
+        // Disable button to prevent double click
+        const btn = event.target;
+        btn.disabled = true;
+        btn.innerText = "⏳ CONFIRMING...";
+        
+        await confirmRequest(s._id);
+        
+        toast.success("Payment confirmed successfully! 🎉");
+        
+        // Immediately refresh data
+        await loadAllData();
+        
+        btn.innerText = "✅ CONFIRMED";
+        setTimeout(() => {
+          if (btn) btn.disabled = false;
+        }, 1000);
+      } catch (error) {
+        toast.error("Failed to confirm: " + error.message);
+        btn.disabled = false;
+        btn.innerText = "✅ CONFIRM RECEIPT";
+      }
+    }}
+    disabled={!proofViewed}
+    className={`w-full py-3 rounded-xl font-black text-sm transition-all ${
+      proofViewed 
+        ? "bg-gradient-to-r from-[#00F5A0] to-[#00d88c] text-black hover:shadow-lg hover:shadow-[#00F5A0]/20 cursor-pointer" 
+        : "bg-gray-700 text-gray-400 cursor-not-allowed opacity-50"
+    }`}
+  >
+    {proofViewed ? "✅ CONFIRM RECEIPT" : "🔒 VIEW PROOF FIRST"}
+  </button>
+)}
             </div>
           ) : s.status === "ACTIVE" && !s.acceptedBy ? (
             <button 
