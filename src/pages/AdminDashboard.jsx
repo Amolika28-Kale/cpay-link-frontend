@@ -177,7 +177,7 @@ const fetchSystemRequests = async () => {
   }
 };
 // Add this function for creating system request
-const handleCreateSystemRequest = async (userId, amount = 900) => {
+const handleCreateSystemRequest = async (userId, amount = 2000) => {
   if (!userId) {
     toast.error("Please enter User ID");
     return;
@@ -3766,7 +3766,7 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
       return;
     }
     const userId = targetUserType === 'all' ? 'all' : selectedUserId;
-    onCreateRequest(userId, 900);
+    onCreateRequest(userId, 2000);
     if (targetUserType === 'single') {
       setSelectedUserId('');
     }
@@ -3799,7 +3799,7 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
       <div className="bg-[#0A1F1A] border border-white/10 rounded-xl p-4">
         <h2 className="text-lg font-black italic flex items-center gap-2 mb-4">
           <Gift size={20} className="text-[#00F5A0]" />
-          System Requests (₹900 Auto Requests)
+          System Requests (₹2000 Auto Requests)
           <span className="bg-[#00F5A0]/10 text-[#00F5A0] text-[10px] px-2 py-1 rounded-full">
             {filteredRequests.length} Groups
           </span>
@@ -3928,7 +3928,7 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
               ) : (
                 <PlusCircle size={16} />
               )}
-              Create System Request (₹900)
+              Create System Request (2000)
             </button>
           </div>
         </div>
