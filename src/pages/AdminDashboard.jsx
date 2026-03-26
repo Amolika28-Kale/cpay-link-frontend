@@ -3650,13 +3650,13 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [creating2000, setCreating2000] = useState(false);
+  const [creating1000, setCreating1000] = useState(false);
   const itemsPerPage = 10;
 
-  // const API_BASE = 'http://localhost:5000/api';
-    const API_BASE = 'https://cpay-link-backend.onrender.com/api';
+  const API_BASE = 'https://cpay-link-backend.onrender.com/api';
 
-
-  // ✅ Fetch all users on component mount
+  // Fetch users on mount
   useEffect(() => {
     const fetchUsers = async () => {
       setLoadingUsers(true);
@@ -3671,12 +3671,7 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
           setUserList(data);
         } else if (data.success && Array.isArray(data.users)) {
           setUserList(data.users);
-        } else if (data.users && Array.isArray(data.users)) {
-          setUserList(data.users);
-        } else if (data.data && Array.isArray(data.data)) {
-          setUserList(data.data);
         } else {
-          console.warn("Unexpected user data format:", data);
           setUserList([]);
         }
       } catch (error) {
@@ -3689,21 +3684,90 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
     fetchUsers();
   }, []);
 
-  // ✅ Filter users based on search
+  // Filter users for dropdown
   const filteredUsers = userList.filter(user => 
     user.userId?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
     user.email?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
     user._id?.toLowerCase().includes(userSearchTerm.toLowerCase())
   );
 
-  // ✅ Handle user selection
   const handleSelectUser = (user) => {
     setSelectedUserId(user.userId);
     setShowUserDropdown(false);
     setUserSearchTerm('');
   };
 
-  // ✅ Check for undefined requests
+  // ✅ Handle Create for ₹2000
+  const handleCreate2000 = async () => {
+    if (targetUserType === 'single' && !selectedUserId) {
+      toast.error("Please select a user");
+      return;
+    }
+    
+    const userId = targetUserType === 'all' ? 'all' : selectedUserId;
+    
+    setCreating2000(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/admin/create-system-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ userId, amount: 2000 })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`₹2000 request created for ${userId === 'all' ? 'all users' : selectedUserId}`);
+        onRefresh();
+        if (targetUserType === 'single') setSelectedUserId('');
+      } else {
+        toast.error(data.message || "Failed to create request");
+      }
+    } catch (error) {
+      toast.error("Failed to create request");
+    } finally {
+      setCreating2000(false);
+    }
+  };
+
+  // ✅ Handle Create for ₹1000
+  const handleCreate1000 = async () => {
+    if (targetUserType === 'single' && !selectedUserId) {
+      toast.error("Please select a user");
+      return;
+    }
+    
+    const userId = targetUserType === 'all' ? 'all' : selectedUserId;
+    
+    setCreating1000(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/admin/create-system-request`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ userId, amount: 1000 })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`₹1000 request created for ${userId === 'all' ? 'all users' : selectedUserId}`);
+        onRefresh();
+        if (targetUserType === 'single') setSelectedUserId('');
+      } else {
+        toast.error(data.message || "Failed to create request");
+      }
+    } catch (error) {
+      toast.error("Failed to create request");
+    } finally {
+      setCreating1000(false);
+    }
+  };
+
+  // Check for undefined requests
   if (!requests) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -3713,7 +3777,7 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
     );
   }
 
-  // Filter requests - ensure requests is an array
+  // Filter requests
   const filteredRequests = (Array.isArray(requests) ? requests : []).filter(req => {
     if (filter !== 'all' && req.status !== filter) return false;
     if (searchTerm) {
@@ -3760,24 +3824,13 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
     }
   };
 
-  const handleCreate = () => {
-    if (targetUserType === 'single' && !selectedUserId) {
-      toast.error("Please select a user");
-      return;
-    }
-    const userId = targetUserType === 'all' ? 'all' : selectedUserId;
-    onCreateRequest(userId, 2000);
-    if (targetUserType === 'single') {
-      setSelectedUserId('');
-    }
-  };
-
   const getStatusBadge = (status) => {
     const config = {
       'ACTIVE': { color: 'bg-green-500/20 text-green-500 border-green-500/30', label: 'ACTIVE' },
       'ACCEPTED': { color: 'bg-blue-500/20 text-blue-500 border-blue-500/30', label: 'ACCEPTED' },
       'PAYMENT_SUBMITTED': { color: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30 animate-pulse', label: 'PROOF SUBMITTED' },
-      'COMPLETED': { color: 'bg-purple-500/20 text-purple-500 border-purple-500/30', label: 'COMPLETED' }
+      'COMPLETED': { color: 'bg-purple-500/20 text-purple-500 border-purple-500/30', label: 'COMPLETED' },
+      'EXPIRED': { color: 'bg-gray-500/20 text-gray-500 border-gray-500/30', label: 'EXPIRED' }
     };
     return config[status] || { color: 'bg-gray-500/20 text-gray-500', label: status };
   };
@@ -3799,141 +3852,146 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
       <div className="bg-[#0A1F1A] border border-white/10 rounded-xl p-4">
         <h2 className="text-lg font-black italic flex items-center gap-2 mb-4">
           <Gift size={20} className="text-[#00F5A0]" />
-          System Requests (₹2000 Auto Requests)
+          System Requests
           <span className="bg-[#00F5A0]/10 text-[#00F5A0] text-[10px] px-2 py-1 rounded-full">
             {filteredRequests.length} Groups
           </span>
         </h2>
 
-        {/* Create Request Form */}
-        <div className="flex flex-col gap-3 mb-4 p-3 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl border border-purple-500/20">
+        {/* ✅ TWO BUTTONS - User Type Selector */}
+        <div className="flex gap-3 mb-4">
+          <button
+            onClick={() => {
+              setTargetUserType('single');
+              setSelectedUserId('');
+            }}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+              targetUserType === 'single' 
+                ? 'bg-[#00F5A0] text-black' 
+                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+            }`}
+          >
+            Single User
+          </button>
+          <button
+            onClick={() => {
+              setTargetUserType('all');
+              setSelectedUserId('');
+            }}
+            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+              targetUserType === 'all' 
+                ? 'bg-[#00F5A0] text-black' 
+                : 'bg-white/5 text-gray-400 hover:bg-white/10'
+            }`}
+          >
+            All Users
+          </button>
+        </div>
+        
+        {/* User Selector & Both Buttons */}
+        <div className="flex flex-col gap-3">
+          
+          {/* User Selector */}
+          {targetUserType === 'single' && (
+            <div className="relative">
+              <div 
+                className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold outline-none cursor-pointer flex items-center justify-between hover:border-[#00F5A0] transition-all"
+                onClick={() => setShowUserDropdown(!showUserDropdown)}
+              >
+                <span className={selectedUserId ? "text-white" : "text-gray-500"}>
+                  {selectedUserId ? selectedUserId : "Select a user..."}
+                </span>
+                <ChevronDown size={16} className={`text-gray-400 transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
+              </div>
+              
+              {showUserDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-[#0A1F1A] border border-white/10 rounded-xl shadow-xl z-50 max-h-80 overflow-hidden">
+                  <div className="p-2 border-b border-white/10">
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                      <input
+                        type="text"
+                        placeholder="Search by User ID or Email..."
+                        value={userSearchTerm}
+                        onChange={(e) => setUserSearchTerm(e.target.value)}
+                        className="w-full bg-black/40 border border-white/10 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-[#00F5A0]"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {loadingUsers ? (
+                      <div className="p-4 text-center">
+                        <Loader2 size={20} className="animate-spin text-[#00F5A0] mx-auto" />
+                        <p className="text-xs text-gray-500 mt-2">Loading users...</p>
+                      </div>
+                    ) : filteredUsers.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500 text-sm">
+                        No users found
+                      </div>
+                    ) : (
+                      filteredUsers.map(user => (
+                        <div
+                          key={user._id}
+                          className="p-3 hover:bg-white/5 cursor-pointer transition-all border-b border-white/5 last:border-0"
+                          onClick={() => handleSelectUser(user)}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-bold text-white">{user.userId}</p>
+                              <p className="text-xs text-gray-500">{user.email}</p>
+                            </div>
+                            <span className="text-[8px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+                              ID: {user._id.slice(-6)}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {targetUserType === 'all' && (
+            <div className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-gray-400">
+              ⚡ This request will be sent to ALL active users
+            </div>
+          )}
+          
+          {/* ✅ TWO BUTTONS - Both amounts simultaneously */}
           <div className="flex gap-3">
             <button
-              onClick={() => {
-                setTargetUserType('single');
-                setSelectedUserId('');
-              }}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                targetUserType === 'single' 
-                  ? 'bg-[#00F5A0] text-black' 
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
-              }`}
+              onClick={handleCreate2000}
+              disabled={creating2000 || (targetUserType === 'single' && !selectedUserId)}
+              className="flex-1 bg-gradient-to-r from-[#00F5A0] to-green-500 text-black px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              Single User
-            </button>
-            <button
-              onClick={() => {
-                setTargetUserType('all');
-                setSelectedUserId('');
-              }}
-              className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                targetUserType === 'all' 
-                  ? 'bg-[#00F5A0] text-black' 
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
-              }`}
-            >
-              All Users
-            </button>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row gap-3">
-            {targetUserType === 'single' && (
-              <div className="flex-1 relative">
-                {/* User Selector with Dropdown */}
-                <div className="relative">
-                  <div 
-                    className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold outline-none cursor-pointer flex items-center justify-between hover:border-[#00F5A0] transition-all"
-                    onClick={() => setShowUserDropdown(!showUserDropdown)}
-                  >
-                    <span className={selectedUserId ? "text-white" : "text-gray-500"}>
-                      {selectedUserId ? selectedUserId : "Select a user..."}
-                    </span>
-                    <ChevronDown size={16} className={`text-gray-400 transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
-                  </div>
-                  
-                  {showUserDropdown && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-[#0A1F1A] border border-white/10 rounded-xl shadow-xl z-50 max-h-80 overflow-hidden">
-                      <div className="p-2 border-b border-white/10">
-                        <div className="relative">
-                          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-                          <input
-                            type="text"
-                            placeholder="Search by User ID or Email..."
-                            value={userSearchTerm}
-                            onChange={(e) => setUserSearchTerm(e.target.value)}
-                            className="w-full bg-black/40 border border-white/10 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-[#00F5A0]"
-                            autoFocus
-                          />
-                        </div>
-                      </div>
-                      <div className="max-h-64 overflow-y-auto">
-                        {loadingUsers ? (
-                          <div className="p-4 text-center">
-                            <Loader2 size={20} className="animate-spin text-[#00F5A0] mx-auto" />
-                            <p className="text-xs text-gray-500 mt-2">Loading users...</p>
-                          </div>
-                        ) : filteredUsers.length === 0 ? (
-                          <div className="p-4 text-center text-gray-500 text-sm">
-                            No users found
-                          </div>
-                        ) : (
-                          filteredUsers.map(user => (
-                            <div
-                              key={user._id}
-                              className="p-3 hover:bg-white/5 cursor-pointer transition-all border-b border-white/5 last:border-0"
-                              onClick={() => handleSelectUser(user)}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-sm font-bold text-white">{user.userId}</p>
-                                  <p className="text-xs text-gray-500">{user.email}</p>
-                                </div>
-                                <span className="text-[8px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
-                                  ID: {user._id.slice(-6)}
-                                </span>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Show selected user info */}
-                {selectedUserId && (
-                  <div className="mt-2 p-2 bg-green-500/10 rounded-lg border border-green-500/20">
-                    <p className="text-[10px] text-green-400 flex items-center gap-1">
-                      <CheckCircle size={12} />
-                      Selected User: {selectedUserId}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {targetUserType === 'all' && (
-              <div className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-gray-400">
-                ⚡ This request will be sent to ALL active users
-              </div>
-            )}
-            
-            <button
-              onClick={handleCreate}
-              disabled={creatingRequest || (targetUserType === 'single' && !selectedUserId)}
-              className="bg-gradient-to-r from-[#00F5A0] to-green-500 text-black px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50 flex items-center gap-2"
-            >
-              {creatingRequest ? (
+              {creating2000 ? (
                 <Loader2 size={16} className="animate-spin" />
               ) : (
                 <PlusCircle size={16} />
               )}
-              Create System Request (2000)
+              Create ₹2000 Request
+            </button>
+            
+            <button
+              onClick={handleCreate1000}
+              disabled={creating1000 || (targetUserType === 'single' && !selectedUserId)}
+              className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {creating1000 ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                <PlusCircle size={16} />
+              )}
+              Create ₹1000 Request
             </button>
           </div>
         </div>
-        <p className="text-[10px] text-gray-500 text-center">
-          ⚡ For "All Users" - Only the first user who accepts will get the reward. Others will see it as expired.
+        
+        <p className="text-[10px] text-gray-500 text-center mt-3">
+          ⚡ You can create BOTH requests for the same user. They will appear separately.
         </p>
       </div>
 
@@ -3969,49 +4027,47 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
         </div>
       </div>
 
-      {/* Requests List - Grouped View */}
+      {/* Requests List - Rest remains same */}
       <div className="space-y-3">
- {paginatedRequests.length === 0 ? (
-  <div className="bg-[#0A1F1A] border border-white/10 rounded-xl p-12 text-center">
-    <Gift size={48} className="mx-auto mb-3 opacity-30 text-gray-500" />
-    <p className="text-gray-500 font-bold">No system requests found</p>
-    <p className="text-[10px] text-gray-600 mt-1">Create one above to get started</p>
-  </div>
-) : (
-  paginatedRequests.map(group => {
-    const activeCount = group.requests?.filter(r => r.status === 'ACTIVE').length || 0;
-    // ✅ Find accepted request (ACCEPTED or PAYMENT_SUBMITTED)
-    const acceptedRequest = group.requests?.find(r => r.status === 'ACCEPTED' || r.status === 'PAYMENT_SUBMITTED');
-    const completedRequest = group.requests?.find(r => r.status === 'COMPLETED');
-    const isCompleted = group.completed || completedRequest;
-    
-    let status = 'ACTIVE';
-    if (isCompleted) {
-      status = 'COMPLETED';
-    } else if (acceptedRequest) {
-      status = acceptedRequest.status;
-    } else if (activeCount > 0) {
-      status = 'ACTIVE';
-    } else {
-      status = 'EXPIRED';
-    }
-    
-    const statusBadge = getStatusBadge(status);
-    const isPaymentSubmitted = status === 'PAYMENT_SUBMITTED';
-   
+        {paginatedRequests.length === 0 ? (
+          <div className="bg-[#0A1F1A] border border-white/10 rounded-xl p-12 text-center">
+            <Gift size={48} className="mx-auto mb-3 opacity-30 text-gray-500" />
+            <p className="text-gray-500 font-bold">No system requests found</p>
+            <p className="text-[10px] text-gray-600 mt-1">Create one above to get started</p>
+          </div>
+        ) : (
+          paginatedRequests.map(group => {
+            // ... existing group rendering code (same as before)
+            // (I'm keeping this part same as your existing code)
+            const activeCount = group.requests?.filter(r => r.status === 'ACTIVE').length || 0;
+            const acceptedRequest = group.requests?.find(r => r.status === 'ACCEPTED' || r.status === 'PAYMENT_SUBMITTED');
+            const completedRequest = group.requests?.find(r => r.status === 'COMPLETED');
+            const isCompleted = group.completed || completedRequest;
             
-    return (
-      <div key={group.groupId || group._id} className="bg-[#0A1F1A] border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-all">
+            let status = 'ACTIVE';
+            if (isCompleted) {
+              status = 'COMPLETED';
+            } else if (acceptedRequest) {
+              status = acceptedRequest.status;
+            } else if (activeCount > 0) {
+              status = 'ACTIVE';
+            } else {
+              status = 'EXPIRED';
+            }
+            
+            const statusBadge = getStatusBadge(status);
+            const isPaymentSubmitted = status === 'PAYMENT_SUBMITTED';
+            
+            return (
+              <div key={group.groupId || group._id} className="bg-[#0A1F1A] border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-all">
                 <div className="p-4">
-                  {/* Header */}
+                  {/* Header - Show amount badge with color */}
                   <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                        activeCount > 0 ? 'bg-green-500/20 text-green-400' : 
-                        acceptedRequest ? 'bg-yellow-500/20 text-yellow-400' : 
-                        'bg-gray-500/20 text-gray-400'
+                        group.amount === 2000 ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
                       }`}>
-                        {activeCount > 0 ? activeCount : (acceptedRequest ? '📸' : '✗')}
+                        ₹{group.amount === 2000 ? '2K' : '1K'}
                       </div>
                       <div>
                         <p className="text-xs font-bold flex items-center gap-2">
@@ -4035,10 +4091,13 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-xl font-black text-[#00F5A0]">₹{group.amount}</p>
+                      <p className={`text-xl font-black ${group.amount === 2000 ? 'text-[#00F5A0]' : 'text-blue-400'}`}>
+                        ₹{group.amount}
+                      </p>
                     </div>
                   </div>
 
+                  {/* Rest of the group rendering - same as your existing code */}
                   {/* Users List */}
                   {group.requests && group.requests.length > 0 && (
                     <div className="mb-3">
@@ -4056,14 +4115,10 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
                             }`} />
                             <span className="text-[8px] font-mono">{req.createdFor?.userId || 'Unknown'}</span>
                             {req.acceptedBy && (
-                              <span className="text-[6px] text-blue-400 ml-1">
-                                (accepted)
-                              </span>
+                              <span className="text-[6px] text-blue-400 ml-1">(accepted)</span>
                             )}
                             {req.status === 'PAYMENT_SUBMITTED' && (
-                              <span className="text-[6px] text-yellow-400 ml-1 animate-pulse">
-                                proof uploaded
-                              </span>
+                              <span className="text-[6px] text-yellow-400 ml-1 animate-pulse">proof uploaded</span>
                             )}
                           </div>
                         ))}
@@ -4071,7 +4126,7 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
                     </div>
                   )}
 
-                  {/* Screenshots Preview - Show for PAYMENT_SUBMITTED */}
+                  {/* Screenshots Preview */}
                   {acceptedRequest?.paymentScreenshots && acceptedRequest.paymentScreenshots.length > 0 && (
                     <div className="mb-3">
                       <p className="text-[8px] text-gray-500 mb-1 flex items-center gap-1">

@@ -2385,6 +2385,9 @@ const isOwner = String(getUserId(s.user)) === String(user.id || user._id);
   const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
   const [updateReason, setUpdateReason] = useState("");
   const [uploading, setUploading] = useState(false);
+  // Timer for ACCEPTED requests (time left to submit proof)
+const [acceptTimeLeft, setAcceptTimeLeft] = useState(600); // 10 minutes default
+const [isAcceptExpired, setIsAcceptExpired] = useState(false);
 
   // ✅ NEW: State to track if proof has been viewed
   const [proofViewed, setProofViewed] = useState(false);
@@ -2531,6 +2534,40 @@ const isOwner = String(getUserId(s.user)) === String(user.id || user._id);
   if (s.status === "EXPIRED") {
     return null;
   }
+
+  // ✅ Timer for ACCEPTED requests (time left to submit proof)
+useEffect(() => {
+  if (s.status === "ACCEPTED" && s.acceptedAt) {
+    // Add 10 minutes to acceptedAt time
+    const acceptedTime = new Date(s.acceptedAt).getTime();
+    const expiryTime = acceptedTime + (10 * 60 * 1000); // 10 minutes from acceptance
+    const currentTime = new Date().getTime();
+    let remaining = Math.floor((expiryTime - currentTime) / 1000);
+
+    if (remaining < 0) {
+      setIsAcceptExpired(true);
+      setAcceptTimeLeft(0);
+    } else {
+      setAcceptTimeLeft(remaining);
+      setIsAcceptExpired(false);
+    }
+
+    if (remaining > 0) {
+      const timer = setInterval(() => {
+        setAcceptTimeLeft(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setIsAcceptExpired(true);
+            loadAllData();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }
+}, [s.acceptedAt, s.status, loadAllData]);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -2756,6 +2793,17 @@ const isAcceptedByCurrentUser = () => {
             {formatTime(timeLeft)}
           </div>
         )}
+
+        {/* Timer for ACCEPTED requests */}
+{s.status === "ACCEPTED" && isAcceptedByCurrentUser() && (
+  <div className={`${acceptTimeLeft < 60 ? 'bg-red-500/20 text-red-500 animate-pulse' : 'bg-orange-500/20 text-orange-400'} text-[8px] font-black px-2 py-1.5 rounded-full flex items-center gap-1 border border-orange-500/20`}>
+    <Clock size={10} />
+    Submit Proof: {formatTime(acceptTimeLeft)}
+    {acceptTimeLeft < 60 && (
+      <span className="ml-1 text-[8px] font-bold">⚠️ HURRY!</span>
+    )}
+  </div>
+)}
       </div>
       
       {/* QR Code Image */}
