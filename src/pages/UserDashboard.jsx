@@ -6,7 +6,8 @@ import {
   Users, TrendingUp, Award, Gift, Copy, ChevronDown, ChevronUp, User, Key, AlertCircle,
   ArrowRight,Info,
   HelpCircle,
-  Share2
+  Share2,
+  CreditCard
 } from "lucide-react";
 
 import {
@@ -141,6 +142,7 @@ const [selectedDeposit, setSelectedDeposit] = useState(null);
 const [showDepositScreenshotModal, setShowDepositScreenshotModal] = useState(false);
 const [depositUpdateReason, setDepositUpdateReason] = useState("");
 const walletExpiryToastShown = useRef(false);
+const [upiLink, setUpiLink] = useState("");
   
     // Helper function to check if request is expired
   const isRequestExpired = (request) => {
@@ -911,7 +913,7 @@ const handleCreateScanner = async () => {
   const toastId = toast.loading("Creating pay request...");
 
   try {
-    const res = await requestToPay(uploadAmount, selectedImage);
+    const res = await requestToPay(uploadAmount, selectedImage, upiLink);
 
     if (res?.scanner?._id) {
       const newRequest = {
@@ -949,6 +951,7 @@ const handleCreateScanner = async () => {
       setSelectedImage(null);
       setIsRedeemMode(false);
       setActiveTab("Scanner");
+       setUpiLink("");
       loadAllData();
 
     } else {
@@ -1685,6 +1688,19 @@ const confirmActivation = async () => {
     <span className="text-[10px] text-gray-500">Min: ₹1</span>
     <span className="text-[10px] text-orange-400 font-bold">Max: ₹10,000</span>
   </div>
+</div>
+<div className="mb-4">
+  <label className="text-xs text-gray-500 mb-2 block">UPI ID / Payment Link (Optional)</label>
+  <input
+    type="text"
+    placeholder="Enter UPI ID or payment link (e.g., merchant@upi)"
+    value={upiLink}
+    onChange={(e) => setUpiLink(e.target.value)}
+    className="w-full bg-black/40 border border-white/10 rounded-xl py-4 px-6 font-bold outline-none text-sm"
+  />
+  <p className="text-[8px] text-gray-500 mt-1">
+    This will help users make payment directly via UPI
+  </p>
 </div>
     
   {/* QR Code Upload Options - आता कोणतंही फोटो चालेल */}
@@ -2881,6 +2897,30 @@ const isAcceptedByCurrentUser = () => {
       <h3 className="text-2xl font-black text-center mb-1 text-white">
         ₹{s.amount}
       </h3>
+{s.upiLink && (
+  <div className="mb-3 p-3 bg-blue-500/10 rounded-xl border border-blue-500/20">
+    <p className="text-[10px] text-blue-400 font-bold mb-1 flex items-center gap-1">
+      <CreditCard size={12} /> UPI ID / Payment Link:
+    </p>
+    <div className="flex items-center gap-2">
+      <p className="text-xs text-white font-mono break-all flex-1">
+        {s.upiLink}
+      </p>
+      <button
+        onClick={() => {
+          navigator.clipboard.writeText(s.upiLink);
+          toast.success("UPI ID copied!", { duration: 2000 });
+        }}
+        className="bg-blue-500/20 p-1.5 rounded-lg hover:bg-blue-500/30 transition-colors"
+      >
+        <Copy size={14} className="text-blue-400" />
+      </button>
+    </div>
+    <p className="text-[8px] text-gray-500 mt-2">
+      ⚡ Use this UPI ID to make payment
+    </p>
+  </div>
+)}
       
       {/* Created By - सगळ्यांसाठी एकसारखं दिसेल */}
       <p className="text-center text-[10px] text-gray-500 font-bold mb-3 italic uppercase bg-white/5 py-1.5 px-3 rounded-full mx-auto">
