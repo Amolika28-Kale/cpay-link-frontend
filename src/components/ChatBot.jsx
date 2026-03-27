@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 
 // const API_BASE = "http://localhost:5000/api";
-const API_BASE = "https://cpay-link-backend.onrender.com/api";
+const API_BASE = "https://cpay-link-backend-production.up.railway.app/api";
 const authH = (t) => ({ Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' });
 
 const STATUS = {
