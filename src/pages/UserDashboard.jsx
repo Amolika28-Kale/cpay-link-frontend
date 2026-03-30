@@ -143,6 +143,7 @@ const [showDepositScreenshotModal, setShowDepositScreenshotModal] = useState(fal
 const [depositUpdateReason, setDepositUpdateReason] = useState("");
 const walletExpiryToastShown = useRef(false);
 const [upiLink, setUpiLink] = useState("");
+const [scannerSubTab, setScannerSubTab] = useState("pay"); // "pay" or "accept"
   
     // Helper function to check if request is expired
   const isRequestExpired = (request) => {
@@ -1540,7 +1541,6 @@ const confirmActivation = async () => {
 
 {activeTab === "Scanner" && (
   <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in">
-
     {/* Stats Row - With better labels */}
     <div className="grid grid-cols-2 gap-4">
       <div className="bg-[#0A1F1A] border border-white/10 p-4 rounded-2xl">
@@ -1554,51 +1554,50 @@ const confirmActivation = async () => {
         <p className="text-[8px] text-gray-600 mt-1">Waiting for acceptance</p>
       </div>
     </div>
-{/* 7-DAY LIMIT STATUS - FIXED */}
-<div className="bg-[#0A1F1A] border border-white/10 p-4 rounded-2xl">
-  {/* Header */}
-  <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/10">
-    <span className="text-xs text-gray-400">7-Day Limit Status</span>
-    {walletActivated && activationStatus?.expiryDate && (
-      <span className="text-[8px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
-        Expires: {new Date(activationStatus.expiryDate).toLocaleDateString()}
-      </span>
-    )}
-  </div>
 
+    {/* 7-DAY LIMIT STATUS - FIXED */}
+    <div className="bg-[#0A1F1A] border border-white/10 p-4 rounded-2xl">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/10">
+        <span className="text-xs text-gray-400">7-Day Limit Status</span>
+        {walletActivated && activationStatus?.expiryDate && (
+          <span className="text-[8px] bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+            Expires: {new Date(activationStatus.expiryDate).toLocaleDateString()}
+          </span>
+        )}
+      </div>
 
-  {/* Total 7-Day Limit - CORRECT: dailyLimit */}
-  <div className="flex justify-between items-center mb-2">
-    <span className="text-xs text-gray-400">Total 7-Day Limit</span>
-    <span className="text-sm font-bold text-[#00F5A0]">
-      ₹{Number(dailyAcceptLimit || activationStatus.dailyLimit || 0).toLocaleString()}
-    </span>
-  </div>
-  
-  
-  {/* Used in Last 7 Days - CORRECT: sevenDayTotal */}
-  <div className="flex justify-between items-center mb-2">
-    <span className="text-xs text-gray-400">Used (Last 7 Days)</span>
-    <span className="text-sm font-bold text-orange-500">
-      ₹{Number(activationStatus.sevenDayTotal || todayAcceptedTotal || 0).toLocaleString()}
-    </span>
-  </div>
-  
-  {/* Remaining for 7 Days - CORRECT: remaining */}
-  <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/10">
-    <span className="text-xs text-gray-400">Remaining for 7 Days</span>
-    <span className="text-sm font-bold text-[#00F5A0]">
-      ₹{Number(activationStatus.remaining || 
-          (dailyAcceptLimit - todayAcceptedTotal) || 0).toLocaleString()}
-      {(dailyAcceptLimit || activationStatus.dailyLimit) > 0 && (
-        <span className="text-[10px] text-gray-500 ml-2">
-          ({Math.round((Number(todayAcceptedTotal || 0) / Number(dailyAcceptLimit || activationStatus.dailyLimit)) * 100)}% used)
+      {/* Total 7-Day Limit - CORRECT: dailyLimit */}
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-xs text-gray-400">Total 7-Day Limit</span>
+        <span className="text-sm font-bold text-[#00F5A0]">
+          ₹{Number(dailyAcceptLimit || activationStatus.dailyLimit || 0).toLocaleString()}
         </span>
-      )}
-    </span>
-  </div>
+      </div>
+      
+      {/* Used in Last 7 Days - CORRECT: sevenDayTotal */}
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-xs text-gray-400">Used (Last 7 Days)</span>
+        <span className="text-sm font-bold text-orange-500">
+          ₹{Number(activationStatus.sevenDayTotal || todayAcceptedTotal || 0).toLocaleString()}
+        </span>
+      </div>
+      
+      {/* Remaining for 7 Days - CORRECT: remaining */}
+      <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/10">
+        <span className="text-xs text-gray-400">Remaining for 7 Days</span>
+        <span className="text-sm font-bold text-[#00F5A0]">
+          ₹{Number(activationStatus.remaining || 
+              (dailyAcceptLimit - todayAcceptedTotal) || 0).toLocaleString()}
+          {(dailyAcceptLimit || activationStatus.dailyLimit) > 0 && (
+            <span className="text-[10px] text-gray-500 ml-2">
+              ({Math.round((Number(todayAcceptedTotal || 0) / Number(dailyAcceptLimit || activationStatus.dailyLimit)) * 100)}% used)
+            </span>
+          )}
+        </span>
+      </div>
 
-   {/* ✅ ACTIVATION BUTTON - जर wallet activated नसेल तर */}
+      {/* ACTIVATION BUTTON - जर wallet activated नसेल तर */}
       {!walletActivated && (
         <button
           onClick={() => setActiveTab("Deposit")}
@@ -1607,361 +1606,386 @@ const confirmActivation = async () => {
           ⚡ ACTIVATE WALLET FIRST - GO TO DEPOSIT
         </button>
       )}
-  
-
-  
-
-  
-    {/* Change Limit Button */}
-{walletActivated && (
-  <button
-    onClick={handleActivateWallet}
-    className="w-full bg-blue-500/20 text-blue-500 py-2 rounded-xl font-black text-xs hover:bg-blue-500/30 transition-all border border-blue-500/20 mb-3"
-  >
-    Change 7-Day Limit (Pay Additional Amount)
-  </button>
-)}
-  {/* Wallet Active Message - CORRECT: remaining */}
-  {walletActivated && (
-    <div className="bg-green-500/10 text-green-500 p-3 rounded-xl text-xs font-bold text-center">
-      <div className="flex items-center justify-center gap-2 mb-1">
-        <CheckCircle size={14} />
-        <span>Wallet Active for 7 Days</span>
-      </div>
-      <div className="text-[10px] text-gray-400">
-        ₹{Number(activationStatus.remaining || 
-            (dailyAcceptLimit - todayAcceptedTotal) || 0).toLocaleString()} remaining this week
-      </div>
-    </div>
-  )}
-  
-</div>
-
-          {/* CREATE PAY REQUEST */}
-<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-  <div className="bg-[#0A1F1A] border border-white/10 p-6 rounded-[2rem]">
-    <h2 className="text-xl font-black text-[#00F5A0] mb-6 italic flex items-center gap-2">
-      <UploadCloud size={20} /> Pay My Bill
-    </h2>
-
-    {/* Redeem Mode Indicator */}
-    {isRedeemMode && (
-      <div className="mb-4 p-3 bg-[#00F5A0]/10 border border-[#00F5A0]/20 rounded-xl">
-        <p className="text-[10px] text-[#00F5A0] font-bold flex items-center gap-1">
-          <Zap size={12} />
-          Redeemed Cashback Mode: Amount fixed at ₹{uploadAmount}
-        </p>
-      </div>
-    )}
-
-    {/* Amount Input - यामध्ये बदल करा */}
-<div className="mb-2">
-  <input
-    type="number"
-    placeholder="Enter Amount (₹1 - ₹10,000)"
-    value={uploadAmount}
-    onChange={(e) => {
-      const value = e.target.value;
-      if (value === "") {
-        setUploadAmount("");
-        return;
-      }
-      const num = Number(value);
-      if (num > 10000) {
-        toast.error("Maximum amount is ₹10,000 per request");
-        return;
-      }
-      if (num < 1) {
-        toast.error("Minimum amount is ₹1");
-        return;
-      }
-      setUploadAmount(value);
-    }}
-    disabled={isRedeemMode}
-    min="1"
-    max="10000"
-    className="w-full bg-black/40 border border-white/10 rounded-xl py-4 px-6 font-bold outline-none text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-  />
-  
-  {/* Min/Max Indicator - हा भाग add करा */}
-  <div className="flex justify-between items-center mt-2 px-2">
-    <span className="text-[10px] text-gray-500">Min: ₹1</span>
-    <span className="text-[10px] text-orange-400 font-bold">Max: ₹10,000</span>
-  </div>
-</div>
-<div className="mb-4">
-  <label className="text-xs text-gray-500 mb-2 block">UPI ID / Payment Link (Optional)</label>
-  <input
-    type="text"
-    placeholder="Enter UPI ID or payment link (e.g., merchant@upi)"
-    value={upiLink}
-    onChange={(e) => setUpiLink(e.target.value)}
-    className="w-full bg-black/40 border border-white/10 rounded-xl py-4 px-6 font-bold outline-none text-sm"
-  />
-  <p className="text-[8px] text-gray-500 mt-1">
-    This will help users make payment directly via UPI
-  </p>
-</div>
-    
-  {/* QR Code Upload Options - आता कोणतंही फोटो चालेल */}
-<div className="space-y-3">
-  <label className="block bg-black/40 border border-white/10 rounded-xl py-4 text-center cursor-pointer font-bold text-sm hover:bg-black/60 transition-all group">
-    <Camera size={18} className="inline mr-2 text-[#00F5A0] group-hover:scale-110 transition-transform" /> 
-    Take Photo
-    <input 
-      type="file" 
-      accept="image/jpeg,image/jpg,image/png,image/webp" 
-      capture="environment" 
-      onChange={(e) => setSelectedImage(e.target.files[0])} 
-      className="hidden" 
-    />
-  </label>
-  
-  <label className="block bg-black/40 border border-white/10 rounded-xl py-4 text-center cursor-pointer font-bold text-sm hover:bg-black/60 transition-all group">
-    <UploadCloud size={18} className="inline mr-2 text-[#00F5A0] group-hover:scale-110 transition-transform" /> 
-    Upload from Gallery
-    <input
-      type="file"
-      accept="image/jpeg,image/jpg,image/png,image/webp"
-      onChange={(e) => setSelectedImage(e.target.files[0])}
-      className="hidden"
-    />
-  </label>
-</div>
-
-   
-
-    {/* Image Preview */}
-    {selectedImage && (
-      <div className="mb-4">
-        <div className="relative inline-block">
-          <img
-            src={URL.createObjectURL(selectedImage)}
-            className="w-full max-w-[180px] mx-auto rounded-xl border-2 border-[#00F5A0] object-cover aspect-square"
-            alt="preview"
-          />
-          <button
-            onClick={() => setSelectedImage(null)}
-            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-all"
-          >
-            ✕
-          </button>
-        </div>
-        <p className="text-center text-xs text-[#00F5A0] mt-2 truncate">
-          {selectedImage.name} ({(selectedImage.size / 1024).toFixed(2)} KB)
-        </p>
-      </div>
-    )}
-
-{/* Disclaimer and Terms - यामध्ये बदल करा */}
-<div className="mb-4">
-  <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-    <p className="text-xs text-gray-400 mb-3 font-bold">DISCLAIMER:</p>
-    <ul className="text-[10px] text-gray-500 list-disc list-inside mb-3 space-y-1.5">
-      <li>You are creating a pay request for <span className="text-[#00F5A0]">₹{uploadAmount || '0'}</span></li>
-      {/* ✅ ही line add करा */}
-      <li>Maximum amount per request: <span className="text-orange-400 font-bold">₹10,000</span></li>
-      <li>This request will expire in <span className="text-yellow-500">10 minutes</span> if not accepted</li>
-      <li>You must have sufficient <span className="text-[#00F5A0]">INR balance</span> to create request</li>
-      <li className="text-yellow-500">⚠️ Upload clear photo of payment Merchant QR code</li>
-    </ul>
-    <label className="flex items-center gap-2 cursor-pointer">
-      <input
-        type="checkbox"
-        checked={createTermsAccepted}
-        onChange={(e) => setCreateTermsAccepted(e.target.checked)}
-        className="w-4 h-4 accent-[#00F5A0]"
-      />
-      <span className="text-xs text-gray-300">I agree to the terms and conditions</span>
-    </label>
-  </div>
-</div>
-
-    {/* Submit Button */}
-    <button
-      onClick={handleCreateScanner}
-      disabled={actionLoading || !uploadAmount || !selectedImage || !createTermsAccepted}
-      className={`w-full py-4 rounded-2xl font-black italic ${
-        actionLoading || !uploadAmount || !selectedImage || !createTermsAccepted
-          ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-          : "bg-[#00F5A0] text-black hover:bg-[#00d88c] active:scale-95 transition-all"
-      }`}
-    >
-      {actionLoading ? (
-        <span className="flex items-center justify-center gap-2">
-          <Loader size={16} className="animate-spin" />
-          PROCESSING...
-        </span>
-      ) : (
-        "POST TO BILL PAYMENTS"
+      
+      {/* Change Limit Button */}
+      {walletActivated && (
+        <button
+          onClick={handleActivateWallet}
+          className="w-full bg-blue-500/20 text-blue-500 py-2 rounded-xl font-black text-xs hover:bg-blue-500/30 transition-all border border-blue-500/20 mb-3"
+        >
+          Change 7-Day Limit (Pay Additional Amount)
+        </button>
       )}
-    </button>
-  </div>
-</div>
-<div>
-  <h2 className="text-lg font-black text-white/70 italic mb-4 flex items-center gap-2">
-    My Bill Payments
-
-    {myActiveRequestsCount > 0 && (
-      <span className="bg-orange-500/10 text-orange-500 text-[10px] px-2 py-1 rounded-full">
-        {myActiveRequestsCount} active
-      </span>
-    )}
-
-    {scanners.filter((s) => {
-      const ownerId = typeof s.user === "object" ? s.user?._id : s.user;
-      return String(ownerId) === String(user.id || user._id) && s.status !== "ACTIVE"; // ✅ Fix
-    }).length > 0 && (
-      <span className="bg-gray-500/10 text-gray-400 text-[10px] px-2 py-1 rounded-full">
-        {
-          scanners.filter((s) => {
-            const ownerId = typeof s.user === "object" ? s.user?._id : s.user;
-            return String(ownerId) === String(user.id || user._id) && s.status !== "ACTIVE"; // ✅ Fix
-          }).length
-        } completed/expired
-      </span>
-    )}
-  </h2>
-
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-    {scanners
-      .filter((s) => {
-        const ownerId = typeof s.user === "object" ? s.user?._id : s.user;
-        return String(ownerId) === String(user.id || user._id); // ✅ Fix
-      })
-      .map((s) => (
-        <RequestCard
-          key={s._id}
-          s={s}
-          user={user}
-          loadAllData={loadAllData}
-          setSelectedScanner={setSelectedScanner}
-          handleCancelRequest={handleCancelRequest}
-          walletActivated={walletActivated}
-          acceptTermsAccepted={acceptTermsAccepted}
-          onActivateWallet={handleActivateWallet}
-        />
-      ))}
-
-    {scanners.filter((s) => {
-      const ownerId = typeof s.user === "object" ? s.user?._id : s.user;
-      return String(ownerId) === String(user.id || user._id); // ✅ Fix
-    }).length === 0 && (
-      <div className="col-span-full text-center py-10">
-        <p className="text-gray-600 font-black italic">No Bill Payments Created</p>
-        <p className="text-[10px] text-gray-700 mt-2">
-          Create your first payment request above
-        </p>
-      </div>
-    )}
-
-  </div>
-</div>
-{/* ACCEPT PAY REQUESTS SECTION */}
-<div>
-  <h2 className="text-lg font-black text-white/70 italic mb-4 flex items-center gap-2">
-    Accept Bill Payments
-    {activeRequestsCount > 0 && (
-      <span className="bg-[#00F5A0]/10 text-[#00F5A0] text-[10px] px-2 py-1 rounded-full animate-pulse">
-        {activeRequestsCount} available
-      </span>
-    )}
-  </h2>
-
-{/* SLOT FILTERS */}
-<div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 mb-6">
-  {slots.map((slot) => {
-    const hasRequestsInSlot = scanners
-      .filter((s) => String(s.user?._id) !== String(user.id || user._id)) // ✅ Fix
-      .some((s) => s.amount >= slot.min && s.amount <= slot.max);
-    
-    return (
-      <button
-        key={slot.id}
-        onClick={() => setActiveSlot(slot.id)}
-        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all relative ${
-          activeSlot === slot.id
-            ? "bg-[#00F5A0] text-black border-[#00F5A0]"
-            : hasRequestsInSlot
-              ? "bg-red-500/20 text-red-400 border-red-500/30 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]"
-              : "bg-white/5 text-gray-400 border-white/10 hover:border-[#00F5A0]/30"
-        }`}
-      >
-        {slot.label}
-        {hasRequestsInSlot && activeSlot !== slot.id && (
-          <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping" />
-        )}
-        {hasRequestsInSlot && (
-          <span className="ml-1 text-[8px] bg-red-500 text-white px-1 rounded-full">
-            {scanners
-              .filter((s) => String(s.user?._id) !== String(user.id || user._id)) // ✅ Fix
-              .filter((s) => s.amount >= slot.min && s.amount <= slot.max).length}
-          </span>
-        )}
-      </button>
-    );
-  })}
-</div>
-
-{/* Accept Terms */}
-{activeRequestsCount > 0 && (
-  <div className="mb-4">
-    <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-      <p className="text-xs text-gray-400 mb-3 font-bold">BEFORE ACCEPTING:</p>
-
-      <ul className="text-[10px] text-gray-500 list-disc list-inside mb-3 space-y-1">
-        <li>You have 10 minutes to complete the payment after accepting</li>
-        <li>Upload clear screenshot of payment proof</li>
-        <li>Wallet must be activated to accept requests</li>
-        <li>Each request expires in 10 minutes if not accepted</li>
-        {/* ✅ Add this line */}
-        <li className="text-orange-400 font-bold">Maximum acceptance amount: ₹10,000 per request</li>
-      </ul>
-
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={acceptTermsAccepted}
-          onChange={(e) => setAcceptTermsAccepted(e.target.checked)}
-          className="w-4 h-4 accent-[#00F5A0]"
-        />
-        <span className="text-xs text-gray-300">
-          I agree to the terms and conditions
-        </span>
-      </label>
+      
+      {/* Wallet Active Message - CORRECT: remaining */}
+      {walletActivated && (
+        <div className="bg-green-500/10 text-green-500 p-3 rounded-xl text-xs font-bold text-center">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <CheckCircle size={14} />
+            <span>Wallet Active for 7 Days</span>
+          </div>
+          <div className="text-[10px] text-gray-400">
+            ₹{Number(activationStatus.remaining || 
+                (dailyAcceptLimit - todayAcceptedTotal) || 0).toLocaleString()} remaining this week
+          </div>
+        </div>
+      )}
     </div>
-  </div>
-)}
 
-  {/* REQUEST GRID */}
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in slide-in-from-bottom">
-    {filteredRequests.map((s) => (
-      <RequestCard
-        key={s._id}
-        s={s}
-        user={user}
-        loadAllData={loadAllData}
-        setSelectedScanner={setSelectedScanner}
-        handleCancelRequest={handleCancelRequest}
-        walletActivated={walletActivated}
-        acceptTermsAccepted={acceptTermsAccepted}
-        onActivateWallet={handleActivateWallet}
-      />
-    ))}
-
-    {filteredRequests.length === 0 && (
-      <div className="col-span-full text-center py-20">
-        <p className="text-gray-600 font-black italic uppercase">
-          No Requests In This Slot
-        </p>
-        <p className="text-[10px] text-gray-700 mt-2">
-          Try another amount range
-        </p>
+    {/* TAB COMPONENT - New Tabbed Interface */}
+    <div className="space-y-6">
+      {/* Tab Buttons */}
+      <div className="flex gap-2 bg-[#0A1F1A] p-2 rounded-2xl border border-white/10">
+        <button
+          onClick={() => setScannerSubTab("pay")}
+          className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 ${
+            scannerSubTab === "pay"
+              ? "bg-gradient-to-r from-[#00F5A0] to-[#00d88c] text-black shadow-lg"
+              : "text-gray-400 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <UploadCloud size={18} />
+          Pay My Bill
+          {myActiveRequestsCount > 0 && scannerSubTab !== "pay" && (
+            <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded-full">
+              {myActiveRequestsCount}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setScannerSubTab("accept")}
+          className={`flex-1 py-3 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 ${
+            scannerSubTab === "accept"
+              ? "bg-gradient-to-r from-[#00F5A0] to-[#00d88c] text-black shadow-lg"
+              : "text-gray-400 hover:text-white hover:bg-white/5"
+          }`}
+        >
+          <Zap size={18} />
+          Accept Bill Payments
+          {activeRequestsCount > 0 && scannerSubTab !== "accept" && (
+            <span className="bg-[#00F5A0] text-black text-[10px] px-2 py-0.5 rounded-full animate-pulse">
+              {activeRequestsCount}
+            </span>
+          )}
+        </button>
       </div>
-    )}
-  </div>
-</div>
+
+      {/* PAY MY BILL TAB CONTENT */}
+      {scannerSubTab === "pay" && (
+        <div className="space-y-6">
+          {/* Create Pay Request */}
+          <div className="bg-[#0A1F1A] border border-white/10 p-6 rounded-[2rem]">
+            <h2 className="text-xl font-black text-[#00F5A0] mb-6 italic flex items-center gap-2">
+              <UploadCloud size={20} /> Pay My Bill
+            </h2>
+
+            {/* Redeem Mode Indicator */}
+            {isRedeemMode && (
+              <div className="mb-4 p-3 bg-[#00F5A0]/10 border border-[#00F5A0]/20 rounded-xl">
+                <p className="text-[10px] text-[#00F5A0] font-bold flex items-center gap-1">
+                  <Zap size={12} />
+                  Redeemed Cashback Mode: Amount fixed at ₹{uploadAmount}
+                </p>
+              </div>
+            )}
+
+            {/* Amount Input */}
+            <div className="mb-2">
+              <input
+                type="number"
+                placeholder="Enter Amount (₹1 - ₹10,000)"
+                value={uploadAmount}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === "") {
+                    setUploadAmount("");
+                    return;
+                  }
+                  const num = Number(value);
+                  if (num > 10000) {
+                    toast.error("Maximum amount is ₹10,000 per request");
+                    return;
+                  }
+                  if (num < 1) {
+                    toast.error("Minimum amount is ₹1");
+                    return;
+                  }
+                  setUploadAmount(value);
+                }}
+                disabled={isRedeemMode}
+                min="1"
+                max="10000"
+                className="w-full bg-black/40 border border-white/10 rounded-xl py-4 px-6 font-bold outline-none text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              
+              {/* Min/Max Indicator */}
+              <div className="flex justify-between items-center mt-2 px-2">
+                <span className="text-[10px] text-gray-500">Min: ₹1</span>
+                <span className="text-[10px] text-orange-400 font-bold">Max: ₹10,000</span>
+              </div>
+            </div>
+            
+            <div className="mb-4">
+              <label className="text-xs text-gray-500 mb-2 block">UPI ID/Payment Link(Optional)</label>
+              <input
+                type="text"
+                placeholder="Enter UPI ID or payment link(e.g.merchant@upi)"
+                value={upiLink}
+                onChange={(e) => setUpiLink(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-xl py-4 px-6 font-bold outline-none text-xs"
+              />
+              <p className="text-[8px] text-gray-500 mt-1">
+                This will help users make payment directly via UPI
+              </p>
+            </div>
+            
+            {/* QR Code Upload Options */}
+            <div className="space-y-3 mb-4">
+              <label className="block bg-black/40 border border-white/10 rounded-xl py-4 text-center cursor-pointer font-bold text-sm hover:bg-black/60 transition-all group">
+                <Camera size={18} className="inline mr-2 text-[#00F5A0] group-hover:scale-110 transition-transform" /> 
+                Take Photo
+                <input 
+                  type="file" 
+                  accept="image/jpeg,image/jpg,image/png,image/webp" 
+                  capture="environment" 
+                  onChange={(e) => setSelectedImage(e.target.files[0])} 
+                  className="hidden" 
+                />
+              </label>
+              
+              <label className="block bg-black/40 border border-white/10 rounded-xl py-4 text-center cursor-pointer font-bold text-sm hover:bg-black/60 transition-all group">
+                <UploadCloud size={18} className="inline mr-2 text-[#00F5A0] group-hover:scale-110 transition-transform" /> 
+                Upload from Gallery
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={(e) => setSelectedImage(e.target.files[0])}
+                  className="hidden"
+                />
+              </label>
+            </div>
+
+            {/* Image Preview */}
+            {selectedImage && (
+              <div className="mb-4">
+                <div className="relative inline-block">
+                  <img
+                    src={URL.createObjectURL(selectedImage)}
+                    className="w-full max-w-[180px] mx-auto rounded-xl border-2 border-[#00F5A0] object-cover aspect-square"
+                    alt="preview"
+                  />
+                  <button
+                    onClick={() => setSelectedImage(null)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-all"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <p className="text-center text-xs text-[#00F5A0] mt-2 truncate">
+                  {selectedImage.name} ({(selectedImage.size / 1024).toFixed(2)} KB)
+                </p>
+              </div>
+            )}
+
+            {/* Disclaimer and Terms */}
+            <div className="mb-4">
+              <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                <p className="text-xs text-gray-400 mb-3 font-bold">DISCLAIMER:</p>
+                <ul className="text-[10px] text-gray-500 list-disc list-inside mb-3 space-y-1.5">
+                  <li>You are creating a pay request for <span className="text-[#00F5A0]">₹{uploadAmount || '0'}</span></li>
+                  <li>Maximum amount per request: <span className="text-orange-400 font-bold">₹10,000</span></li>
+                  <li>This request will expire in <span className="text-yellow-500">10 minutes</span> if not accepted</li>
+                  <li>You must have sufficient <span className="text-[#00F5A0]">INR balance</span> to create request</li>
+                  <li className="text-yellow-500">⚠️ Upload clear photo of payment Merchant QR code</li>
+                </ul>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={createTermsAccepted}
+                    onChange={(e) => setCreateTermsAccepted(e.target.checked)}
+                    className="w-4 h-4 accent-[#00F5A0]"
+                  />
+                  <span className="text-xs text-gray-300">I agree to the terms and conditions</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              onClick={handleCreateScanner}
+              disabled={actionLoading || !uploadAmount || !selectedImage || !createTermsAccepted}
+              className={`w-full py-4 rounded-2xl font-black italic ${
+                actionLoading || !uploadAmount || !selectedImage || !createTermsAccepted
+                  ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+                  : "bg-[#00F5A0] text-black hover:bg-[#00d88c] active:scale-95 transition-all"
+              }`}
+            >
+              {actionLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader size={16} className="animate-spin" />
+                  PROCESSING...
+                </span>
+              ) : (
+                "POST TO BILL PAYMENTS"
+              )}
+            </button>
+          </div>
+
+          {/* My Bill Payments Section */}
+          <div>
+            <h2 className="text-lg font-black text-white/70 italic mb-4 flex items-center gap-2">
+              My Bill Payments
+              {myActiveRequestsCount > 0 && (
+                <span className="bg-orange-500/10 text-orange-500 text-[10px] px-2 py-1 rounded-full">
+                  {myActiveRequestsCount} active
+                </span>
+              )}
+              {scanners.filter((s) => {
+                const ownerId = typeof s.user === "object" ? s.user?._id : s.user;
+                return String(ownerId) === String(user.id || user._id) && s.status !== "ACTIVE";
+              }).length > 0 && (
+                <span className="bg-gray-500/10 text-gray-400 text-[10px] px-2 py-1 rounded-full">
+                  {
+                    scanners.filter((s) => {
+                      const ownerId = typeof s.user === "object" ? s.user?._id : s.user;
+                      return String(ownerId) === String(user.id || user._id) && s.status !== "ACTIVE";
+                    }).length
+                  } completed/expired
+                </span>
+              )}
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {scanners
+                .filter((s) => {
+                  const ownerId = typeof s.user === "object" ? s.user?._id : s.user;
+                  return String(ownerId) === String(user.id || user._id);
+                })
+                .map((s) => (
+                  <RequestCard
+                    key={s._id}
+                    s={s}
+                    user={user}
+                    loadAllData={loadAllData}
+                    setSelectedScanner={setSelectedScanner}
+                    handleCancelRequest={handleCancelRequest}
+                    walletActivated={walletActivated}
+                    acceptTermsAccepted={acceptTermsAccepted}
+                    onActivateWallet={handleActivateWallet}
+                  />
+                ))}
+
+              {scanners.filter((s) => {
+                const ownerId = typeof s.user === "object" ? s.user?._id : s.user;
+                return String(ownerId) === String(user.id || user._id);
+              }).length === 0 && (
+                <div className="col-span-full text-center py-10">
+                  <p className="text-gray-600 font-black italic">No Bill Payments Created</p>
+                  <p className="text-[10px] text-gray-700 mt-2">
+                    Create your first payment request above
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ACCEPT BILL PAYMENTS TAB CONTENT */}
+      {scannerSubTab === "accept" && (
+        <div>
+          {/* SLOT FILTERS */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 mb-6">
+            {slots.map((slot) => {
+              const hasRequestsInSlot = scanners
+                .filter((s) => String(s.user?._id) !== String(user.id || user._id))
+                .some((s) => s.amount >= slot.min && s.amount <= slot.max);
+              
+              return (
+                <button
+                  key={slot.id}
+                  onClick={() => setActiveSlot(slot.id)}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all relative ${
+                    activeSlot === slot.id
+                      ? "bg-[#00F5A0] text-black border-[#00F5A0]"
+                      : hasRequestsInSlot
+                        ? "bg-red-500/20 text-red-400 border-red-500/30 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]"
+                        : "bg-white/5 text-gray-400 border-white/10 hover:border-[#00F5A0]/30"
+                  }`}
+                >
+                  {slot.label}
+                  {hasRequestsInSlot && activeSlot !== slot.id && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping" />
+                  )}
+                  {hasRequestsInSlot && (
+                    <span className="ml-1 text-[8px] bg-red-500 text-white px-1 rounded-full">
+                      {scanners
+                        .filter((s) => String(s.user?._id) !== String(user.id || user._id))
+                        .filter((s) => s.amount >= slot.min && s.amount <= slot.max).length}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Accept Terms */}
+          {activeRequestsCount > 0 && (
+            <div className="mb-4">
+              <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                <p className="text-xs text-gray-400 mb-3 font-bold">BEFORE ACCEPTING:</p>
+                <ul className="text-[10px] text-gray-500 list-disc list-inside mb-3 space-y-1">
+                  <li>You have 10 minutes to complete the payment after accepting</li>
+                  <li>Upload clear screenshot of payment proof</li>
+                  <li>Wallet must be activated to accept requests</li>
+                  <li>Each request expires in 10 minutes if not accepted</li>
+                  <li className="text-orange-400 font-bold">Maximum acceptance amount: ₹10,000 per request</li>
+                </ul>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={acceptTermsAccepted}
+                    onChange={(e) => setAcceptTermsAccepted(e.target.checked)}
+                    className="w-4 h-4 accent-[#00F5A0]"
+                  />
+                  <span className="text-xs text-gray-300">
+                    I agree to the terms and conditions
+                  </span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* REQUEST GRID */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-in slide-in-from-bottom">
+            {filteredRequests.map((s) => (
+              <RequestCard
+                key={s._id}
+                s={s}
+                user={user}
+                loadAllData={loadAllData}
+                setSelectedScanner={setSelectedScanner}
+                handleCancelRequest={handleCancelRequest}
+                walletActivated={walletActivated}
+                acceptTermsAccepted={acceptTermsAccepted}
+                onActivateWallet={handleActivateWallet}
+              />
+            ))}
+
+            {filteredRequests.length === 0 && (
+              <div className="col-span-full text-center py-20">
+                <p className="text-gray-600 font-black italic uppercase">
+                  No Requests In This Slot
+                </p>
+                <p className="text-[10px] text-gray-700 mt-2">
+                  Try another amount range
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   </div>
 )}
 
