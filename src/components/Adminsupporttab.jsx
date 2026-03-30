@@ -49,7 +49,7 @@ import {
 } from 'lucide-react';
 
 // const SUPPORT_API = "http://localhost:5000/api";
-const SUPPORT_API = "https://cpay-link-backend-production.up.railway.app/api";
+const SUPPORT_API = "https://cpay-link-backend.onrender.com/api";
 
 const S_STATUS = {
   open:        { label:'Open',        c:'text-amber-400',   bg:'bg-amber-500/12',   b:'border-amber-500/25',   Icon: AlertCircle },

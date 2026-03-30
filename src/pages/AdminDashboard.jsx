@@ -531,7 +531,7 @@ const handleExportSingleUser = (user, format) => {
   }
 };
 
-  const API_BASE = 'https://cpay-link-backend-production.up.railway.app';
+  const API_BASE = 'https://cpay-link-backend.onrender.com';
   // const API_BASE = 'http://localhost:5000';
 
   // Filter users based on search
@@ -1571,7 +1571,7 @@ const LegDetailsModal = ({ user, leg, onClose }) => {
   const [loadingLevel, setLoadingLevel] = useState(false);
   const [levelStats, setLevelStats] = useState({});
 
-  const API_BASE = 'https://cpay-link-backend-production.up.railway.app';
+  const API_BASE = 'https://cpay-link-backend.onrender.com';
   // const API_BASE = 'http://localhost:5000';
 
   const fetchLevelUsers = async (level) => {
@@ -1850,7 +1850,7 @@ const LegWiseTeamStructure = ({ user, teamLevels, expandedLevel, setExpandedLeve
   ];
 
   const [selectedLeg, setSelectedLeg] = useState(null);
-   const API_BASE = 'https://cpay-link-backend-production.up.railway.app';
+   const API_BASE = 'https://cpay-link-backend.onrender.com';
     // const API_BASE = 'http://localhost:5000';
 
 
@@ -1932,7 +1932,7 @@ const TeamLevelCardWithMembers = ({ level, expandedLevel, setExpandedLevel, legN
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [expandedMemberId, setExpandedMemberId] = useState(null);
 
-  const API_BASE = 'https://cpay-link-backend-production.up.railway.app';
+  const API_BASE = 'https://cpay-link-backend.onrender.com';
     // const API_BASE = 'http://localhost:5000';
 
   const fetchMemberDetails = async (memberId) => {
@@ -2008,7 +2008,7 @@ const TeamLevelCardWithMembers = ({ level, expandedLevel, setExpandedLevel, legN
 const MemberCard = ({ memberId, levelNum, legName, onMemberClick, isExpanded, onToggleExpand }) => {
   const [member, setMember] = useState(null);
   const [loading, setLoading] = useState(true);
-  const API_BASE = 'https://cpay-link-backend-production.up.railway.app';
+  const API_BASE = 'https://cpay-link-backend.onrender.com';
     // const API_BASE = 'http://localhost:5000';
 
 
@@ -2528,7 +2528,7 @@ const DepositsView = ({ deposits, pendingDeposits, handleAction }) => {
                 {item.paymentScreenshot && (
                   <div className="col-span-12 mt-2 pt-2 border-t border-white/5">
                     <button
-                      onClick={() => window.open(`https://cpay-link-backend-production.up.railway.app${item.paymentScreenshot}`)}
+                      onClick={() => window.open(`https://cpay-link-backend.onrender.com${item.paymentScreenshot}`)}
                       className="text-[#00F5A0] text-[8px] lg:text-[10px] font-bold flex items-center gap-1 hover:underline"
                     >
                       <Eye size={10} /> View Screenshot
@@ -2682,7 +2682,7 @@ const MobileDepositCard = ({ item, handleAction, formatDate }) => {
           {/* Screenshot */}
           {item.paymentScreenshot && (
             <button
-              onClick={() => window.open(`https://cpay-link-backend-production.up.railway.app${item.paymentScreenshot}`)}
+              onClick={() => window.open(`https://cpay-link-backend.onrender.com${item.paymentScreenshot}`)}
               className="w-full bg-black/30 p-2 rounded mb-3 text-[#00F5A0] text-[8px] font-bold flex items-center justify-center gap-1"
             >
               <Eye size={10} /> View Payment Screenshot
@@ -3099,7 +3099,7 @@ const ScannerCard = ({ scanner: s, expanded, onToggle, formatDate, formatShortDa
         <div className="flex justify-center mb-3">
           <div className="bg-white p-2 rounded-lg">
             <img 
-              src={`https://cpay-link-backend-production.up.railway.app${s.image}`} 
+              src={`https://cpay-link-backend.onrender.com${s.image}`} 
               className="w-16 h-16 object-contain" 
               alt="QR" 
             />
@@ -3218,11 +3218,11 @@ const ScannerCard = ({ scanner: s, expanded, onToggle, formatDate, formatShortDa
                 {s.paymentScreenshots.filter(ss => ss.isActive).map((ss, idx) => (
                   <button
                     key={idx}
-                    onClick={() => window.open(`https://cpay-link-backend-production.up.railway.app${ss.url}`)}
+                    onClick={() => window.open(`https://cpay-link-backend.onrender.com${ss.url}`)}
                     className="relative aspect-square rounded overflow-hidden border border-white/10 hover:border-[#00F5A0] transition-all"
                   >
                     <img 
-                      src={`https://cpay-link-backend-production.up.railway.app${ss.url}`}
+                      src={`https://cpay-link-backend.onrender.com${ss.url}`}
                       alt={`screenshot-${idx}`}
                       className="w-full h-full object-cover"
                     />
@@ -3654,7 +3654,7 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
   const [creating1000, setCreating1000] = useState(false);
   const itemsPerPage = 10;
 
-  const API_BASE = 'https://cpay-link-backend-production.up.railway.app/api';
+  const API_BASE = 'https://cpay-link-backend.onrender.com/api';
 
   // Fetch users on mount
   useEffect(() => {
@@ -4144,7 +4144,7 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
                             className="w-16 h-16 rounded-lg overflow-hidden border border-white/10 hover:border-[#00F5A0] transition-all group relative"
                           >
                             <img 
-                              src={`https://cpay-link-backend-production.up.railway.app${ss.url}`}
+                              src={`https://cpay-link-backend.onrender.com${ss.url}`}
                               alt="proof"
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform"
                             />
@@ -4242,7 +4242,7 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
               {selectedRequest.paymentScreenshots?.filter(ss => ss.isActive).map((ss, idx) => (
                 <div key={idx} className="mb-4">
                   <img
-                    src={`https://cpay-link-backend-production.up.railway.app${ss.url}`}
+                    src={`https://cpay-link-backend.onrender.com${ss.url}`}
                     alt={`Payment Proof ${idx + 1}`}
                     className="max-w-full max-h-[60vh] mx-auto rounded-lg border border-white/10"
                   />
@@ -4377,7 +4377,7 @@ const UserDetailsModal = ({ user, onClose }) => {
   const [levelUsers, setLevelUsers] = useState({});
   const [loadingLevel, setLoadingLevel] = useState(null);
 
-  const API_BASE = 'https://cpay-link-backend-production.up.railway.app';
+  const API_BASE = 'https://cpay-link-backend.onrender.com';
   // const API_BASE = 'http://localhost:5000';
 
   useEffect(() => {

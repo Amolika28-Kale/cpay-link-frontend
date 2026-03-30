@@ -1062,7 +1062,7 @@ const readImageFile = (file) => {
 };
 
   const downloadQR = (s) => {
-    const imageUrl = `https://cpay-link-backend-production.up.railway.app${s.image}`;
+    const imageUrl = `https://cpay-link-backend.onrender.com${s.image}`;
     
     const link = document.createElement('a');
     link.href = imageUrl;
@@ -2462,7 +2462,7 @@ const [isAcceptExpired, setIsAcceptExpired] = useState(false);
   // ✅ NEW: Function to handle proof view
   const handleViewProof = () => {
     setProofViewed(true);
-    window.open(`https://cpay-link-backend-production.up.railway.app${s.paymentScreenshot}`);
+    window.open(`https://cpay-link-backend.onrender.com${s.paymentScreenshot}`);
   };
 
   // ✅ NEW: Fetch screenshots function
@@ -2656,7 +2656,7 @@ useEffect(() => {
   const statusDisplay = getStatusDisplay();
 
   const downloadQR = () => {
-    const imageUrl = `https://cpay-link-backend-production.up.railway.app${s.image}`;
+    const imageUrl = `https://cpay-link-backend.onrender.com${s.image}`;
     const link = document.createElement('a');
     link.href = imageUrl;
     link.download = `QR-${s.amount}-${s._id.slice(-4)}.png`;
@@ -2877,7 +2877,7 @@ const isAcceptedByCurrentUser = () => {
       <div className="relative mb-3">
         <div className="bg-white p-3 rounded-2xl w-fit mx-auto shadow-lg">
           <img 
-            src={`https://cpay-link-backend-production.up.railway.app${s.image}`} 
+            src={`https://cpay-link-backend.onrender.com${s.image}`} 
             className="w-28 h-28 md:w-32 md:h-32 object-contain" 
             alt="QR" 
           />
@@ -2948,10 +2948,10 @@ const isAcceptedByCurrentUser = () => {
               <div 
                 key={idx} 
                 className="relative w-12 h-12 rounded-lg overflow-hidden border border-white/10 cursor-pointer hover:border-[#00F5A0] transition-all"
-                onClick={() => window.open(`https://cpay-link-backend-production.up.railway.app${ss.url}`)}
+                onClick={() => window.open(`https://cpay-link-backend.onrender.com${ss.url}`)}
               >
                 <img 
-                  src={`https://cpay-link-backend-production.up.railway.app${ss.url}`} 
+                  src={`https://cpay-link-backend.onrender.com${ss.url}`} 
                   alt={`screenshot-${idx}`}
                   className="w-full h-full object-cover"
                 />
@@ -3201,7 +3201,7 @@ const ScreenshotModal = ({ scanner, screenshots, onClose, onUpdate, uploading, u
                   onClick={() => setSelectedIndex(idx)}
                 >
                   <img 
-                    src={`https://cpay-link-backend-production.up.railway.app${ss.url}`}
+                    src={`https://cpay-link-backend.onrender.com${ss.url}`}
                     alt={`screenshot-${idx}`}
                     className="w-full h-24 object-cover"
                   />
@@ -3875,9 +3875,9 @@ const DepositPage = ({
                       <div 
                         key={idx}
                         className="w-8 h-8 rounded overflow-hidden border border-white/10 cursor-pointer"
-                        onClick={() => window.open(`https://cpay-link-backend-production.up.railway.app${ss.url}`)}
+                        onClick={() => window.open(`https://cpay-link-backend.onrender.com${ss.url}`)}
                       >
-                        <img src={`https://cpay-link-backend-production.up.railway.app${ss.url}`} alt="screenshot" className="w-full h-full object-cover" />
+                        <img src={`https://cpay-link-backend.onrender.com${ss.url}`} alt="screenshot" className="w-full h-full object-cover" />
                       </div>
                     ))}
                   </div>
@@ -4083,7 +4083,7 @@ const referralData = propReferralData || { ...localReferralData }; // Spread ope
 const teamStats = propTeamStats || { ...teamStatsLocal }; // जर teamStatsLocal असेल तर  const teamStats = propTeamStats || {};
 
   // API Base URL
-  const API_BASE = 'https://cpay-link-backend-production.up.railway.app/api';
+  const API_BASE = 'https://cpay-link-backend.onrender.com/api';
   // const API_BASE = "http://localhost:5000/api";
 
 // ========== FETCH REFERRAL STATS - CLEAN VERSION ==========

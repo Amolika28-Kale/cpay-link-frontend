@@ -65,10 +65,10 @@ export const DepositScreenshotModal = ({ deposit, onClose, onUpdate, uploading, 
                   <div 
                     key={idx}
                     className="relative rounded-xl overflow-hidden border-2 border-white/10 cursor-pointer hover:border-[#00F5A0] transition-all"
-                    onClick={() => window.open(`https://cpay-link-backend-production.up.railway.app${ss.url}`)}
+                    onClick={() => window.open(`https://cpay-link-backend.onrender.com${ss.url}`)}
                   >
                     <img 
-                      src={`https://cpay-link-backend-production.up.railway.app${ss.url}`}
+                      src={`https://cpay-link-backend.onrender.com${ss.url}`}
                       alt={`screenshot-${idx}`}
                       className="w-full h-24 object-cover"
                     />
