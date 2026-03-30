@@ -33,6 +33,43 @@ import jsQR from "jsqr";
 import { QRCodeCanvas } from "qrcode.react";
 import { DepositScreenshotModal } from "./DepositScreenshotModal";
 import ProfilePage from "./ProfilePage";
+// Add this configuration at the top of your file, after imports
+const toastOptions = {
+  duration: 1000, // 1 second
+  position: "top-right",
+  style: {
+    background: '#0A1F1A',
+    color: 'white',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '12px',
+    padding: '8px 12px',
+    fontSize: '12px',
+    fontWeight: 'bold',
+  },
+  success: {
+    duration: 1000,
+    icon: '✅',
+    style: {
+      background: '#0A1F1A',
+      border: '1px solid #00F5A0/30',
+    },
+  },
+  error: {
+    duration: 1000,
+    icon: '❌',
+    style: {
+      background: '#0A1F1A',
+      border: '1px solid #ef4444/30',
+    },
+  },
+  loading: {
+    duration: 1000,
+    style: {
+      background: '#0A1F1A',
+      border: '1px solid #f59e0b/30',
+    },
+  },
+};
 
 export default function UserDashboard() {
   const navigate = useNavigate();
@@ -213,7 +250,7 @@ const myActiveRequestsCount = scanners.filter(s =>
           </div>
         </div>,
         { 
-          duration: 5000,
+          duration: 1000,
           style: {
             background: '#0A1F1A',
             color: 'white',
@@ -264,7 +301,7 @@ const myActiveRequestsCount = scanners.filter(s =>
                   <div className="text-xs text-green-500">+₹{difference} credited</div>
                 </div>
               </div>,
-              { duration: 2000 }
+              { duration: 1000 }
             );
           } else if (wallet.type === 'USDT') {
             playNotificationSound('success');
@@ -276,7 +313,7 @@ const myActiveRequestsCount = scanners.filter(s =>
                   <div className="text-xs text-blue-500">+{difference} USDT</div>
                 </div>
               </div>,
-              { duration: 2000 }
+              { duration: 1000 }
             );
           }
         }
@@ -472,7 +509,7 @@ if (status.activated && status.remainingDays <= 2 && status.remainingDays > 0 &&
         <div className="text-xs">{status.remainingDays} days remaining</div>
       </div>
     </div>,
-    { duration: 10000 }
+    { duration: 1000 }
   );
 }
       
@@ -620,7 +657,7 @@ const loadMyDeposits = async () => {
           </div>
         </div>,
         { 
-          duration: 10000,
+          duration: 1000,
           style: {
             background: '#0A1F1A',
             color: 'white',
@@ -752,7 +789,7 @@ useEffect(() => {
                 </div>
               </div>
             </div>,
-            { duration: 6000 }
+            { duration: 1000 }
           );
           
           setWalletActivated(true);
@@ -825,16 +862,13 @@ const handleDepositSubmit = async () => {
     
     if (res?._id) {
       toast.dismiss(toastId);
-      toast.success(
-        <div className="flex items-center gap-2">
-          <CheckCircle size={20} className="text-[#00F5A0]" />
-          <div>
-            <div className="font-bold">Deposit Submitted! 📥</div>
-            <div className="text-xs">Admin will verify within 5 minutes</div>
-          </div>
-        </div>,
-        { duration: 5000 }
-      );
+     toast.success(
+  <div className="flex items-center gap-2">
+    <CheckCircle size={14} className="text-[#00F5A0]" />
+    <span className="text-xs font-bold">Deposit Submitted!</span>
+  </div>,
+  { duration: 1000 }
+);
       
       // ✅ Update pendingActivation to mark deposit as submitted
       const pending = localStorage.getItem("pendingActivation");
@@ -881,10 +915,23 @@ const handleDepositSubmit = async () => {
 
 const handleCreateScanner = async () => {
   // ========== 1. BASIC VALIDATION ==========
-  if (!uploadAmount || !selectedImage) {
-    toast.error("Please enter amount and select QR image");
-    return;
-  }
+if (!uploadAmount) {
+toast.error("Please enter amount", {
+  duration: 1000,
+  style: {
+    background: '#0A1F1A',
+    border: '1px solid #ef4444/30',
+    borderRadius: '12px',
+    padding: '8px 12px',
+    cursor: 'pointer', // Makes it swipeable
+  },
+});  return;
+}
+
+if (!selectedImage && !upiLink.trim()) {
+  toast.error("Please add UPI ID or upload QR code (at least one required)");
+  return;
+}
 
   // ========== 2. AMOUNT VALIDATION ==========
   const amountNum = Number(uploadAmount);  // ✅ या line add करा
@@ -904,7 +951,7 @@ const handleCreateScanner = async () => {
           <div className="text-xs">You can only create requests up to ₹10,000</div>
         </div>
       </div>,
-      { duration: 4000 }
+      { duration: 1000 }
     );
     return;
   }
@@ -945,7 +992,7 @@ const handleCreateScanner = async () => {
             )}
           </div>
         </div>,
-        { duration: 5000 }
+        { duration: 1000 }
       );
 
       setUploadAmount("");
@@ -995,7 +1042,7 @@ const handleCreateScanner = async () => {
             </div>
           </div>
         </div>,
-        { duration: 10000 }
+        { duration: 1000 }
       );
     } 
     // ✅ Handle max limit error from backend
@@ -1008,7 +1055,7 @@ const handleCreateScanner = async () => {
             <div className="text-xs">{error.response?.data?.message || "Please enter amount between ₹1 - ₹10,000"}</div>
           </div>
         </div>,
-        { duration: 4000 }
+        { duration: 1000 }
       );
     }
     // ✅ Handle other errors
@@ -1074,7 +1121,7 @@ const readImageFile = (file) => {
     document.body.removeChild(link);
     
     toast.success('QR Code Downloaded!', {
-      duration: 3000,
+      duration: 1000,
       icon: '📥',
       style: {
         background: '#00F5A0',
@@ -1102,7 +1149,7 @@ const readImageFile = (file) => {
             <div className="text-xs">Your request has been cancelled</div>
           </div>
         </div>,
-        { duration: 3000 }
+        { duration: 1000 }
       );
     }
     
@@ -1127,7 +1174,7 @@ const readImageFile = (file) => {
           <div className="text-xs">{error.message || "Something went wrong"}</div>
         </div>
       </div>,
-      { duration: 4000 }
+      { duration: 1000 }
     );
   }
 };
@@ -1148,7 +1195,7 @@ const handleRedeemCashback = async () => {
           </div>
         </div>
       </div>,
-      { duration: 4000 }
+      { duration: 1000 }
     );
     return;
   }
@@ -1185,7 +1232,7 @@ const handleRedeemCashback = async () => {
               <div className="text-sm">₹{redeemAmount} transferred to INR wallet</div>
             </div>
           </div>,
-          { duration: 3000 }
+          { duration: 1000 }
         );
         playNotificationSound('cashback');
         loadAllData();
@@ -1376,7 +1423,7 @@ const confirmActivation = async () => {
         </div>
       </div>
     </div>,
-    { duration: 6000 }
+    { duration: 1000 }
   );
   
   // Reset local input
@@ -1401,7 +1448,7 @@ const confirmActivation = async () => {
             Waiting for confirmation
           </div>
         </div>,
-        { duration: 5000 }
+        { duration: 1000 }
       );
       
       setSelectedScanner(null); 
@@ -1796,7 +1843,7 @@ const confirmActivation = async () => {
                   <li>Maximum amount per request: <span className="text-orange-400 font-bold">₹10,000</span></li>
                   <li>This request will expire in <span className="text-yellow-500">10 minutes</span> if not accepted</li>
                   <li>You must have sufficient <span className="text-[#00F5A0]">INR balance</span> to create request</li>
-                  <li className="text-yellow-500">⚠️ Upload clear photo of payment Merchant QR code</li>
+<li className="text-yellow-500">⚠️ Add UPI ID or upload Merchant QR code (at least one required)</li>
                 </ul>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -1813,12 +1860,12 @@ const confirmActivation = async () => {
             {/* Submit Button */}
             <button
               onClick={handleCreateScanner}
-              disabled={actionLoading || !uploadAmount || !selectedImage || !createTermsAccepted}
-              className={`w-full py-4 rounded-2xl font-black italic ${
-                actionLoading || !uploadAmount || !selectedImage || !createTermsAccepted
-                  ? "bg-gray-700 text-gray-400 cursor-not-allowed"
-                  : "bg-[#00F5A0] text-black hover:bg-[#00d88c] active:scale-95 transition-all"
-              }`}
+disabled={actionLoading || !uploadAmount || (!selectedImage && !upiLink.trim()) || !createTermsAccepted}
+             className={`w-full py-4 rounded-2xl font-black italic ${
+  actionLoading || !uploadAmount || (!selectedImage && !upiLink.trim()) || !createTermsAccepted
+    ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+    : "bg-[#00F5A0] text-black hover:bg-[#00d88c] active:scale-95 transition-all"
+}`}
             >
               {actionLoading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -2570,7 +2617,7 @@ const [isAcceptExpired, setIsAcceptExpired] = useState(false);
           Please upload your UTR payment screenshot
         </div>
       </div>,
-      { duration: 6000 }
+      { duration: 1000 }
     );
   }
 }, [s.utrRequested]);
@@ -2690,7 +2737,7 @@ useEffect(() => {
     document.body.removeChild(link);
     
     toast.success('QR Code Downloaded!', {
-      duration: 3000,
+      duration: 1000,
       icon: '📥',
       style: {
         background: '#00F5A0',
@@ -2740,7 +2787,7 @@ useEffect(() => {
             <div className="text-xs">This request is no longer available</div>
           </div>
         </div>,
-        { duration: 4000 }
+        { duration: 1000 }
       );
       return;
     }
@@ -2755,7 +2802,7 @@ useEffect(() => {
           <div className="text-xs">Maximum acceptance amount is ₹10,000</div>
         </div>
       </div>,
-      { duration: 4000 }
+      { duration: 1000 }
     );
     return;
   }
@@ -2781,7 +2828,7 @@ useEffect(() => {
           </div>
         </div>,
         { 
-          duration: 8000,
+          duration: 1000,
           style: {
             background: '#0A1F1A',
             color: 'white',
@@ -2804,7 +2851,7 @@ useEffect(() => {
           </div>
         </div>,
         { 
-          duration: 4000,
+          duration: 1000,
           style: {
             background: '#0A1F1A',
             color: 'white',
@@ -2827,7 +2874,7 @@ useEffect(() => {
             <div className="text-xs">You have 10 minutes to complete the payment</div>
           </div>
         </div>,
-        { duration: 5000 }
+        { duration: 1000 }
       );
       
       loadAllData();
@@ -2841,7 +2888,7 @@ useEffect(() => {
             <div className="text-xs">{error.message || "Something went wrong"}</div>
           </div>
         </div>,
-        { duration: 4000 }
+        { duration: 1000 }
       );
     }
   };
@@ -2933,7 +2980,7 @@ const isAcceptedByCurrentUser = () => {
       <button
         onClick={() => {
           navigator.clipboard.writeText(s.upiLink);
-          toast.success("UPI ID copied!", { duration: 2000 });
+          toast.success("UPI ID copied!", { duration: 1000 });
         }}
         className="bg-blue-500/20 p-1.5 rounded-lg hover:bg-blue-500/30 transition-colors"
       >
@@ -3460,7 +3507,7 @@ const DepositPage = ({
     // File size validation (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error("File too large! Maximum size is 5MB", {
-        duration: 3000,
+        duration: 1000,
         icon: '⚠️',
         style: { background: '#0A1F1A', border: '1px solid #ef4444/20' }
       });
@@ -3471,7 +3518,7 @@ const DepositPage = ({
     // File type validation
     if (!file.type.startsWith('image/')) {
       toast.error("Please select an image file (JPEG, PNG, etc.)", {
-        duration: 3000,
+        duration: 1000,
         icon: '📸',
         style: { background: '#0A1F1A', border: '1px solid #ef4444/20' }
       });
@@ -3487,7 +3534,7 @@ const DepositPage = ({
     setDepositScreenshot(file);
     
     toast.success(`Selected: ${file.name}`, { 
-      duration: 2000,
+      duration: 1000,
       icon: '✅',
       style: { background: '#0A1F1A', border: '1px solid #00F5A0/20' }
     });
@@ -3519,7 +3566,7 @@ const DepositPage = ({
     if (errors.length > 0) {
       errors.forEach(error => {
         toast.error(error, {
-          duration: 3000,
+          duration: 1000,
           style: { background: '#0A1F1A', border: '1px solid #ef4444/20' }
         });
       });
@@ -3546,7 +3593,7 @@ const DepositPage = ({
       }
       
       toast.success("Deposit submitted! Admin will verify within 5 minutes.", {
-        duration: 5000,
+        duration: 1000,
         icon: '⏱️',
         style: { background: '#0A1F1A', border: '1px solid #00F5A0/20' }
       });
@@ -3622,7 +3669,7 @@ const DepositPage = ({
                   type="button"
                   onClick={() => {
                     navigator.clipboard.writeText(selectedMethod.details.address);
-                    toast.success("Address copied!", { duration: 2000 });
+                    toast.success("Address copied!", { duration: 1000 });
                   }}
                   className="bg-[#00F5A0]/10 p-2 rounded-lg hover:bg-[#00F5A0]/20 transition-colors flex-shrink-0"
                 >
@@ -3727,7 +3774,7 @@ const DepositPage = ({
               setDepositData({ ...depositData, amount: value });
               if (value && Number(value) < 10) {
                 toast.error("Minimum deposit is $10 USDT", {
-                  duration: 2000,
+                  duration: 1000,
                   icon: '⚠️'
                 });
               }
@@ -4458,13 +4505,13 @@ const markNotificationsAsRead = async (commissionIds = []) => {
 
   const copyReferralCode = () => {
     navigator.clipboard.writeText(referralData.referralCode);
-    toast.success('Referral code copied!', { duration: 2000 });
+    toast.success('Referral code copied!', { duration: 1000 });
   };
 
   const copyReferralLink = () => {
   const link = `https://cpaylink.io/auth?ref=${referralData.referralCode}`;
   navigator.clipboard.writeText(link);
-  toast.success('Referral link copied!', { duration: 2000 });
+  toast.success('Referral link copied!', { duration: 1000 });
 };
 
   // ========== COMMISSION RATES ==========
