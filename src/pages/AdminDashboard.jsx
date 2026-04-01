@@ -2295,6 +2295,29 @@ const DepositsView = ({ deposits, pendingDeposits, handleAction }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   
+  // Helper function to get correct image URL
+  const getImageUrl = (path) => {
+    if (!path) return null;
+    
+    // If it's already a full URL
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+    
+    // Remove leading slash if present to avoid double slash
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    
+    // Check if path already includes /uploads/
+    if (cleanPath.includes('/uploads/')) {
+      return `https://cpay-link-backend.onrender.com${cleanPath}`;
+    }
+    
+    // Add /uploads/ prefix
+    return `https://cpay-link-backend.onrender.com/uploads${cleanPath}`;
+  };
+  
+  // Rest of your existing code remains the same...
+  
   // Filter deposits
   const filteredDeposits = deposits.filter(item => {
     if (filter === 'all') return true;
@@ -2524,11 +2547,15 @@ const DepositsView = ({ deposits, pendingDeposits, handleAction }) => {
                   )}
                 </div>
 
-                {/* Screenshot */}
+                {/* Screenshot - FIXED URL HANDLING */}
                 {item.paymentScreenshot && (
                   <div className="col-span-12 mt-2 pt-2 border-t border-white/5">
                     <button
-                      onClick={() => window.open(`https://cpay-link-backend.onrender.com${item.paymentScreenshot}`)}
+                      onClick={() => {
+                        const imageUrl = getImageUrl(item.paymentScreenshot);
+                        console.log('Opening image URL:', imageUrl); // Debug log
+                        window.open(imageUrl, '_blank');
+                      }}
                       className="text-[#00F5A0] text-[8px] lg:text-[10px] font-bold flex items-center gap-1 hover:underline"
                     >
                       <Eye size={10} /> View Screenshot
@@ -2555,6 +2582,7 @@ const DepositsView = ({ deposits, pendingDeposits, handleAction }) => {
               item={item} 
               handleAction={handleAction}
               formatDate={formatShortDate}
+              getImageUrl={getImageUrl} // Pass the helper function
             />
           ))
         ) : (
@@ -2605,7 +2633,7 @@ const DepositsView = ({ deposits, pendingDeposits, handleAction }) => {
 };
 
 /* ================= MOBILE DEPOSIT CARD COMPONENT ================= */
-const MobileDepositCard = ({ item, handleAction, formatDate }) => {
+const MobileDepositCard = ({ item, handleAction, formatDate, getImageUrl }) => {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -2679,11 +2707,15 @@ const MobileDepositCard = ({ item, handleAction, formatDate }) => {
             </div>
           )}
 
-          {/* Screenshot */}
+          {/* Screenshot - FIXED: Use getImageUrl helper */}
           {item.paymentScreenshot && (
             <button
-              onClick={() => window.open(`https://cpay-link-backend.onrender.com${item.paymentScreenshot}`)}
-              className="w-full bg-black/30 p-2 rounded mb-3 text-[#00F5A0] text-[8px] font-bold flex items-center justify-center gap-1"
+              onClick={() => {
+                const imageUrl = getImageUrl(item.paymentScreenshot);
+                console.log('Opening screenshot:', imageUrl);
+                window.open(imageUrl, '_blank');
+              }}
+              className="w-full bg-black/30 p-2 rounded mb-3 text-[#00F5A0] text-[8px] font-bold flex items-center justify-center gap-1 hover:bg-black/40 transition-all"
             >
               <Eye size={10} /> View Payment Screenshot
             </button>
@@ -3777,25 +3809,50 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
     );
   }
 
-  // Filter requests
-  const filteredRequests = (Array.isArray(requests) ? requests : []).filter(req => {
-    if (filter !== 'all' && req.status !== filter) return false;
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      const hasMatchingUser = req.requests?.some(r => 
-        r.createdFor?.userId?.toLowerCase().includes(searchLower)
-      );
-      return hasMatchingUser;
-    }
-    return true;
-  });
+// Filter requests
+const filteredRequests = (Array.isArray(requests) ? requests : []).filter(req => {
+  if (filter !== 'all' && req.status !== filter) return false;
+  if (searchTerm) {
+    const searchLower = searchTerm.toLowerCase();
+    const hasMatchingUser = req.requests?.some(r => 
+      r.createdFor?.userId?.toLowerCase().includes(searchLower)
+    );
+    return hasMatchingUser;
+  }
+  return true;
+});
 
-  // Pagination
-  const totalPages = Math.ceil(filteredRequests.length / itemsPerPage);
-  const paginatedRequests = filteredRequests.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+// Sort requests - Payment Submitted first, then Accepted, then Active
+const sortedRequests = [...filteredRequests].sort((a, b) => {
+  const getPriority = (group) => {
+    const hasPaymentSubmitted = group.requests?.some(r => r.status === 'PAYMENT_SUBMITTED');
+    const hasAccepted = group.requests?.some(r => r.status === 'ACCEPTED');
+    const hasActive = group.requests?.some(r => r.status === 'ACTIVE');
+    
+    if (hasPaymentSubmitted) return 1; // Highest priority
+    if (hasAccepted) return 2; // Second priority
+    if (hasActive) return 3; // Third priority
+    return 4; // Completed/Expired lowest priority
+  };
+  
+  const priorityA = getPriority(a);
+  const priorityB = getPriority(b);
+  
+  if (priorityA !== priorityB) {
+    return priorityA - priorityB;
+  }
+  
+  // If same priority, sort by createdAt (newest first)
+  return new Date(b.createdAt) - new Date(a.createdAt);
+});
+
+// Pagination - use sortedRequests instead
+const totalPages = Math.ceil(sortedRequests.length / itemsPerPage);
+const paginatedRequests = sortedRequests.slice(
+  (currentPage - 1) * itemsPerPage,
+  currentPage * itemsPerPage
+);
+
 
   const handleConfirm = async (scannerId) => {
     setConfirming(scannerId);
