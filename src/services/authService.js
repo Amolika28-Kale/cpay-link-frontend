@@ -195,35 +195,35 @@ export const getActivationStatus = async (token) => {
   }
 };
 
-export const getTodayTeamStats = async (token) => {
-  try {
-    const res = await fetch(`${API_BASE}/auth/today-team-stats`, {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-    const data = await res.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching today's stats:", error);
-    return { 
-      success: false, 
-      teamBusiness: 0, 
-      yourCommission: 0, 
-      teamMembers: 0 
-    };
-  }
-};
+// export const getTodayTeamStats = async (token) => {
+//   try {
+//     const res = await fetch(`${API_BASE}/auth/today-team-stats`, {
+//       headers: { "Authorization": `Bearer ${token}` }
+//     });
+//     const data = await res.json();
+//     return data;
+//   } catch (error) {
+//     console.error("Error fetching today's stats:", error);
+//     return { 
+//       success: false, 
+//       teamBusiness: 0, 
+//       yourCommission: 0, 
+//       teamMembers: 0 
+//     };
+//   }
+// };
 
-export const getTotalTeamStats = async (token) => {
-  try {
-    const res = await fetch(`${API_BASE}/auth/today-team-stats`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const data = await res.json();
-    return data;
-  } catch (error) {
-    return { success: false };
-  }
-};
+// export const getTotalTeamStats = async (token) => {
+//   try {
+//     const res = await fetch(`${API_BASE}/auth/today-team-stats`, {
+//       headers: { Authorization: `Bearer ${token}` }
+//     });
+//     const data = await res.json();
+//     return data;
+//   } catch (error) {
+//     return { success: false };
+//   }
+// };
 
 // ========== SIMPLIFIED: LEG DETAILS ==========
 export const getLegDetails = async (token, legNumber) => {
@@ -722,6 +722,21 @@ export const updatePin = async (token, currentPin, newPin) => {
     console.error("Error updating PIN:", error);
     return { success: false, message: "Network error" };
   }
+};
+// Get today's team stats
+export const getTodayTeamStats = async (token) => {
+  const response = await fetch(`${API_BASE}/auth/today-team-stats`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.json();
+};
+
+// Get total team stats
+export const getTotalTeamStats = async (token) => {
+  const response = await fetch(`${API_BASE}/auth/total-team-stats`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.json();
 };
 
 export default {

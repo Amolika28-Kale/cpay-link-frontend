@@ -596,7 +596,7 @@ const cleanupCompletedRequests = () => {
     );
     
     if (filtered.length !== prev.length) {
-      console.log(`✅ Cleaned up ${prev.length - filtered.length} completed/expired requests`);
+      // console.log(`✅ Cleaned up ${prev.length - filtered.length} completed/expired requests`);
     }
     
     return filtered;
@@ -4372,7 +4372,7 @@ useEffect(() => {
                 levelUsersData[`level${level}`] = users;
               }
             } catch (e) {
-              console.log(`Error fetching level ${level} users:`, e);
+              // console.log(`Error fetching level ${level} users:`, e);
             }
           }
         }
@@ -4391,44 +4391,58 @@ useEffect(() => {
     };
   }, [teamStats, dataLoaded]);
 
-  // ========== LOAD TODAY'S STATS ==========
-  useEffect(() => {
-    let isMounted = true;
-    
-    const fetchTodayStats = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const { getTodayTeamStats } = await import("../services/authService");
-        const data = await getTodayTeamStats(token);
-        
-if (isMounted && data?.success) {
-  setTodayStats({
-    teamBusiness: data.data?.teamBusiness || 0,  // data.data वापर
-    yourCommission: data.data?.yourCommission || 0,
-    teamMembers: data.data?.teamMembers || 0
-  });
-}
-      } catch (error) {
-        console.error("Error fetching today stats:", error);
+// ========== LOAD TODAY'S STATS ==========
+useEffect(() => {
+  let isMounted = true;
+  
+  const fetchTodayStats = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const { getTodayTeamStats } = await import("../services/authService");
+      const data = await getTodayTeamStats(token);
+      
+      // console.log("TODAY STATS FULL RESPONSE:", data);
+      // console.log("TODAY STATS DATA:", data?.data);
+      
+      if (isMounted && data?.success) {
+        setTodayStats({
+          teamBusiness: data.data?.teamBusiness || 0,
+          yourCommission: data.data?.yourCommission || 0,
+          teamMembers: data.data?.teamMembers || 0
+        });
       }
-    };
-    
-    fetchTodayStats();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    } catch (error) {
+      console.error("Error fetching today stats:", error);
+      if (isMounted) {
+        setTodayStats({ teamBusiness: 0, yourCommission: 0, teamMembers: 0 });
+      }
+    }
+  };
+  
+  fetchTodayStats();
+  
+  return () => {
+    isMounted = false;
+  };
+}, []);
 
-  useEffect(() => {
+// ========== LOAD TOTAL STATS ==========
+useEffect(() => {
   let isMounted = true;
 
   const fetchTotalStats = async () => {
     try {
       const token = localStorage.getItem("token");
-      const { getTotalTeamStats } = await import("../services/authService");
+      
+      // ✅ Make sure this function exists in authService
+      const response = await fetch(`${API_BASE}/auth/total-team-stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const data = await response.json();
 
-      const data = await getTotalTeamStats(token);
+      // console.log("TOTAL STATS FULL RESPONSE:", data);
+      // console.log("TOTAL STATS DATA:", data?.data);
 
       if (isMounted && data?.success) {
         setTotalStats({
@@ -4439,6 +4453,9 @@ if (isMounted && data?.success) {
       }
     } catch (err) {
       console.error("Total stats error:", err);
+      if (isMounted) {
+        setTotalStats({ teamBusiness: 0, yourCommission: 0, teamMembers: 0 });
+      }
     }
   };
 
@@ -5248,14 +5265,12 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
             </p>
             <p className="text-[6px] text-gray-600">Across {legBreakdown?.legs?.length || 0} Directs</p>
           </div>
-          <div className="bg-black/40 p-3 rounded-lg text-center">
-            <p className="text-[8px] text-gray-500">Team Business</p>
-            <p className="text-xl font-black text-orange-400">
-              ₹{statsFilter === 'today' ? todayStats.teamBusiness.toFixed(2) : statsFilter === 'today' 
-  ? todayStats.teamBusiness.toFixed(2)
-  : totalStats.teamBusiness.toFixed(2)}
-            </p>
-          </div>
+        <div className="bg-black/40 p-3 rounded-lg text-center">
+  <p className="text-[8px] text-gray-500">Team Business</p>
+  <p className="text-xl font-black text-orange-400">
+    ₹{(statsFilter === 'today' ? todayStats.teamBusiness : totalStats.teamBusiness).toFixed(2)}
+  </p>
+</div>
         </div>
 
         {/* Missed Commissions Summary */}
@@ -5455,36 +5470,41 @@ const LevelUsersList = ({ legNumber, level, users, isLoading, onClose, onSelectM
           </div>
 
           <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-[#00F5A0]/20 transition-all">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-[#00F5A0]/10 flex items-center justify-center">
-                <TrendingUp size={22} className="text-[#00F5A0]" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Team Business</p>
-                <p className="text-2xl font-black text-[#00F5A0]">
-                  ₹{statsFilter === 'today' ? todayStats.teamBusiness.toFixed(2) : totalStats.teamBusiness.toFixed(2)}
-                </p>
-              </div>
-            </div>
+         <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-[#00F5A0]/20 transition-all">
+  <div className="flex items-center gap-3 mb-3">
+    <div className="w-10 h-10 rounded-lg bg-[#00F5A0]/10 flex items-center justify-center">
+      <TrendingUp size={22} className="text-[#00F5A0]" />
+    </div>
+    <div>
+      <p className="text-xs text-gray-400">Team Business</p>
+      <p className="text-2xl font-black text-[#00F5A0]">
+        ₹{(statsFilter === 'today' ? todayStats.teamBusiness : totalStats.teamBusiness).toFixed(2)}
+      </p>
+    </div>
+  </div>
+  <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">
+    {statsFilter === 'today' ? "Today's team business" : "Total team business"}
+  </p>
+</div>
             <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">Total cashback earned by team</p>
           </div>
 
-          <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-orange-400/20 transition-all">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
-                <Award size={22} className="text-orange-400" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-400">Your Commission</p>
-                <p className="text-2xl font-black text-orange-400">
-                  ₹{statsFilter === 'today' 
-                    ? todayStats.yourCommission.toFixed(2) 
-                    : Number(referralData.referralEarnings?.total || 0).toFixed(2)}
-                </p>
-              </div>
-            </div>
-            <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">Commission from team</p>
-          </div>
+        <div className="bg-black/40 p-5 rounded-xl border border-white/5 hover:border-orange-400/20 transition-all">
+  <div className="flex items-center gap-3 mb-3">
+    <div className="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+      <Award size={22} className="text-orange-400" />
+    </div>
+    <div>
+      <p className="text-xs text-gray-400">Your Commission</p>
+      <p className="text-2xl font-black text-orange-400">
+        ₹{(statsFilter === 'today' ? todayStats.yourCommission : totalStats.yourCommission).toFixed(2)}
+      </p>
+    </div>
+  </div>
+  <p className="text-[10px] text-gray-500 border-t border-white/5 pt-2">
+    {statsFilter === 'today' ? "Today's commission" : "Total commission from team"}
+  </p>
+</div>
         </div>
       </div>
     </div>
