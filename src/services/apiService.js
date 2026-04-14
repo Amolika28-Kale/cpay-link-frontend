@@ -273,24 +273,27 @@ export const cancelRequest = async (scannerId) => {
   }
 };
 
-export const selfPay = async (amount) => {
-  try {
-    const token = localStorage.getItem("token");
-    const response = await fetch(`${API_BASE}/scanner/self-pay`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ amount: Number(amount) }),
-    });
+export const requestQRUpdate = async (scannerId) => {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_BASE}/scanner/request-qr-update`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ scannerId })
+  });
+  return res.json();
+};
 
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message);
-    return data;
-  } catch (error) {
-    throw error;
-  }
+export const updateQRImage = async (scannerId, qrFile) => {
+  const formData = new FormData();
+  formData.append("scannerId", scannerId);
+  formData.append("qrImage", qrFile);
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_BASE}/scanner/update-qr`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData
+  });
+  return res.json();
 };
 
 /* ================= SCREENSHOT MANAGEMENT ================= */
@@ -331,6 +334,27 @@ export const deleteScreenshot = async (scannerId, screenshotIndex) => {
     body: JSON.stringify({ scannerId, screenshotIndex }),
   });
   return res.json();
+};
+
+
+export const selfPay = async (amount) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${API_BASE}/scanner/self-pay`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ amount: Number(amount) }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message);
+    return data;
+  } catch (error) {
+    throw error;
+  }
 };
 
 /* ================= MISC ================= */

@@ -14,6 +14,8 @@ import {
   getWallets, getTransactions, createDeposit, transferCashback,
   getActivePaymentMethods, requestToPay, getActiveRequests,
   acceptRequest, submitPayment, confirmRequest,
+  updateQRImage,
+  requestQRUpdate,
 } from "../services/apiService";
 import { 
   getReferralStats, 
@@ -2529,7 +2531,48 @@ const [isAcceptExpired, setIsAcceptExpired] = useState(false);
 
   // ✅ NEW: State to track if proof has been viewed
   const [proofViewed, setProofViewed] = useState(false);
+  // ✅ ADD THIS: State for button loading
+  const [qrUpdateLoading, setQrUpdateLoading] = useState(false);
+  const [qrUploadLoading, setQrUploadLoading] = useState(false);
+// ✅ ADD THIS: Handle QR update request
+  const handleRequestQRUpdate = async () => {
+    setQrUpdateLoading(true);
+    try {
+      const data = await requestQRUpdate(s._id);
+      if (data.message) {
+        toast.success("📷 QR update request sent!");
+        loadAllData();
+      } else {
+        toast.error(data.message || "Failed to send request");
+      }
+    } catch (err) {
+      console.error("QR update request error:", err);
+      toast.error("Failed to send request");
+    } finally {
+      setQrUpdateLoading(false);
+    }
+  };
 
+  // ✅ ADD THIS: Handle QR image update
+  const handleQRImageUpdate = async (file) => {
+    if (!file) return;
+    
+    setQrUploadLoading(true);
+    try {
+      const data = await updateQRImage(s._id, file);
+      if (data.message) {
+        toast.success("✅ QR image updated successfully!");
+        loadAllData();
+      } else {
+        toast.error(data.message || "Failed to update QR");
+      }
+    } catch (err) {
+      console.error("QR update error:", err);
+      toast.error("Failed to update QR image");
+    } finally {
+      setQrUploadLoading(false);
+    }
+  };
   // ✅ NEW: Function to handle proof view
   const handleViewProof = () => {
     setProofViewed(true);
@@ -3077,6 +3120,73 @@ const isAcceptedByCurrentUser = () => {
 
       {/* Action Buttons */}
       <div className="mt-auto space-y-2">
+
+{/* 📷 CREATOR VIEW - When QR update is requested */}
+{isOwner && s.qrUpdateRequested && ["ACTIVE", "ACCEPTED", "PAYMENT_SUBMITTED"].includes(s.status) && (
+  <div className="mb-3 p-3 bg-purple-500/20 rounded-xl border border-purple-500/30 animate-pulse">
+    <div className="flex items-center gap-2 mb-2">
+      <AlertCircle size={16} className="text-purple-400" />
+      <span className="text-xs font-bold text-purple-400">
+        📷 Valid QR Requested!
+      </span>
+    </div>
+    <p className="text-[10px] text-gray-300 mb-3">
+      The user has requested a valid, scannable QR code. Please upload a clear QR image.
+    </p>
+    
+    <label className={`w-full bg-purple-500/30 text-purple-300 py-3 rounded-lg text-xs 
+                    font-bold hover:bg-purple-500/40 transition-all flex items-center 
+                    justify-center gap-2 ${qrUploadLoading ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+      {qrUploadLoading ? (
+        <>
+          <Loader size={14} className="animate-spin" />
+          UPLOADING...
+        </>
+      ) : (
+        <>
+          <UploadCloud size={14} />
+          UPLOAD NEW QR IMAGE
+        </>
+      )}
+      <input
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/webp"
+        className="hidden"
+        disabled={qrUploadLoading}
+        onChange={(e) => {
+          const file = e.target.files[0];
+          if (file) {
+            handleQRImageUpdate(file);
+          }
+          e.target.value = '';
+        }}
+      />
+    </label>
+  </div>
+)}
+
+     {/* ACCEPTOR VIEW - Request QR Update Button */}
+{isAcceptedByCurrentUser() && ["ACCEPTED", "PAYMENT_SUBMITTED"].includes(s.status) && (
+  <button
+    onClick={handleRequestQRUpdate}  // ✅ Use the function directly
+    disabled={qrUpdateLoading}
+    className="w-full bg-purple-500/20 text-purple-400 py-3 rounded-xl font-black text-xs 
+               hover:bg-purple-500/30 transition-all border border-purple-500/20 
+               flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+  >
+    {qrUpdateLoading ? (
+      <>
+        <Loader size={14} className="animate-spin" />
+        SENDING...
+      </>
+    ) : (
+      <>
+        <Camera size={14} />
+        REQUEST VALID QR IMAGE
+      </>
+    )}
+  </button>
+)}
         {isOwner ? (
 
           
