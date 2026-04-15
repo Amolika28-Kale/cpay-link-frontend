@@ -7,7 +7,8 @@ import {
   ArrowRight,Info,
   HelpCircle,
   Share2,
-  CreditCard
+  CreditCard,
+  XCircle
 } from "lucide-react";
 
 import {
@@ -16,6 +17,7 @@ import {
   acceptRequest, submitPayment, confirmRequest,
   updateQRImage,
   requestQRUpdate,
+  cancelRequest,
 } from "../services/apiService";
 import { 
   getReferralStats, 
@@ -1132,52 +1134,23 @@ const readImageFile = (file) => {
     });
   };
 
- const handleCancelRequest = async (requestId) => {
+const handleCancelRequest = async (scannerId) => {
   try {
-    const toastId = toast.loading('Cancelling request...');
-    
-    // ✅ Import cancelRequest from apiService
-    const { cancelRequest } = await import("../services/apiService");
-    const res = await cancelRequest(requestId);
-    
-    toast.dismiss(toastId);
-    
-    if (res.message) {
-      toast.success(
-        <div className="flex items-center gap-2">
-          <CheckCircle size={20} className="text-[#00F5A0]" />
-          <div>
-            <div className="font-bold">Request Cancelled! ✅</div>
-            <div className="text-xs">Your request has been cancelled</div>
-          </div>
-        </div>,
-        { duration: 1000 }
-      );
+    // ✅ Safety check - object असेल तर _id extract करा
+    const id = scannerId?._id 
+      ? String(scannerId._id) 
+      : String(scannerId);
+
+    if (!id || id === "undefined" || id === "null") {
+      toast.error("Invalid request ID");
+      return;
     }
-    
-    // Clear any timers
-    if (requestTimer) {
-      clearTimeout(requestTimer);
-      setRequestTimer(null);
-    }
-    
-    setTimerExpired(false);
-    
-    // Refresh the data
+
+    await cancelRequest(id); // apiService function
+    toast.success("Request cancelled successfully!");
     loadAllData();
-    
-  } catch (error) {
-    toast.dismiss();
-    toast.error(
-      <div className="flex items-center gap-2">
-        <AlertCircle size={20} className="text-red-500" />
-        <div>
-          <div className="font-bold">Failed to Cancel! ❌</div>
-          <div className="text-xs">{error.message || "Something went wrong"}</div>
-        </div>
-      </div>,
-      { duration: 1000 }
-    );
+  } catch (err) {
+    toast.error(err.message || "Failed to cancel request");
   }
 };
 
@@ -2534,6 +2507,50 @@ const [isAcceptExpired, setIsAcceptExpired] = useState(false);
   // ✅ ADD THIS: State for button loading
   const [qrUpdateLoading, setQrUpdateLoading] = useState(false);
   const [qrUploadLoading, setQrUploadLoading] = useState(false);
+
+
+  // ✅ ADD THIS: Cancel Request states
+  const [cancelRequestLoading, setCancelRequestLoading] = useState(false);
+  const [showCancelReasonModal, setShowCancelReasonModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+
+  // ✅ ADD THIS: Handle cancel request from acceptor
+  const handleRequestCancellation = async () => {
+    if (!cancelReason.trim()) {
+      toast.error("Please provide a reason for cancellation");
+      return;
+    }
+
+    setCancelRequestLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_BASE}/scanner/request-cancellation`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          scannerId: s._id,
+          reason: cancelReason
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Cancellation request sent to creator!");
+        setShowCancelReasonModal(false);
+        setCancelReason("");
+        loadAllData();
+      } else {
+        toast.error(data.message || "Failed to send request");
+      }
+    } catch (err) {
+      toast.error("Failed to send cancellation request");
+    } finally {
+      setCancelRequestLoading(false);
+    }
+  };
 // ✅ ADD THIS: Handle QR update request
   const handleRequestQRUpdate = async () => {
     setQrUpdateLoading(true);
@@ -3164,6 +3181,32 @@ const isAcceptedByCurrentUser = () => {
     </label>
   </div>
 )}
+ {/* ✅ ADD THIS: Cancellation Requested Indicator (Creator View) */}
+      {isOwner && s.cancellationRequested && ["ACTIVE", "ACCEPTED", "PAYMENT_SUBMITTED"].includes(s.status) && (
+        <div className="mb-3 p-3 bg-red-500/20 rounded-xl border border-red-500/30 animate-pulse">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertCircle size={16} className="text-red-400" />
+            <span className="text-xs font-bold text-red-400">
+              🚫 Cancellation Requested!
+            </span>
+          </div>
+          <p className="text-[10px] text-gray-300 mb-2">
+            The acceptor has requested to cancel this request.
+          </p>
+          {s.cancellationReason && (
+            <p className="text-[10px] text-red-400/80 mb-3 italic">
+              Reason: "{s.cancellationReason}"
+            </p>
+          )}
+          <button
+            onClick={() => handleCancelRequest(s._id)}
+            className="w-full bg-red-500/30 text-red-400 py-2 rounded-lg text-xs font-bold hover:bg-red-500/40 transition-all flex items-center justify-center gap-2"
+          >
+            <XCircle size={14} />
+            CANCEL THIS REQUEST
+          </button>
+        </div>
+      )}
 
      {/* ACCEPTOR VIEW - Request QR Update Button */}
 {isAcceptedByCurrentUser() && ["ACCEPTED", "PAYMENT_SUBMITTED"].includes(s.status) && (
@@ -3187,6 +3230,27 @@ const isAcceptedByCurrentUser = () => {
     )}
   </button>
 )}
+
+        {/* ✅ ADD THIS: Request Cancellation Button (Acceptor View) */}
+        {isAcceptedByCurrentUser() && ["ACCEPTED", "PAYMENT_SUBMITTED"].includes(s.status) && !s.cancellationRequested && (
+          <button
+            onClick={() => setShowCancelReasonModal(true)}
+            className="w-full bg-red-500/20 text-red-400 py-2 rounded-xl font-bold text-xs 
+                       hover:bg-red-500/30 transition-all border border-red-500/20 
+                       flex items-center justify-center gap-2"
+          >
+            <XCircle size={14} />
+            CANCEL PAYMENT REQUEST
+          </button>
+        )}
+
+        {/* ✅ ADD THIS: Cancellation Requested Indicator (Acceptor View) */}
+        {isAcceptedByCurrentUser() && s.cancellationRequested && (
+          <div className="w-full bg-orange-500/20 text-orange-400 py-2 rounded-xl font-bold text-xs 
+                          border border-orange-500/20 text-center">
+            ⏳ Waiting for creator to cancel...
+          </div>
+        )}
         {isOwner ? (
 
           
@@ -3215,36 +3279,29 @@ const isAcceptedByCurrentUser = () => {
                 )}
               </button>
               
-           {/* ✅ CONFIRM RECEIPT button - INSTANT confirmation */}
+{/* ✅ CONFIRM RECEIPT button - FIXED */}
 {!isAutoRequest && (
   <button 
-    onClick={async () => {
+    onClick={async (e) => {  // ✅ ADD event parameter
       if (!proofViewed) {
         toast.error("Please view proof first");
         return;
       }
       
+      const btn = e.currentTarget;  // ✅ Use currentTarget instead of target
+      const originalText = btn.innerText;
+      btn.disabled = true;
+      btn.innerText = "⏳ CONFIRMING...";
+      
       try {
-        // Disable button to prevent double click
-        const btn = event.target;
-        btn.disabled = true;
-        btn.innerText = "⏳ CONFIRMING...";
-        
         await confirmRequest(s._id);
-        
         toast.success("Payment confirmed successfully! 🎉");
-        
-        // Immediately refresh data
         await loadAllData();
-        
         btn.innerText = "✅ CONFIRMED";
-        setTimeout(() => {
-          if (btn) btn.disabled = false;
-        }, 1000);
       } catch (error) {
         toast.error("Failed to confirm: " + error.message);
         btn.disabled = false;
-        btn.innerText = "✅ CONFIRM RECEIPT";
+        btn.innerText = originalText;
       }
     }}
     disabled={!proofViewed}
@@ -3302,6 +3359,59 @@ const isAcceptedByCurrentUser = () => {
             UPDATE SCREENSHOT
           </button>
         )}
+        {/* ✅ ADD THIS: Cancel Reason Modal */}
+      {showCancelReasonModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0A1F1A] border border-white/10 rounded-2xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-black text-white mb-4 flex items-center gap-2">
+              <XCircle size={20} className="text-red-400" />
+              Request Cancellation
+            </h3>
+            
+            <p className="text-xs text-gray-400 mb-4">
+              Please provide a reason why you cannot process this payment:
+            </p>
+            
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="e.g., QR code not working, UPI issues, Insufficient balance, etc."
+              className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm outline-none resize-none h-24 mb-4"
+              maxLength={200}
+            />
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowCancelReasonModal(false);
+                  setCancelReason("");
+                }}
+                className="flex-1 bg-white/5 text-gray-400 py-3 rounded-xl font-bold text-sm hover:bg-white/10 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRequestCancellation}
+                disabled={cancelRequestLoading || !cancelReason.trim()}
+                className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${
+                  cancelRequestLoading || !cancelReason.trim()
+                    ? "bg-gray-700 text-gray-400 cursor-not-allowed"
+                    : "bg-red-500 text-white hover:bg-red-600"
+                }`}
+              >
+                {cancelRequestLoading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader size={14} className="animate-spin" />
+                    SENDING...
+                  </span>
+                ) : (
+                  "SEND REQUEST"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
 
       {/* ✅ NEW: Screenshot Management Modal */}

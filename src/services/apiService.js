@@ -336,6 +336,19 @@ export const deleteScreenshot = async (scannerId, screenshotIndex) => {
   return res.json();
 };
 
+// api/scanner.js - Add this function
+export const requestCancellation = async (scannerId, reason) => {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_BASE}/scanner/request-cancellation`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json", 
+      Authorization: `Bearer ${token}` 
+    },
+    body: JSON.stringify({ scannerId, reason })
+  });
+  return res.json();
+};
 
 export const selfPay = async (amount) => {
   try {
