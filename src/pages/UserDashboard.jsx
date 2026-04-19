@@ -194,7 +194,7 @@ const [scannerSubTab, setScannerSubTab] = useState("pay"); // "pay" or "accept"
     const createdTime = new Date(request.createdAt).getTime();
     const currentTime = new Date().getTime();
     const elapsedSeconds = Math.floor((currentTime - createdTime) / 1000);
-    return elapsedSeconds >= 600; // 10 minutes = 600 seconds
+    return elapsedSeconds >= 1800; // 10 minutes = 600 seconds
   };
 
   
@@ -976,7 +976,7 @@ if (!selectedImage && !upiLink.trim()) {
           userId: user.userId
         },
         createdAt: res.scanner.createdAt || new Date().toISOString(),
-        expiresAt: res.scanner.expiresAt || new Date(Date.now() + 10*60*1000).toISOString()
+expiresAt: res.scanner.expiresAt || new Date(Date.now() + 30*60*1000).toISOString()
       };
 
       setScanners(prev => [newRequest, ...prev]);
@@ -1568,7 +1568,7 @@ const confirmActivation = async () => {
       <div className="bg-[#0A1F1A] border border-white/10 p-4 rounded-2xl">
         <p className="text-[10px] text-gray-500 font-bold">Available to Accept</p>
         <h3 className="text-2xl font-black text-[#00F5A0]">{activeRequestsCount}</h3>
-        <p className="text-[8px] text-gray-600 mt-1">Valid for 10 minutes each</p>
+        <p className="text-[8px] text-gray-600 mt-1">Valid for 30 minutes each</p>
       </div>
       <div className="bg-[#0A1F1A] border border-white/10 p-4 rounded-2xl">
         <p className="text-[10px] text-gray-500 font-bold">My Active Requests</p>
@@ -1816,7 +1816,7 @@ const confirmActivation = async () => {
                 <ul className="text-[10px] text-gray-500 list-disc list-inside mb-3 space-y-1.5">
                   <li>You are creating a pay request for <span className="text-[#00F5A0]">₹{uploadAmount || '0'}</span></li>
                   <li>Maximum amount per request: <span className="text-orange-400 font-bold">₹10,000</span></li>
-                  <li>This request will expire in <span className="text-yellow-500">10 minutes</span> if not accepted</li>
+                  <li>This request will expire in <span className="text-yellow-500">30 minutes</span> if not accepted</li>
                   <li>You must have sufficient <span className="text-[#00F5A0]">INR balance</span> to create request</li>
 <li className="text-yellow-500">⚠️ Add UPI ID or upload Merchant QR code (at least one required)</li>
                 </ul>
@@ -1957,10 +1957,10 @@ disabled={actionLoading || !uploadAmount || (!selectedImage && !upiLink.trim()) 
               <div className="bg-white/5 p-4 rounded-xl border border-white/10">
                 <p className="text-xs text-gray-400 mb-3 font-bold">BEFORE ACCEPTING:</p>
                 <ul className="text-[10px] text-gray-500 list-disc list-inside mb-3 space-y-1">
-                  <li>You have 10 minutes to complete the payment after accepting</li>
+                  <li>You have 30 minutes to complete the payment after accepting</li>
                   <li>Upload clear screenshot of payment proof</li>
                   <li>Wallet must be activated to accept requests</li>
-                  <li>Each request expires in 10 minutes if not accepted</li>
+                  <li>Each request expires in 30 minutes if not accepted</li>
                   <li className="text-orange-400 font-bold">Maximum acceptance amount: ₹10,000 per request</li>
                 </ul>
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -2738,7 +2738,7 @@ useEffect(() => {
   if (s.status === "ACCEPTED" && s.acceptedAt) {
     // Add 10 minutes to acceptedAt time
     const acceptedTime = new Date(s.acceptedAt).getTime();
-    const expiryTime = acceptedTime + (10 * 60 * 1000); // 10 minutes from acceptance
+    const expiryTime = acceptedTime + (30 * 60 * 1000); // 30 minutes from acceptance
     const currentTime = new Date().getTime();
     let remaining = Math.floor((expiryTime - currentTime) / 1000);
 

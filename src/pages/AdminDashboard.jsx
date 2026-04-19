@@ -177,7 +177,7 @@ const fetchSystemRequests = async () => {
   }
 };
 // Add this function for creating system request
-const handleCreateSystemRequest = async (userId, amount = 2000) => {
+const handleCreateSystemRequest = async (userId, amount = 5000) => {
   if (!userId) {
     toast.error("Please enter User ID");
     return;
@@ -3687,6 +3687,7 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
   const itemsPerPage = 10;
 
   const API_BASE = 'https://cpay-link-backend.onrender.com/api';
+  // const API_BASE = 'http://localhost:5000/api'; // For local development
 
   // Fetch users on mount
   useEffect(() => {
@@ -3747,11 +3748,11 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ userId, amount: 2000 })
+        body: JSON.stringify({ userId, amount: 5000 })
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`₹2000 request created for ${userId === 'all' ? 'all users' : selectedUserId}`);
+        toast.success(`₹5000 request created for ${userId === 'all' ? 'all users' : selectedUserId}`);
         onRefresh();
         if (targetUserType === 'single') setSelectedUserId('');
       } else {
@@ -3782,11 +3783,11 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ userId, amount: 1000 })
+        body: JSON.stringify({ userId, amount: 10000 })
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`₹1000 request created for ${userId === 'all' ? 'all users' : selectedUserId}`);
+        toast.success(`₹10000 request created for ${userId === 'all' ? 'all users' : selectedUserId}`);
         onRefresh();
         if (targetUserType === 'single') setSelectedUserId('');
       } else {
@@ -4029,7 +4030,7 @@ const paginatedRequests = sortedRequests.slice(
               ) : (
                 <PlusCircle size={16} />
               )}
-              Create ₹2000 Request
+              Create ₹5000 Request
             </button>
             
             <button
@@ -4042,7 +4043,7 @@ const paginatedRequests = sortedRequests.slice(
               ) : (
                 <PlusCircle size={16} />
               )}
-              Create ₹1000 Request
+              Create ₹10000 Request
             </button>
           </div>
         </div>
@@ -4122,9 +4123,9 @@ const paginatedRequests = sortedRequests.slice(
                   <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                        group.amount === 2000 ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                        group.amount === 5000 ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
                       }`}>
-                        ₹{group.amount === 2000 ? '2K' : '1K'}
+                        ₹{group.amount === 5000 ? '5K' : '10K'}
                       </div>
                       <div>
                         <p className="text-xs font-bold flex items-center gap-2">
@@ -4148,7 +4149,7 @@ const paginatedRequests = sortedRequests.slice(
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className={`text-xl font-black ${group.amount === 2000 ? 'text-[#00F5A0]' : 'text-blue-400'}`}>
+                      <p className={`text-xl font-black ${group.amount === 5000 ? 'text-[#00F5A0]' : 'text-blue-400'}`}>
                         ₹{group.amount}
                       </p>
                     </div>
