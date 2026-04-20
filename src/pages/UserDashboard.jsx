@@ -2725,9 +2725,26 @@ const [isAcceptExpired, setIsAcceptExpired] = useState(false);
 
   }, [s.expiresAt, s.status, s.acceptedBy]);
 
-  if (s.status === "COMPLETED") {
-    return null;
-  }
+// यात:
+if (s.status === "COMPLETED") {
+  const isMyCompletedRequest = isOwner || isAcceptedByCurrentUser();
+  if (!isMyCompletedRequest) return null; // इतरांना दाखवू नको
+
+  return (
+    <div className="bg-[#0A1F1A] border border-[#00F5A0]/30 p-5 rounded-[2rem] flex flex-col items-center gap-3 text-center">
+      <div className="w-16 h-16 rounded-full bg-[#00F5A0]/20 flex items-center justify-center">
+        <CheckCircle size={36} className="text-[#00F5A0]" />
+      </div>
+      <div>
+        <p className="text-[#00F5A0] font-black text-lg">Payment Complete! 🎉</p>
+        <p className="text-gray-400 text-xs mt-1">₹{s.amount} successfully transferred</p>
+        <p className="text-gray-600 text-[10px] mt-2">
+          Completed at: {new Date(s.updatedAt || s.createdAt).toLocaleString('mr-IN')}
+        </p>
+      </div>
+    </div>
+  );
+}
 
   if (s.status === "EXPIRED") {
     return null;
