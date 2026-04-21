@@ -6,7 +6,8 @@ import {
   ChevronDown, ChevronUp, User, Copy, DollarSign, PieChart, BarChart3,
   Users2, GitBranch, Network, Wallet, Coins, History, Download,
   Filter, ChevronLeft, ChevronRight, AlertCircle, Info, CheckCircle,PlusCircle, Gift,
-  Camera
+  Camera,
+  QrCode
 } from "lucide-react";
 import { 
   getAllUsers, getAllDeposits, updateDepositStatus, 
@@ -3669,6 +3670,693 @@ const LedgerView = ({ transactions, loadData }) => {
 
 // AdminDashboard.jsx - Update the SystemRequestsView component
 
+// const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequest }) => {
+//   const [filter, setFilter] = useState('all');
+//   const [searchTerm, setSearchTerm] = useState('');
+//   const [selectedRequest, setSelectedRequest] = useState(null);
+//   const [showScreenshotModal, setShowScreenshotModal] = useState(false);
+//   const [confirming, setConfirming] = useState(null);
+//   const [currentPage, setCurrentPage] = useState(1);
+//   const [targetUserType, setTargetUserType] = useState('single');
+//   const [selectedUserId, setSelectedUserId] = useState('');
+//   const [userList, setUserList] = useState([]);
+//   const [loadingUsers, setLoadingUsers] = useState(false);
+//   const [showUserDropdown, setShowUserDropdown] = useState(false);
+//   const [userSearchTerm, setUserSearchTerm] = useState('');
+//   const [creating2000, setCreating2000] = useState(false);
+//   const [creating1000, setCreating1000] = useState(false);
+//     const [customAmount, setCustomAmount] = useState('');
+// const [creatingRequest, setCreatingRequest] = useState(false);
+//   const itemsPerPage = 10;
+
+//   // const API_BASE = 'https://cpay-link-backend.onrender.com/api';
+//   const API_BASE = 'http://localhost:5000/api'; // For local development
+
+//   // Fetch users on mount
+//   useEffect(() => {
+//     const fetchUsers = async () => {
+//       setLoadingUsers(true);
+//       try {
+//         const token = localStorage.getItem("token");
+//         const res = await fetch(`${API_BASE}/admin/users`, {
+//           headers: { Authorization: `Bearer ${token}` }
+//         });
+//         const data = await res.json();
+        
+//         if (Array.isArray(data)) {
+//           setUserList(data);
+//         } else if (data.success && Array.isArray(data.users)) {
+//           setUserList(data.users);
+//         } else {
+//           setUserList([]);
+//         }
+//       } catch (error) {
+//         console.error("Error fetching users:", error);
+//         setUserList([]);
+//       } finally {
+//         setLoadingUsers(false);
+//       }
+//     };
+//     fetchUsers();
+//   }, []);
+
+//   // Filter users for dropdown
+//   const filteredUsers = userList.filter(user => 
+//     user.userId?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+//     user.email?.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
+//     user._id?.toLowerCase().includes(userSearchTerm.toLowerCase())
+//   );
+
+//   const handleSelectUser = (user) => {
+//     setSelectedUserId(user.userId);
+//     setShowUserDropdown(false);
+//     setUserSearchTerm('');
+//   };
+
+//   // // ✅ Handle Create for ₹2000
+//   // const handleCreate2000 = async () => {
+//   //   if (targetUserType === 'single' && !selectedUserId) {
+//   //     toast.error("Please select a user");
+//   //     return;
+//   //   }
+    
+//   //   const userId = targetUserType === 'all' ? 'all' : selectedUserId;
+    
+//   //   setCreating2000(true);
+//   //   try {
+//   //     const token = localStorage.getItem("token");
+//   //     const res = await fetch(`${API_BASE}/admin/create-system-request`, {
+//   //       method: 'POST',
+//   //       headers: {
+//   //         'Content-Type': 'application/json',
+//   //         Authorization: `Bearer ${token}`
+//   //       },
+//   //       body: JSON.stringify({ userId, amount: 5000 })
+//   //     });
+//   //     const data = await res.json();
+//   //     if (data.success) {
+//   //       toast.success(`₹5000 request created for ${userId === 'all' ? 'all users' : selectedUserId}`);
+//   //       onRefresh();
+//   //       if (targetUserType === 'single') setSelectedUserId('');
+//   //     } else {
+//   //       toast.error(data.message || "Failed to create request");
+//   //     }
+//   //   } catch (error) {
+//   //     toast.error("Failed to create request");
+//   //   } finally {
+//   //     setCreating2000(false);
+//   //   }
+//   // };
+
+//   // // ✅ Handle Create for ₹1000
+//   // const handleCreate1000 = async () => {
+//   //   if (targetUserType === 'single' && !selectedUserId) {
+//   //     toast.error("Please select a user");
+//   //     return;
+//   //   }
+    
+//   //   const userId = targetUserType === 'all' ? 'all' : selectedUserId;
+    
+//   //   setCreating1000(true);
+//   //   try {
+//   //     const token = localStorage.getItem("token");
+//   //     const res = await fetch(`${API_BASE}/admin/create-system-request`, {
+//   //       method: 'POST',
+//   //       headers: {
+//   //         'Content-Type': 'application/json',
+//   //         Authorization: `Bearer ${token}`
+//   //       },
+//   //       body: JSON.stringify({ userId, amount: 10000 })
+//   //     });
+//   //     const data = await res.json();
+//   //     if (data.success) {
+//   //       toast.success(`₹10000 request created for ${userId === 'all' ? 'all users' : selectedUserId}`);
+//   //       onRefresh();
+//   //       if (targetUserType === 'single') setSelectedUserId('');
+//   //     } else {
+//   //       toast.error(data.message || "Failed to create request");
+//   //     }
+//   //   } catch (error) {
+//   //     toast.error("Failed to create request");
+//   //   } finally {
+//   //     setCreating1000(false);
+//   //   }
+//   // };
+
+
+
+// // Handle Create with Custom Amount
+// const handleCreateCustomRequest = async () => {
+//   if (!customAmount || customAmount <= 0) {
+//     toast.error("Please enter a valid amount");
+//     return;
+//   }
+  
+//   if (targetUserType === 'single' && !selectedUserId) {
+//     toast.error("Please select a user");
+//     return;
+//   }
+  
+//   const amount = parseInt(customAmount);
+//   if (isNaN(amount) || amount <= 0) {
+//     toast.error("Please enter a valid positive number");
+//     return;
+//   }
+  
+//   // Optional: Add max limit
+//   if (amount > 100000) {
+//     toast.error("Maximum amount is ₹1,00,000");
+//     return;
+//   }
+  
+//   const userId = targetUserType === 'all' ? 'all' : selectedUserId;
+  
+//   setCreatingRequest(true);
+//   try {
+//     const token = localStorage.getItem("token");
+//     const res = await fetch(`${API_BASE}/admin/create-system-request`, {
+//       method: 'POST',
+//       headers: {
+//         'Content-Type': 'application/json',
+//         Authorization: `Bearer ${token}`
+//       },
+//       body: JSON.stringify({ userId, amount: amount })
+//     });
+//     const data = await res.json();
+//     if (data.success) {
+//       toast.success(`₹${amount} request created for ${userId === 'all' ? 'all users' : selectedUserId}`);
+//       onRefresh();
+//       if (targetUserType === 'single') setSelectedUserId('');
+//       setCustomAmount(''); // Clear input
+//     } else {
+//       toast.error(data.message || "Failed to create request");
+//     }
+//   } catch (error) {
+//     toast.error("Failed to create request");
+//   } finally {
+//     setCreatingRequest(false);
+//   }
+// };
+
+
+//   // Check for undefined requests
+//   if (!requests) {
+//     return (
+//       <div className="flex items-center justify-center min-h-[400px]">
+//         <Loader2 className="animate-spin text-[#00F5A0]" size={32} />
+//         <span className="ml-2 text-gray-400">Loading system requests...</span>
+//       </div>
+//     );
+//   }
+
+// // Filter requests
+// const filteredRequests = (Array.isArray(requests) ? requests : []).filter(req => {
+//   if (filter !== 'all' && req.status !== filter) return false;
+//   if (searchTerm) {
+//     const searchLower = searchTerm.toLowerCase();
+//     const hasMatchingUser = req.requests?.some(r => 
+//       r.createdFor?.userId?.toLowerCase().includes(searchLower)
+//     );
+//     return hasMatchingUser;
+//   }
+//   return true;
+// });
+
+// // Sort requests - Payment Submitted first, then Accepted, then Active
+// const sortedRequests = [...filteredRequests].sort((a, b) => {
+//   const getPriority = (group) => {
+//     const hasPaymentSubmitted = group.requests?.some(r => r.status === 'PAYMENT_SUBMITTED');
+//     const hasAccepted = group.requests?.some(r => r.status === 'ACCEPTED');
+//     const hasActive = group.requests?.some(r => r.status === 'ACTIVE');
+    
+//     if (hasPaymentSubmitted) return 1; // Highest priority
+//     if (hasAccepted) return 2; // Second priority
+//     if (hasActive) return 3; // Third priority
+//     return 4; // Completed/Expired lowest priority
+//   };
+  
+//   const priorityA = getPriority(a);
+//   const priorityB = getPriority(b);
+  
+//   if (priorityA !== priorityB) {
+//     return priorityA - priorityB;
+//   }
+  
+//   // If same priority, sort by createdAt (newest first)
+//   return new Date(b.createdAt) - new Date(a.createdAt);
+// });
+
+// // Pagination - use sortedRequests instead
+// const totalPages = Math.ceil(sortedRequests.length / itemsPerPage);
+// const paginatedRequests = sortedRequests.slice(
+//   (currentPage - 1) * itemsPerPage,
+//   currentPage * itemsPerPage
+// );
+
+
+//   const handleConfirm = async (scannerId) => {
+//     setConfirming(scannerId);
+//     try {
+//       const token = localStorage.getItem("token");
+//       const res = await fetch(`${API_BASE}/admin/confirm-system-request`, {
+//         method: 'POST',
+//         headers: {
+//           'Content-Type': 'application/json',
+//           Authorization: `Bearer ${token}`
+//         },
+//         body: JSON.stringify({ scannerId })
+//       });
+//       const data = await res.json();
+//       if (data.success) {
+//         toast.success(`Request confirmed! ₹${data.amount} credited to user`);
+//         onRefresh();
+//       } else {
+//         toast.error(data.message || "Failed to confirm");
+//       }
+//     } catch (error) {
+//       console.error("Confirm error:", error);
+//       toast.error("Something went wrong");
+//     } finally {
+//       setConfirming(null);
+//     }
+//   };
+
+//   const getStatusBadge = (status) => {
+//     const config = {
+//       'ACTIVE': { color: 'bg-green-500/20 text-green-500 border-green-500/30', label: 'ACTIVE' },
+//       'ACCEPTED': { color: 'bg-blue-500/20 text-blue-500 border-blue-500/30', label: 'ACCEPTED' },
+//       'PAYMENT_SUBMITTED': { color: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30 animate-pulse', label: 'PROOF SUBMITTED' },
+//       'COMPLETED': { color: 'bg-purple-500/20 text-purple-500 border-purple-500/30', label: 'COMPLETED' },
+//       'EXPIRED': { color: 'bg-gray-500/20 text-gray-500 border-gray-500/30', label: 'EXPIRED' }
+//     };
+//     return config[status] || { color: 'bg-gray-500/20 text-gray-500', label: status };
+//   };
+
+//   const formatDate = (dateString) => {
+//     if (!dateString) return 'N/A';
+//     return new Date(dateString).toLocaleString('en-IN', {
+//       day: '2-digit',
+//       month: 'short',
+//       hour: '2-digit',
+//       minute: '2-digit'
+//     });
+//   };
+
+//   return (
+//     <div className="space-y-4 animate-in fade-in">
+      
+//       {/* Header with Create Form */}
+//       <div className="bg-[#0A1F1A] border border-white/10 rounded-xl p-4">
+//         <h2 className="text-lg font-black italic flex items-center gap-2 mb-4">
+//           <Gift size={20} className="text-[#00F5A0]" />
+//           System Requests
+//           <span className="bg-[#00F5A0]/10 text-[#00F5A0] text-[10px] px-2 py-1 rounded-full">
+//             {filteredRequests.length} Groups
+//           </span>
+//         </h2>
+
+//         {/* ✅ TWO BUTTONS - User Type Selector */}
+//         <div className="flex gap-3 mb-4">
+//           <button
+//             onClick={() => {
+//               setTargetUserType('single');
+//               setSelectedUserId('');
+//             }}
+//             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+//               targetUserType === 'single' 
+//                 ? 'bg-[#00F5A0] text-black' 
+//                 : 'bg-white/5 text-gray-400 hover:bg-white/10'
+//             }`}
+//           >
+//             Single User
+//           </button>
+//           <button
+//             onClick={() => {
+//               setTargetUserType('all');
+//               setSelectedUserId('');
+//             }}
+//             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+//               targetUserType === 'all' 
+//                 ? 'bg-[#00F5A0] text-black' 
+//                 : 'bg-white/5 text-gray-400 hover:bg-white/10'
+//             }`}
+//           >
+//             All Users
+//           </button>
+//         </div>
+        
+//         {/* User Selector & Both Buttons */}
+//         <div className="flex flex-col gap-3">
+          
+//           {/* User Selector */}
+//           {targetUserType === 'single' && (
+//            <div className="relative">
+//     <div className="flex items-center bg-black/40 border border-white/10 rounded-xl overflow-hidden focus-within:border-[#00F5A0] transition-all">
+//       <span className="px-4 py-3 bg-white/5 text-gray-400 font-bold text-sm border-r border-white/10">
+//         ₹
+//       </span>
+//       <input
+//         type="number"
+//         placeholder="Enter custom amount (e.g., 2500, 7500, 15000...)"
+//         value={customAmount}
+//         onChange={(e) => setCustomAmount(e.target.value)}
+//         className="flex-1 bg-transparent px-4 py-3 text-sm font-bold outline-none"
+//         min="1"
+//         max="100000"
+//         step="100"
+//       />
+//     </div>
+//     <p className="text-[8px] text-gray-500 mt-1">
+//       💡 You can enter any amount between ₹1 and ₹1,00,000
+//     </p>
+//   </div>
+//           )}
+          
+//           {targetUserType === 'all' && (
+//             <div className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-gray-400">
+//               ⚡ This request will be sent to ALL active users
+//             </div>
+//           )}
+          
+//           {/* ✅ TWO BUTTONS - Both amounts simultaneously */}
+//           <div className="flex gap-3">
+//             <button
+//               onClick={handleCreate2000}
+//               disabled={creating2000 || (targetUserType === 'single' && !selectedUserId)}
+//               className="flex-1 bg-gradient-to-r from-[#00F5A0] to-green-500 text-black px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+//             >
+//               {creating2000 ? (
+//                 <Loader2 size={16} className="animate-spin" />
+//               ) : (
+//                 <PlusCircle size={16} />
+//               )}
+//               Create ₹5000 Request
+//             </button>
+            
+//             <button
+//               onClick={handleCreate1000}
+//               disabled={creating1000 || (targetUserType === 'single' && !selectedUserId)}
+//               className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+//             >
+//               {creating1000 ? (
+//                 <Loader2 size={16} className="animate-spin" />
+//               ) : (
+//                 <PlusCircle size={16} />
+//               )}
+//               Create ₹10000 Request
+//             </button>
+//           </div>
+//         </div>
+        
+//         <p className="text-[10px] text-gray-500 text-center mt-3">
+//           ⚡ You can create BOTH requests for the same user. They will appear separately.
+//         </p>
+//       </div>
+
+//       {/* Filters */}
+//       <div className="bg-[#0A1F1A] border border-white/10 rounded-xl p-4">
+//         <div className="flex flex-col sm:flex-row gap-3">
+//           <div className="flex gap-2 flex-wrap">
+//             {['all', 'ACTIVE', 'ACCEPTED', 'PAYMENT_SUBMITTED', 'COMPLETED'].map(status => (
+//               <button
+//                 key={status}
+//                 onClick={() => setFilter(status)}
+//                 className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+//                   filter === status 
+//                     ? 'bg-[#00F5A0] text-black' 
+//                     : 'bg-white/5 text-gray-400 hover:bg-white/10'
+//                 }`}
+//               >
+//                 {status === 'all' ? 'All' : status}
+//               </button>
+//             ))}
+//           </div>
+          
+//           <div className="relative flex-1 sm:max-w-xs ml-auto">
+//             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+//             <input
+//               type="text"
+//               placeholder="Search by User ID..."
+//               value={searchTerm}
+//               onChange={(e) => setSearchTerm(e.target.value)}
+//               className="w-full bg-black/40 border border-white/10 rounded-lg pl-8 pr-3 py-2 text-xs outline-none focus:border-[#00F5A0]"
+//             />
+//           </div>
+//         </div>
+//       </div>
+
+//       {/* Requests List - Rest remains same */}
+//       <div className="space-y-3">
+//         {paginatedRequests.length === 0 ? (
+//           <div className="bg-[#0A1F1A] border border-white/10 rounded-xl p-12 text-center">
+//             <Gift size={48} className="mx-auto mb-3 opacity-30 text-gray-500" />
+//             <p className="text-gray-500 font-bold">No system requests found</p>
+//             <p className="text-[10px] text-gray-600 mt-1">Create one above to get started</p>
+//           </div>
+//         ) : (
+//           paginatedRequests.map(group => {
+//             // ... existing group rendering code (same as before)
+//             // (I'm keeping this part same as your existing code)
+//             const activeCount = group.requests?.filter(r => r.status === 'ACTIVE').length || 0;
+//             const acceptedRequest = group.requests?.find(r => r.status === 'ACCEPTED' || r.status === 'PAYMENT_SUBMITTED');
+//             const completedRequest = group.requests?.find(r => r.status === 'COMPLETED');
+//             const isCompleted = group.completed || completedRequest;
+            
+//             let status = 'ACTIVE';
+//             if (isCompleted) {
+//               status = 'COMPLETED';
+//             } else if (acceptedRequest) {
+//               status = acceptedRequest.status;
+//             } else if (activeCount > 0) {
+//               status = 'ACTIVE';
+//             } else {
+//               status = 'EXPIRED';
+//             }
+            
+//             const statusBadge = getStatusBadge(status);
+//             const isPaymentSubmitted = status === 'PAYMENT_SUBMITTED';
+            
+//             return (
+//               <div key={group.groupId || group._id} className="bg-[#0A1F1A] border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-all">
+//                 <div className="p-4">
+//                   {/* Header - Show amount badge with color */}
+//                   <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+//                     <div className="flex items-center gap-2">
+//                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+//                         group.amount === 5000 ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+//                       }`}>
+//                         ₹{group.amount === 5000 ? '5K' : '10K'}
+//                       </div>
+//                       <div>
+//                         <p className="text-xs font-bold flex items-center gap-2">
+//                           {activeCount > 0 
+//                             ? `${activeCount} users waiting` 
+//                             : acceptedRequest 
+//                               ? `Payment Submitted by: ${acceptedRequest.acceptedBy?.userId || 'User'}` 
+//                               : 'All expired'}
+//                           <span className="text-[8px] text-gray-500">
+//                             Created: {formatDate(group.createdAt)}
+//                           </span>
+//                         </p>
+//                         <div className="flex gap-2 mt-1">
+//                           <span className={`inline-block px-2 py-0.5 text-[8px] font-black uppercase rounded-full border ${statusBadge.color}`}>
+//                             {statusBadge.label}
+//                           </span>
+//                           <span className="text-[8px] text-gray-500">
+//                             Total users: {group.totalUsers}
+//                           </span>
+//                         </div>
+//                       </div>
+//                     </div>
+//                     <div className="text-right">
+//                       <p className={`text-xl font-black ${group.amount === 5000 ? 'text-[#00F5A0]' : 'text-blue-400'}`}>
+//                         ₹{group.amount}
+//                       </p>
+//                     </div>
+//                   </div>
+
+//                   {/* Rest of the group rendering - same as your existing code */}
+//                   {/* Users List */}
+//                   {group.requests && group.requests.length > 0 && (
+//                     <div className="mb-3">
+//                       <p className="text-[8px] text-gray-500 mb-1 flex items-center gap-1">
+//                         <Users size={10} /> Users in this group:
+//                       </p>
+//                       <div className="flex flex-wrap gap-1">
+//                         {group.requests.map(req => (
+//                           <div key={req._id} className="flex items-center gap-1 bg-black/30 px-2 py-1 rounded-lg">
+//                             <span className={`w-2 h-2 rounded-full ${
+//                               req.status === 'COMPLETED' ? 'bg-purple-500' :
+//                               req.status === 'PAYMENT_SUBMITTED' ? 'bg-yellow-500 animate-pulse' :
+//                               req.status === 'ACCEPTED' ? 'bg-blue-500' :
+//                               req.status === 'ACTIVE' ? 'bg-green-500' : 'bg-gray-500'
+//                             }`} />
+//                             <span className="text-[8px] font-mono">{req.createdFor?.userId || 'Unknown'}</span>
+//                             {req.acceptedBy && (
+//                               <span className="text-[6px] text-blue-400 ml-1">(accepted)</span>
+//                             )}
+//                             {req.status === 'PAYMENT_SUBMITTED' && (
+//                               <span className="text-[6px] text-yellow-400 ml-1 animate-pulse">proof uploaded</span>
+//                             )}
+//                           </div>
+//                         ))}
+//                       </div>
+//                     </div>
+//                   )}
+
+//                   {/* Screenshots Preview */}
+//                   {acceptedRequest?.paymentScreenshots && acceptedRequest.paymentScreenshots.length > 0 && (
+//                     <div className="mb-3">
+//                       <p className="text-[8px] text-gray-500 mb-1 flex items-center gap-1">
+//                         <Camera size={10} /> Payment Proof 
+//                         <span className="text-yellow-400 text-[8px]">(click to view)</span>
+//                       </p>
+//                       <div className="flex gap-2">
+//                         {acceptedRequest.paymentScreenshots.filter(ss => ss.isActive).slice(0, 3).map((ss, idx) => (
+//                           <button
+//                             key={idx}
+//                             onClick={() => {
+//                               setSelectedRequest(acceptedRequest);
+//                               setShowScreenshotModal(true);
+//                             }}
+//                             className="w-16 h-16 rounded-lg overflow-hidden border border-white/10 hover:border-[#00F5A0] transition-all group relative"
+//                           >
+//                             <img 
+//                               src={`https://cpay-link-backend.onrender.com${ss.url}`}
+//                               alt="proof"
+//                               className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+//                             />
+//                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+//                               <Eye size={16} className="text-[#00F5A0]" />
+//                             </div>
+//                           </button>
+//                         ))}
+//                       </div>
+//                     </div>
+//                   )}
+
+//                   {/* Action Buttons */}
+//                   {isPaymentSubmitted && acceptedRequest && (
+//                     <button
+//                       onClick={() => handleConfirm(acceptedRequest._id)}
+//                       disabled={confirming === acceptedRequest._id}
+//                       className="w-full mt-3 bg-gradient-to-r from-[#00F5A0] to-green-500 text-black py-2.5 rounded-xl font-bold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+//                     >
+//                       {confirming === acceptedRequest._id ? (
+//                         <Loader2 size={16} className="animate-spin" />
+//                       ) : (
+//                         <>
+//                           <CheckCircle size={16} />
+//                           CONFIRM & CREDIT (₹{acceptedRequest.amount})
+//                         </>
+//                       )}
+//                     </button>
+//                   )}
+
+//                   {acceptedRequest && acceptedRequest.status === 'ACCEPTED' && !acceptedRequest.paymentScreenshots?.length && (
+//                     <div className="mt-3 text-center text-xs text-blue-500 bg-blue-500/10 p-2 rounded-lg">
+//                       📸 Waiting for user to upload payment proof
+//                     </div>
+//                   )}
+
+//                   {activeCount > 0 && !acceptedRequest && (
+//                     <div className="mt-3 text-center text-xs text-yellow-500 bg-yellow-500/10 p-2 rounded-lg">
+//                       ⏳ {activeCount} user(s) can accept this request (first come first serve)
+//                     </div>
+//                   )}
+
+//                   {group.completed && (
+//                     <div className="mt-3 text-center text-xs text-green-500 bg-green-500/10 p-2 rounded-lg">
+//                       ✅ Completed
+//                     </div>
+//                   )}
+//                 </div>
+//               </div>
+//             );
+//           })
+//         )}
+//       </div>
+
+//       {/* Pagination */}
+//       {totalPages > 1 && (
+//         <div className="flex items-center justify-between gap-3 bg-[#0A1F1A] border border-white/10 rounded-xl p-3">
+//           <button
+//             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+//             disabled={currentPage === 1}
+//             className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 disabled:opacity-50 hover:bg-white/10"
+//           >
+//             Previous
+//           </button>
+//           <span className="text-xs text-gray-500">
+//             Page {currentPage} of {totalPages}
+//           </span>
+//           <button
+//             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+//             disabled={currentPage === totalPages}
+//             className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white/5 disabled:opacity-50 hover:bg-white/10"
+//           >
+//             Next
+//           </button>
+//         </div>
+//       )}
+
+//       {/* Screenshot Modal */}
+//       {showScreenshotModal && selectedRequest && (
+//         <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[500] p-4 backdrop-blur-sm">
+//           <div className="bg-[#0A1F1A] rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+//             <div className="p-4 border-b border-white/10 flex justify-between items-center sticky top-0 bg-[#0A1F1A]">
+//               <h3 className="font-bold flex items-center gap-2">
+//                 <Camera size={16} className="text-[#00F5A0]" />
+//                 Payment Proof - ₹{selectedRequest.amount}
+//                 <span className="text-[10px] text-gray-500">
+//                   Uploaded by: {selectedRequest.acceptedBy?.userId}
+//                 </span>
+//               </h3>
+//               <button onClick={() => setShowScreenshotModal(false)} className="p-2 hover:bg-white/10 rounded-lg">
+//                 <X size={20} />
+//               </button>
+//             </div>
+//             <div className="p-4">
+//               {selectedRequest.paymentScreenshots?.filter(ss => ss.isActive).map((ss, idx) => (
+//                 <div key={idx} className="mb-4">
+//                   <img
+//                     src={`https://cpay-link-backend.onrender.com${ss.url}`}
+//                     alt={`Payment Proof ${idx + 1}`}
+//                     className="max-w-full max-h-[60vh] mx-auto rounded-lg border border-white/10"
+//                   />
+//                   <p className="text-[10px] text-gray-500 text-center mt-2">
+//                     Uploaded: {formatDate(ss.uploadedAt)}
+//                   </p>
+//                 </div>
+//               ))}
+//               <div className="mt-4 flex gap-3">
+//                 <button
+//                   onClick={() => setShowScreenshotModal(false)}
+//                   className="flex-1 bg-white/10 py-2 rounded-lg font-bold text-sm"
+//                 >
+//                   Close
+//                 </button>
+//                 {selectedRequest.status === 'PAYMENT_SUBMITTED' && (
+//                   <button
+//                     onClick={() => {
+//                       handleConfirm(selectedRequest._id);
+//                       setShowScreenshotModal(false);
+//                     }}
+//                     className="flex-1 bg-[#00F5A0] text-black py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2"
+//                   >
+//                     <CheckCircle size={16} />
+//                     Confirm & Credit
+//                   </button>
+//                 )}
+//               </div>
+//             </div>
+//           </div>
+//         </div>
+//       )}
+//     </div>
+//   );
+// };
+
 const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequest }) => {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -3682,12 +4370,12 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [userSearchTerm, setUserSearchTerm] = useState('');
-  const [creating2000, setCreating2000] = useState(false);
-  const [creating1000, setCreating1000] = useState(false);
+  const [customAmount, setCustomAmount] = useState('');
+  const [creatingCustomRequest, setCreatingCustomRequest] = useState(false);
   const itemsPerPage = 10;
 
   const API_BASE = 'https://cpay-link-backend.onrender.com/api';
-  // const API_BASE = 'http://localhost:5000/api'; // For local development
+  // const API_BASE = "http://localhost:5000/api"; // Use this for local development
 
   // Fetch users on mount
   useEffect(() => {
@@ -3730,8 +4418,33 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
     setUserSearchTerm('');
   };
 
-  // ✅ Handle Create for ₹2000
-  const handleCreate2000 = async () => {
+  // ✅ Handle Create with Custom Amount (UPDATED)
+  const handleCreateCustomRequest = async () => {
+    // Validate amount
+    if (!customAmount || customAmount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+    
+    const amount = parseInt(customAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid positive number");
+      return;
+    }
+    
+    // Add min limit for safety
+    if (amount < 100) {
+      toast.error("Minimum amount is ₹100");
+      return;
+    }
+    
+    // Add max limit for safety
+    if (amount > 100000) {
+      toast.error("Maximum amount is ₹1,00,000");
+      return;
+    }
+    
+    // Validate user selection
     if (targetUserType === 'single' && !selectedUserId) {
       toast.error("Please select a user");
       return;
@@ -3739,7 +4452,7 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
     
     const userId = targetUserType === 'all' ? 'all' : selectedUserId;
     
-    setCreating2000(true);
+    setCreatingCustomRequest(true);
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_BASE}/admin/create-system-request`, {
@@ -3748,55 +4461,22 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify({ userId, amount: 5000 })
+        body: JSON.stringify({ userId, amount: amount })
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`₹5000 request created for ${userId === 'all' ? 'all users' : selectedUserId}`);
+        toast.success(`₹${amount.toLocaleString('en-IN')} request created for ${userId === 'all' ? 'all users' : selectedUserId}`);
         onRefresh();
         if (targetUserType === 'single') setSelectedUserId('');
+        setCustomAmount(''); // Clear input
       } else {
         toast.error(data.message || "Failed to create request");
       }
     } catch (error) {
+      console.error("Create error:", error);
       toast.error("Failed to create request");
     } finally {
-      setCreating2000(false);
-    }
-  };
-
-  // ✅ Handle Create for ₹1000
-  const handleCreate1000 = async () => {
-    if (targetUserType === 'single' && !selectedUserId) {
-      toast.error("Please select a user");
-      return;
-    }
-    
-    const userId = targetUserType === 'all' ? 'all' : selectedUserId;
-    
-    setCreating1000(true);
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_BASE}/admin/create-system-request`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ userId, amount: 10000 })
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(`₹10000 request created for ${userId === 'all' ? 'all users' : selectedUserId}`);
-        onRefresh();
-        if (targetUserType === 'single') setSelectedUserId('');
-      } else {
-        toast.error(data.message || "Failed to create request");
-      }
-    } catch (error) {
-      toast.error("Failed to create request");
-    } finally {
-      setCreating1000(false);
+      setCreatingCustomRequest(false);
     }
   };
 
@@ -3810,50 +4490,48 @@ const SystemRequestsView = ({ requests, onRefresh, onCreateRequest, creatingRequ
     );
   }
 
-// Filter requests
-const filteredRequests = (Array.isArray(requests) ? requests : []).filter(req => {
-  if (filter !== 'all' && req.status !== filter) return false;
-  if (searchTerm) {
-    const searchLower = searchTerm.toLowerCase();
-    const hasMatchingUser = req.requests?.some(r => 
-      r.createdFor?.userId?.toLowerCase().includes(searchLower)
-    );
-    return hasMatchingUser;
-  }
-  return true;
-});
+  // Filter requests
+  const filteredRequests = (Array.isArray(requests) ? requests : []).filter(req => {
+    if (filter !== 'all' && req.status !== filter) return false;
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const hasMatchingUser = req.requests?.some(r => 
+        r.createdFor?.userId?.toLowerCase().includes(searchLower)
+      );
+      return hasMatchingUser;
+    }
+    return true;
+  });
 
-// Sort requests - Payment Submitted first, then Accepted, then Active
-const sortedRequests = [...filteredRequests].sort((a, b) => {
-  const getPriority = (group) => {
-    const hasPaymentSubmitted = group.requests?.some(r => r.status === 'PAYMENT_SUBMITTED');
-    const hasAccepted = group.requests?.some(r => r.status === 'ACCEPTED');
-    const hasActive = group.requests?.some(r => r.status === 'ACTIVE');
+  // Sort requests - Payment Submitted first, then Accepted, then Active
+  const sortedRequests = [...filteredRequests].sort((a, b) => {
+    const getPriority = (group) => {
+      const hasPaymentSubmitted = group.requests?.some(r => r.status === 'PAYMENT_SUBMITTED');
+      const hasAccepted = group.requests?.some(r => r.status === 'ACCEPTED');
+      const hasActive = group.requests?.some(r => r.status === 'ACTIVE');
+      
+      if (hasPaymentSubmitted) return 1;
+      if (hasAccepted) return 2;
+      if (hasActive) return 3;
+      return 4;
+    };
     
-    if (hasPaymentSubmitted) return 1; // Highest priority
-    if (hasAccepted) return 2; // Second priority
-    if (hasActive) return 3; // Third priority
-    return 4; // Completed/Expired lowest priority
-  };
-  
-  const priorityA = getPriority(a);
-  const priorityB = getPriority(b);
-  
-  if (priorityA !== priorityB) {
-    return priorityA - priorityB;
-  }
-  
-  // If same priority, sort by createdAt (newest first)
-  return new Date(b.createdAt) - new Date(a.createdAt);
-});
+    const priorityA = getPriority(a);
+    const priorityB = getPriority(b);
+    
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
 
-// Pagination - use sortedRequests instead
-const totalPages = Math.ceil(sortedRequests.length / itemsPerPage);
-const paginatedRequests = sortedRequests.slice(
-  (currentPage - 1) * itemsPerPage,
-  currentPage * itemsPerPage
-);
-
+  // Pagination
+  const totalPages = Math.ceil(sortedRequests.length / itemsPerPage);
+  const paginatedRequests = sortedRequests.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const handleConfirm = async (scannerId) => {
     setConfirming(scannerId);
@@ -3869,7 +4547,7 @@ const paginatedRequests = sortedRequests.slice(
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`Request confirmed! ₹${data.amount} credited to user`);
+        toast.success(`Request confirmed! ₹${data.amount.toLocaleString('en-IN')} credited to user`);
         onRefresh();
       } else {
         toast.error(data.message || "Failed to confirm");
@@ -3903,6 +4581,28 @@ const paginatedRequests = sortedRequests.slice(
     });
   };
 
+  // Helper to format amount display
+  const formatAmount = (amount) => {
+    if (amount >= 100000) return `₹${(amount/100000).toFixed(1)}L`;
+    if (amount >= 10000) return `₹${(amount/1000).toFixed(0)}K`;
+    if (amount >= 1000) return `₹${(amount/1000).toFixed(1)}K`;
+    return `₹${amount}`;
+  };
+
+  const getAmountColor = (amount) => {
+    if (amount <= 5000) return 'text-green-400';
+    if (amount <= 20000) return 'text-blue-400';
+    if (amount <= 50000) return 'text-purple-400';
+    return 'text-orange-400';
+  };
+
+  const getAmountBgColor = (amount) => {
+    if (amount <= 5000) return 'bg-green-500/20';
+    if (amount <= 20000) return 'bg-blue-500/20';
+    if (amount <= 50000) return 'bg-purple-500/20';
+    return 'bg-orange-500/20';
+  };
+
   return (
     <div className="space-y-4 animate-in fade-in">
       
@@ -3916,7 +4616,7 @@ const paginatedRequests = sortedRequests.slice(
           </span>
         </h2>
 
-        {/* ✅ TWO BUTTONS - User Type Selector */}
+        {/* User Type Selector */}
         <div className="flex gap-3 mb-4">
           <button
             onClick={() => {
@@ -3946,10 +4646,10 @@ const paginatedRequests = sortedRequests.slice(
           </button>
         </div>
         
-        {/* User Selector & Both Buttons */}
+        {/* Create Form */}
         <div className="flex flex-col gap-3">
           
-          {/* User Selector */}
+          {/* User Selector (only for single user) */}
           {targetUserType === 'single' && (
             <div className="relative">
               <div 
@@ -4012,44 +4712,66 @@ const paginatedRequests = sortedRequests.slice(
             </div>
           )}
           
+          {/* All Users Info */}
           {targetUserType === 'all' && (
             <div className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm font-bold text-gray-400">
               ⚡ This request will be sent to ALL active users
             </div>
           )}
           
-          {/* ✅ TWO BUTTONS - Both amounts simultaneously */}
-          <div className="flex gap-3">
-            <button
-              onClick={handleCreate2000}
-              disabled={creating2000 || (targetUserType === 'single' && !selectedUserId)}
-              className="flex-1 bg-gradient-to-r from-[#00F5A0] to-green-500 text-black px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {creating2000 ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <PlusCircle size={16} />
-              )}
-              Create ₹5000 Request
-            </button>
-            
-            <button
-              onClick={handleCreate1000}
-              disabled={creating1000 || (targetUserType === 'single' && !selectedUserId)}
-              className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {creating1000 ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                <PlusCircle size={16} />
-              )}
-              Create ₹10000 Request
-            </button>
+          {/* ✅ CUSTOM AMOUNT INPUT - Main Feature */}
+          <div className="relative">
+            <div className="flex items-center bg-black/40 border border-white/10 rounded-xl overflow-hidden focus-within:border-[#00F5A0] transition-all">
+              <span className="px-4 py-3 bg-white/5 text-gray-400 font-bold text-sm border-r border-white/10">
+                ₹
+              </span>
+              <input
+                type="number"
+                placeholder="Enter custom amount (e.g., 2500, 7500, 15000...)"
+                value={customAmount}
+                onChange={(e) => setCustomAmount(e.target.value)}
+                className="flex-1 bg-transparent px-4 py-3 text-sm font-bold outline-none"
+                min="100"
+                max="100000"
+                step="100"
+              />
+            </div>
+            <p className="text-[8px] text-gray-500 mt-1">
+              💡 You can enter any amount between ₹100 and ₹1,00,000
+            </p>
           </div>
+          
+          {/* Quick Amount Buttons */}
+          <div className="flex gap-2 flex-wrap">
+            {[500, 1000, 2000, 5000, 10000, 25000, 50000].map(quickAmount => (
+              <button
+                key={quickAmount}
+                onClick={() => setCustomAmount(quickAmount.toString())}
+                className="px-3 py-1.5 rounded-lg text-[10px] font-bold bg-white/5 hover:bg-white/10 transition-all"
+              >
+                ₹{quickAmount.toLocaleString('en-IN')}
+              </button>
+            ))}
+          </div>
+          
+          
+          {/* Create Button with Custom Amount */}
+          <button
+            onClick={handleCreateCustomRequest}
+            disabled={creatingCustomRequest || (targetUserType === 'single' && !selectedUserId) || !customAmount}
+            className="w-full bg-gradient-to-r from-[#00F5A0] to-green-500 text-black py-3 rounded-xl font-bold hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {creatingCustomRequest ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <PlusCircle size={16} />
+            )}
+            Create ₹{customAmount ? parseInt(customAmount).toLocaleString('en-IN') : '___'} Request
+          </button>
         </div>
         
         <p className="text-[10px] text-gray-500 text-center mt-3">
-          ⚡ You can create BOTH requests for the same user. They will appear separately.
+          ⚡ Custom amount requests will appear with their specific amount
         </p>
       </div>
 
@@ -4085,7 +4807,7 @@ const paginatedRequests = sortedRequests.slice(
         </div>
       </div>
 
-      {/* Requests List - Rest remains same */}
+      {/* Requests List */}
       <div className="space-y-3">
         {paginatedRequests.length === 0 ? (
           <div className="bg-[#0A1F1A] border border-white/10 rounded-xl p-12 text-center">
@@ -4095,8 +4817,6 @@ const paginatedRequests = sortedRequests.slice(
           </div>
         ) : (
           paginatedRequests.map(group => {
-            // ... existing group rendering code (same as before)
-            // (I'm keeping this part same as your existing code)
             const activeCount = group.requests?.filter(r => r.status === 'ACTIVE').length || 0;
             const acceptedRequest = group.requests?.find(r => r.status === 'ACCEPTED' || r.status === 'PAYMENT_SUBMITTED');
             const completedRequest = group.requests?.find(r => r.status === 'COMPLETED');
@@ -4119,13 +4839,11 @@ const paginatedRequests = sortedRequests.slice(
             return (
               <div key={group.groupId || group._id} className="bg-[#0A1F1A] border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-all">
                 <div className="p-4">
-                  {/* Header - Show amount badge with color */}
+                  {/* Header - Dynamic amount display */}
                   <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                        group.amount === 5000 ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
-                      }`}>
-                        ₹{group.amount === 5000 ? '5K' : '10K'}
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${getAmountBgColor(group.amount)} ${getAmountColor(group.amount)}`}>
+                        {formatAmount(group.amount)}
                       </div>
                       <div>
                         <p className="text-xs font-bold flex items-center gap-2">
@@ -4149,13 +4867,31 @@ const paginatedRequests = sortedRequests.slice(
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className={`text-xl font-black ${group.amount === 5000 ? 'text-[#00F5A0]' : 'text-blue-400'}`}>
-                        ₹{group.amount}
+                      <p className={`text-xl font-black ${getAmountColor(group.amount)}`}>
+                        ₹{group.amount.toLocaleString('en-IN')}
                       </p>
                     </div>
                   </div>
 
-                  {/* Rest of the group rendering - same as your existing code */}
+                  {/* ✅ QR INFO DISPLAY - Fixed with QrCode icon */}
+<div className="flex items-center gap-2 mt-1.5">
+  <QrCode size={10} className="text-gray-500" />
+  <p className="text-[7px] text-gray-400">
+    QR Category: 
+    <span className={`ml-1 font-bold ${
+      group.amount <= 5000 ? 'text-green-400' : 'text-blue-400'
+    }`}>
+      {group.amount <= 5000 ? '📱 Standard QR (₹5000 & below)' : '📱 Premium QR (Above ₹5000)'}
+    </span>
+  </p>
+  {/* Show QR filename in development mode */}
+  {process.env.NODE_ENV === 'development' && group.requests?.[0]?.image && (
+    <code className="text-[6px] text-gray-600 bg-black/30 px-1 rounded">
+      {group.requests[0].image.split('/').pop()}
+    </code>
+  )}
+</div>
+
                   {/* Users List */}
                   {group.requests && group.requests.length > 0 && (
                     <div className="mb-3">
@@ -4227,7 +4963,7 @@ const paginatedRequests = sortedRequests.slice(
                       ) : (
                         <>
                           <CheckCircle size={16} />
-                          CONFIRM & CREDIT (₹{acceptedRequest.amount})
+                          CONFIRM & CREDIT (₹{acceptedRequest.amount.toLocaleString('en-IN')})
                         </>
                       )}
                     </button>
@@ -4287,7 +5023,7 @@ const paginatedRequests = sortedRequests.slice(
             <div className="p-4 border-b border-white/10 flex justify-between items-center sticky top-0 bg-[#0A1F1A]">
               <h3 className="font-bold flex items-center gap-2">
                 <Camera size={16} className="text-[#00F5A0]" />
-                Payment Proof - ₹{selectedRequest.amount}
+                Payment Proof - ₹{selectedRequest.amount.toLocaleString('en-IN')}
                 <span className="text-[10px] text-gray-500">
                   Uploaded by: {selectedRequest.acceptedBy?.userId}
                 </span>
