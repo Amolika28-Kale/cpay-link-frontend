@@ -133,14 +133,14 @@ const fetchSystemRequests = async () => {
       if (data.groupedRequests && data.groupedRequests.length > 0) {
         // Log each request's status
         data.groupedRequests.forEach(group => {
-          console.log(`Group ${group.groupId}:`);
+          // console.log(`Group ${group.groupId}:`);
           group.requests?.forEach(req => {
             console.log(`  - User: ${req.createdFor?.userId}, Status: ${req.status}, Has screenshots: ${req.paymentScreenshots?.length || 0}`);
           });
         });
         setSystemRequests(data.groupedRequests);
       } else if (data.singleRequests && data.singleRequests.length > 0) {
-        console.log("Single requests:", data.singleRequests);
+        // console.log("Single requests:", data.singleRequests);
         // ✅ FIX: Convert single requests to grouped format
         // Each single request becomes its own "group"
         const groupedSingleRequests = data.singleRequests.map(req => ({
@@ -155,7 +155,7 @@ const fetchSystemRequests = async () => {
         }));
         setSystemRequests(groupedSingleRequests);
       } else if (data.requests) {
-        console.log("Requests array:", data.requests);
+        // console.log("Requests array:", data.requests);
         // ✅ FIX: Convert requests array to grouped format if needed
         const groupedRequests = data.requests.map(req => ({
           groupId: req._id,
@@ -2554,7 +2554,7 @@ const DepositsView = ({ deposits, pendingDeposits, handleAction }) => {
                     <button
                       onClick={() => {
                         const imageUrl = getImageUrl(item.paymentScreenshot);
-                        console.log('Opening image URL:', imageUrl); // Debug log
+                        // console.log('Opening image URL:', imageUrl); // Debug log
                         window.open(imageUrl, '_blank');
                       }}
                       className="text-[#00F5A0] text-[8px] lg:text-[10px] font-bold flex items-center gap-1 hover:underline"
@@ -2713,7 +2713,7 @@ const MobileDepositCard = ({ item, handleAction, formatDate, getImageUrl }) => {
             <button
               onClick={() => {
                 const imageUrl = getImageUrl(item.paymentScreenshot);
-                console.log('Opening screenshot:', imageUrl);
+                // console.log('Opening screenshot:', imageUrl);
                 window.open(imageUrl, '_blank');
               }}
               className="w-full bg-black/30 p-2 rounded mb-3 text-[#00F5A0] text-[8px] font-bold flex items-center justify-center gap-1 hover:bg-black/40 transition-all"
